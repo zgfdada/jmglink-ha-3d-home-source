@@ -1,0 +1,18 @@
+services:
+  jmglink-ha-3d-home:
+    build:
+      context: .
+      dockerfile: Dockerfile.room-filter
+    image: jmglink-ha-3d-home:room-filter
+    container_name: jmglink-ha-3d-home
+    restart: unless-stopped
+    ports:
+      - "8099:8099"
+    volumes:
+      - ./docker-runtime/data:/data
+      - ./docker-runtime/assets:/assets
+    environment:
+      HA3D_MODE: standalone
+      PORT: 8099
+      HA3D_DATA_DIR: /data
+      HA3D_ASSET_DIR: /assets

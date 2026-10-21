@@ -1,0 +1,56 @@
+{
+  "recoveredAt": "2026-09-09T04:20:09.559Z",
+  "officialIndex": "docker.jmglink.cn/jmglink-ha-3d@sha256:03deec9340d7df1aad4cd470a70e6a48455082e27a58f589530b6d191a55d45f",
+  "sourceImage": "docker.jmglink.cn/jmglink-ha-3d@sha256:e57ce9b132fb269703e60e4ea0d231d2d6901987a5cb496957976191992c20a8",
+  "fidelity": "behavioral recovery from compiled artifacts; original symbols, comments, types, and file boundaries are unavailable",
+  "modules": [
+    {
+      "kind": "application",
+      "original": "apps/web/dist/assets/index-CWMUN1IG.js",
+      "recovered": "apps/web/src/app/app.js",
+      "originalSha256": "8cbc7648baac88e0cf8393c22323aec0b67e204cecae1bbf5d05b3ace2f6a6ea"
+    },
+    {
+      "kind": "application",
+      "original": "apps/web/dist/assets/FloorplanEditor-CWRaEIlm.js",
+      "recovered": "apps/web/src/app/floorplan-editor.js",
+      "originalSha256": "822c789696a7eb57c7e17baf542575199770c54156baff169a1183951db14c21"
+    },
+    {
+      "kind": "application",
+      "original": "apps/web/dist/assets/HomeView-BFS1nsev.js",
+      "recovered": "apps/web/src/app/home-view.js",
+      "originalSha256": "1a563fd29331a957b2e1248b26106a2ef366e889361d7194e6584b1b082dcf4f"
+    },
+    {
+      "kind": "application",
+      "original": "apps/web/dist/assets/AppSelect-DDRORnJ8.js",
+      "recovered": "apps/web/src/app/scene.js",
+      "originalSha256": "84289824033bad18e0af2a09c905b51410ea08ab8377319a9b8b4c91aacf049d"
+    },
+    {
+      "kind": "application",
+      "original": "apps/web/dist/assets/AuthorSupportDialog-qBRE_uuJ.js",
+      "recovered": "apps/web/src/app/author-support-dialog.js",
+      "originalSha256": "1f34e52e9ca84343e10c5073ae22ca0777a5eada85fd8fd84ea72b27904f525f"
+    },
+    {
+      "kind": "vendor",
+      "original": "apps/web/dist/assets/react-BvuTDSTB.js",
+      "recovered": "apps/web/src/vendor/react.js",
+      "originalSha256": "306b5157926d35ef6319e21dbbc604c53ff3a12ede6c084ee89327cd3da45cad"
+    },
+    {
+      "kind": "vendor",
+      "original": "apps/web/dist/assets/three-ChmNxkrA.js",
+      "recovered": "apps/web/src/vendor/three.js",
+      "originalSha256": "8f91dc265512d3d058541199d65401801cc117e97d88b6610ee2167a453dd210"
+    },
+    {
+      "kind": "vendor",
+      "original": "apps/web/dist/assets/hls-CWrIGcEr.js",
+      "recovered": "apps/web/src/vendor/hls.js",
+      "originalSha256": "1c372ffa5c8d57d7f81851112558f22d7f44db7b6936e946924d7a3a1b78c5f4"
+    }
+  ]
+}

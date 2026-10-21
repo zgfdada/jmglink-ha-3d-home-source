@@ -1,0 +1,386 @@
+.cl-page {
+  color: #1b2e51;
+}
+.cl-heading,
+.cl-toolbar,
+.cl-modal header,
+.cl-modal footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cl-heading {
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.cl-heading h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+.cl-heading p {
+  color: #7b8eab;
+  font-size: 13px;
+}
+.cl-heading > div:last-child,
+.cl-card-actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.cl-page button,
+.cl-modal button {
+  border: 1px solid #d9e5f5;
+  border-radius: 9px;
+  background: #fff;
+  color: #466590;
+  padding: 8px 11px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.cl-page button:hover,
+.cl-modal button:hover {
+  border-color: #81a7f7;
+  background: #f0f6ff;
+}
+.cl-page button:disabled,
+.cl-modal button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cl-page .danger {
+  color: #d46666;
+}
+.cl-toolbar {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.cl-toolbar input {
+  flex: 1;
+  min-width: 160px;
+}
+.cl-toolbar span {
+  font-size: 12px;
+  color: #7d91af;
+}
+.cl-toolbar input,
+.cl-toolbar select,
+.cl-form input,
+.cl-form select,
+.cl-form textarea {
+  box-sizing: border-box;
+  border: 1px solid #d2e1f6;
+  border-radius: 8px;
+  background: #fff;
+  color: #334d75;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 12px;
+  min-width: 0;
+}
+.cl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.cl-grid article {
+  min-width: 0;
+  border: 1px solid #dce7f5;
+  background: #ffffffb8;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 4px 14px #27466506;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.cl-card-name {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  text-align: left;
+  border: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+.cl-card-meta {
+  color: #8393ae;
+  font-size: 11px;
+}
+.cl-grid article > p {
+  font-size: 12px;
+  color: #8594ae;
+  margin: 0;
+  flex: 1;
+}
+.cl-preview {
+  padding: 10px;
+  background: var(
+    --hp-glass-background,
+    linear-gradient(180deg, #313d5f8c, #232e4e94)
+  );
+  border-radius: 12px;
+  min-width: 0;
+}
+.cl-card-actions button {
+  padding: 5px 8px;
+}
+.cl-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  background: #14294465;
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.cl-modal {
+  width: min(1100px, 100%);
+  max-height: 92dvh;
+  border: 1px solid #d9e5f5;
+  border-radius: 18px;
+  background: #f6faff;
+  box-shadow: 0 20px 90px #172e5c35;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #243b60;
+}
+.cl-modal header,
+.cl-modal footer {
+  padding: 16px 22px;
+  flex: none;
+  background: #ffffffc9;
+}
+.cl-modal header h2 {
+  margin: 0 0 4px;
+  font-size: 21px;
+}
+.cl-modal header small {
+  color: #8091ad;
+}
+.cl-editor-body {
+  padding: 20px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 22px;
+  min-height: 0;
+}
+.cl-editor-body aside {
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+.cl-editor-body aside p,
+.cl-editor-body details {
+  font-size: 12px;
+  color: #7d8fac;
+  line-height: 1.8;
+}
+.cl-form {
+  display: grid;
+  gap: 11px;
+}
+.cl-form label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: #4c6388;
+}
+.cl-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cl-form textarea {
+  min-height: 150px;
+  resize: vertical;
+  font: 12px/1.6 monospace;
+}
+.cl-checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 7px !important;
+}
+.cl-checkbox input {
+  width: auto;
+}
+.cl-modal .primary {
+  background: #497ff2;
+  color: white;
+  border-color: #497ff2;
+}
+.cl-error {
+  color: #cf6868;
+  font-size: 12px;
+}
+.cl-detail pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.6 monospace;
+  border: 1px solid #dfe7f5;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  max-height: 60vh;
+  overflow: auto;
+}
+.cl-empty {
+  text-align: center;
+  color: #8d9db6;
+  padding: 40px;
+}
+.cl-palette-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #d4e1f4;
+  border-radius: 8px;
+  font: inherit;
+}
+.cl-palette-options {
+  max-height: 260px;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+}
+.cl-palette-options button {
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #dce5f5;
+  border-radius: 8px;
+  background: #fff;
+  color: #42618c;
+  cursor: pointer;
+}
+.cl-palette-options small {
+  font-size: 10px;
+  color: #8a9ab1;
+}
+.cl-current-version {
+  font-size: 11px;
+  color: #7c90ae;
+  margin: 8px 0;
+}
+.cl-library-shapes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.cl-library-shapes button {
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid #dce5f5;
+  background: #fff;
+  color: #5475a5;
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.cl-library-shapes button.active {
+  background: #eaf2ff;
+  border-color: #8db0fb;
+}
+.cl-palette-note {
+  font-size: 11px;
+  color: #8a9ab1;
+}
+@media (max-width: 800px) {
+  .cl-heading {
+    flex-direction: column;
+  }
+  .cl-editor-body {
+    grid-template-columns: 1fr;
+  }
+  .cl-editor-body aside {
+    position: static;
+  }
+  .cl-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cl-data-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #d4e1f4;
+  border-radius: 8px;
+}
+.cl-data-types legend {
+  font-size: 12px;
+  color: #5475a5;
+}
+.cl-data-types .cl-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.cl-data-types input {
+  width: auto;
+}
+
+.cl-footer-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cl-modal footer {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hp-config-fields {
+  display: grid;
+  gap: 10px;
+}
+.hp-config-fields label {
+  display: grid;
+  gap: 5px;
+}
+.hp-config-fields small {
+  font-size: 11px;
+  color: #7b8da8;
+}
+.cl-preview-properties {
+  margin-top: 16px;
+}
+.cl-preview-properties h4 {
+  margin: 0 0 10px;
+}
+
+.cl-preview-properties .hp-config-fields {
+  max-height: 240px;
+  overflow: auto;
+  padding: 2px 8px 2px 0;
+}
+.cl-preview-properties input:not([type="checkbox"]),
+.cl-preview-properties select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d4e1f4;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #42618c;
+  font: inherit;
+}
+.cl-preview-properties label {
+  font-size: 12px;
+  color: #5475a5;
+}
+.cl-preview-properties .cl-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

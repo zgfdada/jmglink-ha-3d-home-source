@@ -1,0 +1,17 @@
+.scene-title .scene-rotate-toggle {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.scene-title .scene-weather-toggle.active {
+  color: #fff;
+  border-color: rgba(131, 216, 255, 0.55);
+  background: rgba(52, 113, 163, 0.48);
+}
+
+@media (max-width: 620px) {
+  .scene-title .scene-rotate-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

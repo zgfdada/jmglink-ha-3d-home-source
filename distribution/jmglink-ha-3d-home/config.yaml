@@ -1,0 +1,40 @@
+name: JMGLink HA 3D Home Custom
+version: 0.1.5-custom.24
+slug: jmglink_ha_3d_home_custom
+description: 支持设备平台、在线模型库和可配置控制面板的 3D 户型图可视化与控制中心
+url: https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+arch:
+  - aarch64
+  - amd64
+image: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+startup: application
+boot: auto
+init: false
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_icon: mdi:floor-plan
+panel_title: 3D Home Custom
+panel_admin: false
+homeassistant_api: true
+ports:
+  8099/tcp: null
+map:
+  - type: addon_config
+    read_only: false
+  - type: media
+    read_only: false
+  - type: share
+    read_only: false
+options:
+  log_level: info
+  external_access: false
+  node_max_old_space_mb: 256
+  nice_level: 10
+  resource_log_interval_minutes: 5
+schema:
+  log_level: list(trace|debug|info|warning|error)
+  external_access: bool
+  node_max_old_space_mb: int(128,512)
+  nice_level: int(0,19)
+  resource_log_interval_minutes: int(0,60)

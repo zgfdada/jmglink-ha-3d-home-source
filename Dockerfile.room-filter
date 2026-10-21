@@ -1,0 +1,12 @@
+FROM docker.jmglink.cn/jmglink-ha-3d@sha256:e57ce9b132fb269703e60e4ea0d231d2d6901987a5cb496957976191992c20a8
+
+COPY extracted-image/apps/web/dist/assets/FloorplanEditor-CWRaEIlm.js /app/apps/web/dist/assets/FloorplanEditor-CWRaEIlm.js
+COPY extracted-image/apps/web/dist/assets/AppSelect-DDRORnJ8.js /app/apps/web/dist/assets/AppSelect-DDRORnJ8.js
+COPY extracted-image/apps/web/dist/assets/index-BkZh02gL.css /app/apps/web/dist/assets/index-BkZh02gL.css
+COPY extracted-image/packages/schema/dist/index.js /app/packages/schema/dist/index.js
+COPY extracted-image/packages/schema/dist/index.d.ts /app/packages/schema/dist/index.d.ts
+
+ENV HA3D_MODE=standalone \
+    PORT=8099 \
+    HA3D_DATA_DIR=/data \
+    HA3D_ASSET_DIR=/assets

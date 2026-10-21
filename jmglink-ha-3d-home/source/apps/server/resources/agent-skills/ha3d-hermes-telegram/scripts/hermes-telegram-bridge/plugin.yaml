@@ -1,0 +1,6 @@
+name: ha3d-telegram-bridge
+label: 3D Home Telegram 会话桥接
+kind: platform
+version: 1.0.0
+description: 将带鉴权的 3D Home 请求送入现有 Telegram adapter 的同一会话与执行队列。
+author: JMGLink HA 3D Home Custom

@@ -1,0 +1,65 @@
+{
+  "format": "ha3d-control-library",
+  "schemaVersion": 1,
+  "controls": [
+    {
+      "id": "custom.glass-number",
+      "name": "玻璃数字指标",
+      "description": "适用于剩余时间、温度、功率等只读数值。",
+      "author": "本地用户",
+      "version": 1,
+      "builtin": false,
+      "enabled": true,
+      "type": "number",
+      "variant": "metric",
+      "icon": "38",
+      "dataTypes": [
+        "number"
+      ],
+      "category": "data",
+      "width": 2,
+      "ui": {
+        "kind": "column",
+        "style": {
+          "gap": "8px"
+        },
+        "children": [
+          {
+            "kind": "label",
+            "style": {
+              "fontSize": "12px",
+              "opacity": 0.8
+            }
+          },
+          {
+            "kind": "row",
+            "style": {
+              "alignItems": "baseline",
+              "gap": "6px"
+            },
+            "children": [
+              {
+                "kind": "value",
+                "style": {
+                  "fontSize": "32px",
+                  "fontWeight": 700
+                }
+              },
+              {
+                "kind": "unit",
+                "style": {
+                  "fontSize": "12px",
+                  "opacity": 0.7
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "style": {
+        "borderRadius": "16px",
+        "borderColor": "rgba(160,210,255,.45)"
+      }
+    }
+  ]
+}

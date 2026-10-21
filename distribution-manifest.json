@@ -1,0 +1,20 @@
+[
+  "RELEASE_NOTES.md",
+  "README.md",
+  "docker-compose.release.yml",
+  "docs/deployment.md",
+  "docs/wiki/Docker零基础部署.md",
+  "docs/wiki/Home-Assistant-Add-on零基础部署.md",
+  "docs/wiki/Home.md",
+  "docs/wiki/_Sidebar.md",
+  "docs/wiki/功能与使用.md",
+  "docs/wiki/常见问题.md",
+  "docs/wiki/数据备份与升级.md",
+  "docs/语音助手配置.md",
+  "jmglink-ha-3d-home/RELEASE_NOTES.md",
+  "jmglink-ha-3d-home/DOCS.md",
+  "jmglink-ha-3d-home/config.yaml",
+  "jmglink-ha-3d-home/translations/en.yaml",
+  "jmglink-ha-3d-home/translations/zh-Hans.yaml",
+  "repository.yaml"
+]

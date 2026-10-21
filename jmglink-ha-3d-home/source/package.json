@@ -1,0 +1,21 @@
+{
+  "name": "jmglink-ha-3d-home-reconstructed",
+  "version": "0.1.5-custom.24",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @ha3d/recovered-web",
+    "dev": "npm run dev --workspace @ha3d/recovered-web",
+    "format:recovered": "prettier --write apps/web/src/app/*.js",
+    "start": "npm run start --workspace @ha3d/recovered-server",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "4.1.1",
+    "prettier": "^3.9.6"
+  }
+}

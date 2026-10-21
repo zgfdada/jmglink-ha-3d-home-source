@@ -1,0 +1,20 @@
+# Standalone runtime data can contain Home Assistant connection credentials.
+docker-runtime/
+docker-runtime-source/
+
+# Local environment and credentials.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editor and operating-system files.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Python verification caches.
+__pycache__/
+*.pyc

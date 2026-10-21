@@ -1,0 +1,16 @@
+{
+  "name": "@ha3d/recovered-web",
+  "version": "0.1.5-custom.24",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  },
+  "dependencies": {
+    "three": "^0.186.0"
+  }
+}

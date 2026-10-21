@@ -1,0 +1,18 @@
+{
+  "name": "ha3d-hermes-telegram",
+  "files": [
+    "SKILL.md",
+    "references/VoiceAssistant.js",
+    "references/configuration.md",
+    "references/push-to-talk.js",
+    "references/voice-assistant-api.js",
+    "references/voice-assistant-settings.jsx",
+    "references/voice-clarification.jsx",
+    "references/voice-interaction.js",
+    "references/voice-playback.js",
+    "scripts/hermes-telegram-bridge/__init__.py",
+    "scripts/hermes-telegram-bridge/plugin.yaml",
+    "scripts/hermes-telegram-bridge/test_bridge.py",
+    "scripts/probe.py"
+  ]
+}

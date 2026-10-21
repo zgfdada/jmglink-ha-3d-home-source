@@ -1,0 +1,15 @@
+{
+  "name": "ha3d-ha-assistant",
+  "files": [
+    "SKILL.md",
+    "references/VoiceAssistant.js",
+    "references/configuration.md",
+    "references/push-to-talk.js",
+    "references/voice-assistant-api.js",
+    "references/voice-assistant-settings.jsx",
+    "references/voice-clarification.jsx",
+    "references/voice-interaction.js",
+    "references/voice-playback.js",
+    "scripts/probe.py"
+  ]
+}

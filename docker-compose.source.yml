@@ -1,0 +1,75 @@
+services:
+  gitea-ipv6-proxy:
+    image: node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
+    container_name: jmglink-ha-3d-gitea-ipv6-proxy
+    restart: unless-stopped
+    network_mode: host
+    command: ["node", "/proxy.mjs"]
+    volumes:
+      - ./scripts/gitea-ipv6-proxy.mjs:/proxy.mjs:ro
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:16667/health').then((response)=>{if(!response.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 3s
+      start_period: 3s
+      retries: 5
+
+  jmglink-ha-3d-home-source:
+    build:
+      context: ./jmglink-ha-3d-home/source
+      dockerfile: Dockerfile
+    image: jmglink-ha-3d-home:reconstructed-source
+    container_name: jmglink-ha-3d-home-source
+    restart: unless-stopped
+    depends_on:
+      gitea-ipv6-proxy:
+        condition: service_healthy
+    ports:
+      - "8101:8099"
+    extra_hosts:
+      - "gitea-host-proxy:172.30.73.1"
+    networks:
+      - ha3d-source
+    volumes:
+      - ./docker-runtime-source/data:/data
+      - ./docker-runtime-source/assets:/assets
+    environment:
+      NODE_OPTIONS: --max-old-space-size=${HA3D_NODE_MAX_OLD_SPACE_MB:-384}
+      HA3D_MODE: standalone
+      PORT: 8099
+      HA3D_DATA_DIR: /data
+      HA3D_ASSET_DIR: /assets
+      HA3D_BUILD_VERSION: reconstructed-source
+      HA3D_ENABLE_DEV_ENTITIES: "true"
+      HA3D_RESOURCE_LOG_INTERVAL_MINUTES: ${HA3D_RESOURCE_LOG_INTERVAL_MINUTES:-5}
+      HA3D_MODEL_LIBRARY_GITEA_URL: ${HA3D_MODEL_LIBRARY_GITEA_URL:-https://gitea.700117.xyz:16666}
+      HA3D_MODEL_LIBRARY_GITEA_API_URL: ${HA3D_MODEL_LIBRARY_GITEA_API_URL:-http://gitea-host-proxy:16667}
+      HA3D_MODEL_LIBRARY_OWNER: ${HA3D_MODEL_LIBRARY_OWNER:-zgf}
+      HA3D_MODEL_LIBRARY_REPO: ${HA3D_MODEL_LIBRARY_REPO:-jmglink-ha-3d-model-library}
+      HA3D_MODEL_LIBRARY_BRANCH: ${HA3D_MODEL_LIBRARY_BRANCH:-main}
+      HA3D_MODEL_LIBRARY_MODE: ${HA3D_MODEL_LIBRARY_MODE:-readonly}
+      HA3D_MODEL_LIBRARY_TOKEN: ${HA3D_MODEL_LIBRARY_TOKEN:-}
+      HA3D_MODEL_LIBRARY_USERNAME: ${HA3D_MODEL_LIBRARY_USERNAME:-}
+      HA3D_MODEL_LIBRARY_PASSWORD: ${HA3D_MODEL_LIBRARY_PASSWORD:-}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8099/api/health').then((response)=>{if(!response.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+
+networks:
+  ha3d-source:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.73.0/24
+          gateway: 172.30.73.1

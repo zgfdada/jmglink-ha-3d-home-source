@@ -1,0 +1,18 @@
+.device-model-footprint {
+  fill: rgba(77, 148, 255, 0.12);
+  stroke: rgba(53, 105, 165, 0.72);
+  stroke-width: 0.035;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.device-model-footprint.selected {
+  fill: rgba(77, 148, 255, 0.2);
+  stroke: #2f78e3;
+}
+
+.device-model-selection-halo {
+  fill: none;
+  stroke-width: 0.055;
+  vector-effect: non-scaling-stroke;
+}

@@ -1,0 +1,22 @@
+.mode-editor .editor-workspace .editor-statusbar .status-help {
+  color: #123f91;
+  background: #e4edff;
+  border: 1px solid #aac4f2;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.editor-guidance-card ol li {
+  color: #173c79;
+  font-weight: 650;
+}
+
+.editor-guidance-card ol li:nth-child(2) {
+  color: #143e8c;
+  background: #e4edff;
+  border: 1px solid #aac4f2;
+  border-radius: 8px;
+  padding: 8px;
+}

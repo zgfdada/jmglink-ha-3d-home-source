@@ -1,0 +1,319 @@
+name: 发布 Home Assistant Add-on 镜像
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  code: read
+  releases: none
+  packages: none
+
+concurrency:
+  group: release-${{ gitea.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: gitea.700117.xyz:16666
+  IMAGE: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+
+jobs:
+  prepare:
+    name: 校验版本与发布元数据
+    runs-on: linux-docker-220
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      lock_hash: ${{ steps.release.outputs.lock_hash }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      arm_tag: ${{ steps.release.outputs.arm_tag }}
+      amd_tag: ${{ steps.release.outputs.amd_tag }}
+
+    steps:
+      - name: 检出正式版本源码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: 校验 Tag、版本和镜像地址
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          config="jmglink-ha-3d-home/config.yaml"
+          version="$(awk '$1 == "version:" { print $2; exit }' "$config")"
+          configured_image="$(awk '$1 == "image:" { print $2; exit }' "$config")"
+          tag="${GITHUB_REF#refs/tags/}"
+          if [ -z "$version" ]; then
+            echo "config.yaml 缺少 version" >&2
+            exit 1
+          fi
+          if [ "$tag" != "v$version" ]; then
+            echo "Tag $tag 与 config.yaml 版本 v$version 不一致" >&2
+            exit 1
+          fi
+          if [ "$configured_image" != "$IMAGE" ]; then
+            echo "config.yaml 中的镜像地址与仓库发布地址不一致" >&2
+            exit 1
+          fi
+          lock_hash="$(sha256sum jmglink-ha-3d-home/source/package-lock.json | cut -c1-16)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "lock_hash=$lock_hash" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$IMAGE:$version" >> "$GITHUB_OUTPUT"
+          echo "arm_tag=$IMAGE:$version-aarch64" >> "$GITHUB_OUTPUT"
+          echo "amd_tag=$IMAGE:$version-amd64" >> "$GITHUB_OUTPUT"
+
+  build_arm64:
+    name: 构建并发布 ARM64 镜像
+    needs: prepare
+    runs-on: linux-docker-220
+    timeout-minutes: 90
+
+    steps:
+      - name: 检出正式版本源码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: 启用 ARM64 模拟
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        with:
+          platforms: arm64
+
+      - name: 创建受限 BuildKit
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          name: ha3d-release-arm64
+          keep-state: true
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+            cpu-quota=150000
+            memory=3g
+
+      - name: 使用软件包专用密钥登录仓库
+        shell: bash
+        env:
+          REGISTRY_USERNAME: ${{ gitea.actor }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
+              --username "$REGISTRY_USERNAME" --password-stdin; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 15))
+              echo "Registry 登录失败，${delay} 秒后进行第 $((attempt + 1)) 次尝试" >&2
+              sleep "$delay"
+            fi
+          done
+          echo "Registry 登录连续 5 次失败" >&2
+          exit 1
+
+      - name: 构建并推送 ARM64 镜像
+        shell: bash
+        working-directory: jmglink-ha-3d-home
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if docker buildx build \
+              --platform linux/arm64 \
+              --provenance=false \
+              --build-arg HA3D_RELEASE_BUILD=1 --build-arg BUILD_ARCH=aarch64 \
+              --build-arg BUILD_VERSION="${{ needs.prepare.outputs.version }}" \
+              --tag "${{ needs.prepare.outputs.arm_tag }}" \
+              --push \
+              .; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 15))
+              echo "ARM64 构建或推送失败，${delay} 秒后进行第 $((attempt + 1)) 次尝试" >&2
+              sleep "$delay"
+            fi
+          done
+          echo "ARM64 构建或推送连续 5 次失败" >&2
+          exit 1
+
+  build_amd64:
+    name: 构建并发布 AMD64 镜像
+    needs: prepare
+    runs-on: linux-docker-220
+    timeout-minutes: 90
+
+    steps:
+      - name: 检出正式版本源码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: 创建受限 BuildKit
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          name: ha3d-release-amd64
+          keep-state: true
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+            cpu-quota=150000
+            memory=3g
+
+      - name: 使用软件包专用密钥登录仓库
+        shell: bash
+        env:
+          REGISTRY_USERNAME: ${{ gitea.actor }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
+              --username "$REGISTRY_USERNAME" --password-stdin; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 15))
+              echo "Registry 登录失败，${delay} 秒后进行第 $((attempt + 1)) 次尝试" >&2
+              sleep "$delay"
+            fi
+          done
+          echo "Registry 登录连续 5 次失败" >&2
+          exit 1
+
+      - name: 构建并推送 AMD64 镜像
+        shell: bash
+        working-directory: jmglink-ha-3d-home
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if docker buildx build \
+              --platform linux/amd64 \
+              --provenance=false \
+              --build-arg HA3D_RELEASE_BUILD=1 --build-arg BUILD_ARCH=amd64 \
+              --build-arg BUILD_VERSION="${{ needs.prepare.outputs.version }}" \
+              --tag "${{ needs.prepare.outputs.amd_tag }}" \
+              --push \
+              .; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 15))
+              echo "AMD64 构建或推送失败，${delay} 秒后进行第 $((attempt + 1)) 次尝试" >&2
+              sleep "$delay"
+            fi
+          done
+          echo "AMD64 构建或推送连续 5 次失败" >&2
+          exit 1
+
+  finalize:
+    name: 汇总多架构镜像并创建 Release
+    needs:
+      - prepare
+      - build_arm64
+      - build_amd64
+    runs-on: linux-docker-220
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出正式版本源码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: 创建受限 BuildKit
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          name: ha3d-release-finalize
+          keep-state: true
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+            cpu-quota=150000
+            memory=3g
+
+      - name: 使用软件包专用密钥登录仓库
+        shell: bash
+        env:
+          REGISTRY_USERNAME: ${{ gitea.actor }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$REGISTRY_TOKEN" | docker login "$REGISTRY" \
+              --username "$REGISTRY_USERNAME" --password-stdin; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 15))
+              echo "Registry 登录失败，${delay} 秒后进行第 $((attempt + 1)) 次尝试" >&2
+              sleep "$delay"
+            fi
+          done
+          echo "Registry 登录连续 5 次失败" >&2
+          exit 1
+
+      - name: 创建并验证多架构镜像
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if docker buildx imagetools create \
+              --tag "${{ needs.prepare.outputs.release_tag }}" \
+              "${{ needs.prepare.outputs.arm_tag }}" \
+              "${{ needs.prepare.outputs.amd_tag }}"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "多架构镜像汇总连续 5 次失败" >&2
+              exit 1
+            fi
+            delay=$((attempt * 15))
+            echo "多架构镜像汇总失败，${delay} 秒后进行第 $((attempt + 1)) 次尝试" >&2
+            sleep "$delay"
+          done
+          inspection=""
+          for attempt in 1 2 3 4 5; do
+            if inspection="$(docker buildx imagetools inspect "${{ needs.prepare.outputs.release_tag }}")"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "多架构镜像校验连续 5 次失败" >&2
+              exit 1
+            fi
+            delay=$((attempt * 15))
+            echo "多架构镜像校验失败，${delay} 秒后进行第 $((attempt + 1)) 次尝试" >&2
+            sleep "$delay"
+          done
+          printf '%s\n' "$inspection"
+          grep -q 'Platform:[[:space:]]*linux/arm64' <<< "$inspection"
+          grep -q 'Platform:[[:space:]]*linux/amd64' <<< "$inspection"
+
+      - name: 验证正式 AMD64 运行镜像与 Ingress 请求协议
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --interactive --pull=always --platform linux/amd64 \
+            --entrypoint node "${{ needs.prepare.outputs.amd_tag }}" \
+            --input-type=module \
+            < jmglink-ha-3d-home/source/tests/fixtures/voice-api-image-smoke.mjs
+          docker run --rm --interactive --platform linux/amd64 --network none \
+            --read-only --tmpfs /tmp --entrypoint node "${{ needs.prepare.outputs.amd_tag }}" \
+            --input-type=module < jmglink-ha-3d-home/source/tests/fixtures/release-http-smoke.mjs
+
+      - name: 更新并验证 latest 镜像
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create --tag "${IMAGE}:latest" "${{ needs.prepare.outputs.release_tag }}"
+          docker buildx imagetools inspect "${IMAGE}:latest" --raw > /tmp/latest-index.json
+          docker buildx imagetools inspect "${{ needs.prepare.outputs.release_tag }}" --raw > /tmp/version-index.json
+          cmp /tmp/latest-index.json /tmp/version-index.json
+
+      - name: 同步公开安装库、Wiki、镜像关联与 Release
+        shell: bash
+        env:
+          INSTALLATION_TOKEN: ${{ secrets.INSTALLATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/publish-installation.py

@@ -1,0 +1,102 @@
+name: 源码构建与测试
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .gitea/workflows/**
+      - jmglink-ha-3d-home/**
+      - scripts/publish-installation.py
+      - scripts/test-publication.py
+      - distribution/**
+      - distribution-manifest.json
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .gitea/workflows/**
+      - jmglink-ha-3d-home/**
+      - scripts/publish-installation.py
+      - scripts/test-publication.py
+      - distribution/**
+      - distribution-manifest.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ gitea.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 验证恢复源码构建
+    runs-on: linux-docker-220
+    timeout-minutes: 30
+    env:
+      IMAGE: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: 验证公开文件白名单与隔离规则
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/publish-installation.py --check
+          python3 scripts/test-publication.py
+
+      - name: 读取并校验版本信息
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          config="jmglink-ha-3d-home/config.yaml"
+          version="$(awk '$1 == "version:" { print $2; exit }' "$config")"
+          configured_image="$(awk '$1 == "image:" { print $2; exit }' "$config")"
+          if [ -z "$version" ]; then
+            echo "config.yaml 缺少 version" >&2
+            exit 1
+          fi
+          if [ "$configured_image" != "$IMAGE" ]; then
+            echo "config.yaml 中的镜像地址与仓库发布地址不一致" >&2
+            exit 1
+          fi
+          lock_hash="$(sha256sum jmglink-ha-3d-home/source/package-lock.json | cut -c1-16)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "lock_hash=$lock_hash" >> "$GITHUB_OUTPUT"
+
+      - name: 创建受限 BuildKit
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          name: ha3d-ci-amd64
+          keep-state: true
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+            cpu-quota=150000
+            memory=3g
+
+      - name: 构建并运行源码测试
+        shell: bash
+        working-directory: jmglink-ha-3d-home
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false \
+            --build-arg HA3D_RELEASE_BUILD=1 --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION="${{ steps.metadata.outputs.version }}" \
+            --load --tag ha3d-ci:${{ gitea.sha }} \
+            .
+          docker run --rm --interactive --network none --read-only --tmpfs /tmp \
+            --entrypoint node ha3d-ci:${{ gitea.sha }} --input-type=module \
+            < source/tests/fixtures/voice-api-image-smoke.mjs
+          docker run --rm --interactive --network none --read-only --tmpfs /tmp \
+            --entrypoint node ha3d-ci:${{ gitea.sha }} --input-type=module \
+            < source/tests/fixtures/release-http-smoke.mjs
+          docker image rm ha3d-ci:${{ gitea.sha }}

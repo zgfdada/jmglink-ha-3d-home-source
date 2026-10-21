@@ -1,0 +1,13 @@
+configuration:
+  log_level:
+    name: Log level
+    description: Controls server log verbosity.
+  node_max_old_space_mb:
+    name: Node.js heap limit
+    description: V8 old-space limit in MiB; keep 256 on low-memory HAOS hosts.
+  nice_level:
+    name: Background CPU priority
+    description: Process nice value; a larger value gives the add-on lower CPU priority.
+  resource_log_interval_minutes:
+    name: Resource log interval
+    description: Minutes between memory, CPU, connection, and queue log samples; use 0 to disable.

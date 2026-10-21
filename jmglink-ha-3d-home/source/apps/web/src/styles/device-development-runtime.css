@@ -1,0 +1,413 @@
+.ddc-step-page {
+  display: grid;
+  gap: 14px;
+  margin-top: 15px;
+  color: #17294a;
+}
+.ddc-step-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.ddc-step-appearance-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+.ddc-step-stack {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+}
+.ddc-step-card {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid #dbe7f4;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 17px #214b800b;
+}
+.ddc-step-card h2 {
+  margin: 0;
+  color: #17294a;
+  font-size: 19px;
+}
+.ddc-step-card > p {
+  margin: 5px 0 16px;
+  color: #798ca9;
+  font-size: 12px;
+}
+.ddc-step-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: #344d77;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ddc-step-field input,
+.ddc-step-field select,
+.ddc-step-variable select,
+.ddc-step-state-field input,
+.ddc-step-state-field select {
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid #cfdcf0;
+  border-radius: 7px;
+  background: #fff;
+  color: #17294a;
+  font: inherit;
+}
+.ddc-step-field input:focus,
+.ddc-step-field select:focus {
+  outline: 2px solid #9fc5ff;
+}
+.ddc-step-state-field {
+  display: grid;
+  gap: 9px;
+  margin: 15px 0;
+  font-size: 12px;
+  color: #344d77;
+}
+.ddc-step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+.ddc-step-chips button {
+  min-height: 31px;
+  padding: 5px 9px;
+  border: 1px solid #cde1fa;
+  border-radius: 6px;
+  background: #eaf4ff;
+  color: #2674e5;
+  font-size: 11px;
+}
+.ddc-step-chips button.invalid {
+  border-color: #e6a49c;
+  background: #fff1ef;
+  color: #b2463a;
+}
+.ddc-step-chips input {
+  width: 146px;
+}
+.ddc-step-info {
+  padding: 11px 13px;
+  border: 1px solid #d9e9fe;
+  border-radius: 7px;
+  background: #edf6ff;
+  color: #5177a9;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.ddc-step-info code {
+  font-size: 11px;
+}
+.ddc-step-variable {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+.ddc-step-variable select {
+  flex: 1;
+}
+.ddc-step-variable button,
+.ddc-step-selected-model button,
+.ddc-step-model-picker button,
+.ddc-step-history button,
+.ddc-step-preview-actions button,
+.ddc-step-footer button {
+  min-height: 35px;
+  padding: 6px 12px;
+  border: 1px solid #cbdcf0;
+  border-radius: 7px;
+  background: #fff;
+  color: #3c6bb7;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ddc-step-variable button:hover,
+.ddc-step-footer button:hover {
+  background: #edf5ff;
+}
+.ddc-step-issues {
+  display: grid;
+  gap: 5px;
+  padding: 12px 15px;
+  border: 1px solid #eacaa0;
+  border-radius: 8px;
+  background: #fff8eb;
+  color: #9b6224;
+  font-size: 12px;
+}
+.ddc-step-previews {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.ddc-step-preview > b {
+  display: block;
+  margin-bottom: 8px;
+  color: #2d61ae;
+  font-size: 12px;
+}
+.ddc-step-preview-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 95px;
+  padding: 10px;
+  border: 1px solid #dfe9f7;
+  border-radius: 9px;
+  background: #fbfdff;
+}
+.ddc-step-preview-model,
+.ddc-step-model-thumb {
+  flex: 0 0 82px;
+  width: 82px;
+  height: 72px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #f0f5fa;
+}
+.ddc-step-preview-content > div:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  flex: 1;
+}
+.ddc-step-preview-content strong,
+.ddc-step-preview-content span,
+.ddc-step-preview-content small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ddc-step-preview-content strong {
+  font-size: 14px;
+}
+.ddc-step-preview-content span {
+  font-size: 12px;
+  color: #375c95;
+}
+.ddc-step-preview-content small {
+  font-size: 11px;
+  color: #8da1bb;
+}
+.ddc-step-preview-content em {
+  font-style: normal;
+  font-size: 22px;
+  color: #4587f5;
+}
+.ddc-step-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dbe7f4;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 12px;
+  color: #5a79a5;
+}
+.ddc-step-footer > div {
+  display: flex;
+  gap: 8px;
+}
+.ddc-step-selected-model {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #dfe9f7;
+  border-radius: 8px;
+}
+.ddc-step-selected-model > div:nth-child(2) {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+.ddc-step-selected-model strong,
+.ddc-step-selected-model small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ddc-step-selected-model small {
+  color: #8397b1;
+}
+.ddc-step-model-picker {
+  display: grid;
+  gap: 10px;
+  margin-top: 11px;
+  padding: 10px;
+  border: 1px solid #cfdff3;
+  border-radius: 9px;
+  background: #f6faff;
+}
+.ddc-step-model-picker > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ddc-step-model-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 9px;
+  max-height: 290px;
+  overflow: auto;
+}
+.ddc-step-model-list button {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  color: #345783;
+  text-align: left;
+  overflow: hidden;
+}
+.ddc-step-model-list button.selected {
+  border-color: #3980fa;
+  background: #eaf4ff;
+}
+.ddc-step-model-list .ddc-model-preview {
+  height: 85px;
+}
+.ddc-step-model-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ddc-step-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 10px;
+}
+.ddc-step-number {
+  display: flex;
+  align-items: center;
+  border: 1px solid #cfdcf0;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.ddc-step-number input {
+  width: 100%;
+  border: 0;
+}
+.ddc-step-number small {
+  padding-right: 8px;
+  color: #9aacbf;
+}
+.ddc-step-history,
+.ddc-step-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ddc-step-history small {
+  color: #8ea1b8;
+}
+.ddc-step-history button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ddc-step-material-palette {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #dbe5f2;
+  border-radius: 9px;
+  background: #f8fbff;
+}
+.ddc-step-material-palette > small {
+  color: #7488a5;
+}
+.ddc-step-material-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+.ddc-step-material-colors label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid #dbe5f2;
+  border-radius: 7px;
+  background: #fff;
+}
+.ddc-step-material-colors label > span:nth-child(2) {
+  overflow: hidden;
+  flex: 1;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ddc-step-material-swatch {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border: 1px solid #b6c5d7;
+  border-radius: 4px;
+}
+.ddc-step-material-colors input[type="color"] {
+  width: 28px;
+  height: 26px;
+  padding: 2px;
+}
+.ddc-step-material-colors button {
+  padding: 4px 6px;
+}
+.ddc-step-3d-canvas {
+  min-height: 360px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #f0f5fb;
+}
+.ddc-step-3d-canvas .ddc-model-preview {
+  height: 360px;
+}
+.ddc-step-missing-model {
+  display: grid;
+  place-items: center;
+  height: 360px;
+  color: #91a5bb;
+}
+.ddc-step-preview-actions {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+@media (max-width: 1100px) {
+  .ddc-step-grid {
+    grid-template-columns: 1fr;
+  }
+  .ddc-step-appearance-grid {
+    grid-template-columns: 1fr;
+  }
+  .ddc-step-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .ddc-step-previews,
+  .ddc-step-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .ddc-step-footer {
+    display: grid;
+  }
+  .ddc-step-footer > div {
+    flex-wrap: wrap;
+  }
+  .ddc-step-selected-model {
+    flex-wrap: wrap;
+  }
+  .ddc-step-variable {
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,13 @@
+configuration:
+  log_level:
+    name: 日志级别
+    description: 控制服务日志输出详细程度。
+  node_max_old_space_mb:
+    name: Node.js 堆内存上限
+    description: Node.js V8 old-space 上限（MiB）；低内存 HAOS 主机建议保持 256。
+  nice_level:
+    name: 后台 CPU 优先级
+    description: 进程 nice 值，数值越大优先级越低；建议保持 10。
+  resource_log_interval_minutes:
+    name: 资源监控日志间隔
+    description: 每隔多少分钟记录一次内存、CPU、连接及队列统计；设为 0 可关闭。

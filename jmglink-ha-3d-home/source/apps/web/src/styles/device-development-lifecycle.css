@@ -1,0 +1,421 @@
+.ddc-lifecycle {
+  padding: 16px 0 32px;
+  color: #18294b;
+}
+.ddc-lifecycle-intro {
+  margin: 0 0 18px;
+}
+.ddc-lifecycle-intro h2 {
+  font-size: 22px;
+  margin: 0 0 5px;
+}
+.ddc-lifecycle-intro p,
+.ddc-lifecycle-note {
+  color: #7586a7;
+  font-size: 12px;
+  margin: 5px 0 12px;
+}
+.ddc-lifecycle-grid {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(300px, 1.3fr) minmax(
+      230px,
+      0.9fr
+    );
+  gap: 14px;
+  align-items: start;
+}
+.ddc-lifecycle-publish-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.5fr) minmax(280px, 1fr);
+  gap: 14px;
+}
+.ddc-lifecycle-publish-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+.ddc-lifecycle-card {
+  background: #fff;
+  border: 1px solid #dbe6f6;
+  border-radius: 14px;
+  padding: 16px;
+  min-width: 0;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 20px #15284a08;
+}
+.ddc-lifecycle-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+.ddc-lifecycle-card h4 {
+  font-size: 13px;
+  margin: 16px 0 8px;
+}
+.ddc-lifecycle-card button,
+.ddc-lifecycle-footer button {
+  border: 1px solid #cbdaf5;
+  background: #fff;
+  color: #4165a9;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.ddc-lifecycle-card button:disabled,
+.ddc-lifecycle-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ddc-lifecycle-card label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: #546a93;
+  margin: 9px 0;
+}
+.ddc-lifecycle-card input,
+.ddc-lifecycle-card select,
+.ddc-lifecycle-card textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #cbdaf5;
+  border-radius: 7px;
+  background: #fff;
+  color: #1a2d52;
+  padding: 8px;
+  font: inherit;
+  min-width: 0;
+}
+.ddc-lifecycle-modes {
+  display: flex;
+  gap: 7px;
+}
+.ddc-lifecycle-modes button {
+  flex: 1;
+}
+.ddc-lifecycle-modes button.active,
+.ddc-lifecycle-cap.active {
+  background: #eaf2ff;
+  color: #3169dd;
+  border-color: #80a9fb;
+}
+.ddc-lifecycle-cap {
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  margin: 6px 0;
+}
+.ddc-lifecycle-cap small {
+  font-size: 11px;
+  color: #7a8daa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ddc-lifecycle-model {
+  height: 170px;
+  display: grid;
+  place-items: center;
+  background: #f2f6fc;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.ddc-lifecycle-model > * {
+  max-width: 100%;
+  max-height: 100%;
+}
+.ddc-live-preview {
+  background: rgba(65, 84, 121, 0.72);
+  backdrop-filter: blur(18px);
+  border: 1px solid #ffffff3d;
+  border-radius: 16px;
+  color: #fff;
+  padding: 14px;
+  margin-top: 12px;
+  box-shadow: 0 12px 30px #172a5150;
+}
+.ddc-live-preview-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ddc-live-preview-title span {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.ddc-live-runtime {
+  margin-top: 5px;
+  color: #d7e7ff;
+  font-size: 12px;
+}
+.ddc-live-preview section {
+  background: #101d3654;
+  border: 1px solid #ffffff1c;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 10px;
+}
+.ddc-live-preview h4 {
+  margin: 0 0 8px;
+  color: #fff;
+}
+.ddc-live-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+.ddc-live-preview-control {
+  display: grid;
+  gap: 6px;
+  background: #ffffff13;
+  border-radius: 8px;
+  padding: 9px;
+  min-width: 0;
+}
+.ddc-live-preview-control label {
+  color: #e6edff;
+  margin: 0;
+}
+.ddc-live-preview-control strong {
+  font-size: 13px;
+}
+.ddc-live-preview-control button,
+.ddc-live-preview-control select,
+.ddc-live-preview-control input {
+  width: 100%;
+  min-width: 0;
+}
+.ddc-live-preview-control button:disabled,
+.ddc-live-preview-control select:disabled,
+.ddc-live-preview-control input:disabled {
+  opacity: 0.75;
+}
+.ddc-live-shape {
+  min-height: 33px;
+  background: #ffffff1b !important;
+  border-color: #ffffff35 !important;
+  color: #fff !important;
+}
+.ddc-live-shape.power {
+  width: 46px !important;
+  height: 46px;
+  border-radius: 50%;
+  font-size: 24px;
+  background: #3178f1 !important;
+  justify-self: center;
+}
+.ddc-live-shape.segmented {
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+.ddc-live-options {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.ddc-live-options.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ddc-live-options button {
+  width: auto;
+  flex: 1;
+  background: #ffffff1c;
+  border-color: #ffffff35;
+  color: #fff;
+}
+.ddc-live-options button.active {
+  background: #3c7cf0;
+}
+.ddc-live-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #ffffff50;
+}
+.ddc-live-meter i {
+  display: block;
+  height: 100%;
+  background: #67adff;
+}
+.ddc-live-meter.steps {
+  background: repeating-linear-gradient(
+    90deg,
+    #ffffff50 0 12%,
+    transparent 12% 14%
+  );
+}
+.ddc-live-ring {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 58px;
+  height: 58px;
+  border: 5px solid #67adff;
+  border-radius: 50%;
+}
+.ddc-live-icon {
+  font-size: 19px !important;
+}
+.ddc-lifecycle-events {
+  max-height: 205px;
+  overflow: auto;
+  background: #f6f9fe;
+  padding: 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  color: #506486;
+}
+.ddc-lifecycle-events div {
+  padding: 5px 0;
+  border-bottom: 1px solid #e3eaf5;
+}
+.ddc-lifecycle-checks {
+  display: grid;
+  gap: 6px;
+  max-height: 230px;
+  overflow: auto;
+}
+.ddc-lifecycle-checks div {
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.ddc-lifecycle-checks .error {
+  background: #fff1f0;
+  color: #b13c36;
+}
+.ddc-lifecycle-checks .warning {
+  background: #fff7e6;
+  color: #956118;
+}
+.ddc-lifecycle-checks .ok {
+  background: #eaf8f0;
+  color: #288151;
+}
+.ddc-lifecycle-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ddc-lifecycle-footer button:last-child {
+  background: #4678f0;
+  color: #fff;
+  border-color: #4678f0;
+}
+.ddc-lifecycle-publish-previews {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ddc-lifecycle-publish-previews > div {
+  min-width: 0;
+}
+.ddc-lifecycle-publish-previews b {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.ddc-lifecycle-version {
+  position: relative;
+  padding: 10px 0;
+  border-bottom: 1px solid #e1e9f5;
+  font-size: 12px;
+}
+.ddc-lifecycle-version small {
+  display: block;
+  margin: 5px 0;
+  color: #7183a1;
+}
+.ddc-lifecycle-version button {
+  font-size: 11px;
+}
+.ddc-lifecycle-version-detail {
+  margin-top: 8px;
+  padding: 9px;
+  border-radius: 7px;
+  background: #f1f6ff;
+  color: #45618d;
+  line-height: 1.6;
+}
+.ddc-lifecycle-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 10px;
+}
+.ddc-lifecycle-form label:last-child {
+  grid-column: 1/-1;
+}
+.ddc-lifecycle-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 12px;
+}
+.ddc-lifecycle-options label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #273c64;
+}
+.ddc-lifecycle-options input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  padding: 0;
+  accent-color: #477cff;
+}
+.ddc-lifecycle-visibility {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 5px 0;
+  padding: 8px 0;
+  border: 0;
+  font-size: 12px;
+}
+.ddc-lifecycle-visibility legend {
+  color: #546a93;
+}
+.ddc-lifecycle-visibility label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+}
+.ddc-lifecycle-visibility input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  accent-color: #477cff;
+}
+.ddc-lifecycle-sim-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+@media (max-width: 1200px) {
+  .ddc-lifecycle-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ddc-lifecycle-grid > :last-child {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 850px) {
+  .ddc-lifecycle-grid,
+  .ddc-lifecycle-publish-grid,
+  .ddc-lifecycle-publish-previews {
+    grid-template-columns: 1fr;
+  }
+  .ddc-lifecycle-grid > :last-child {
+    grid-column: auto;
+  }
+  .ddc-lifecycle-options {
+    grid-template-columns: 1fr;
+  }
+}
