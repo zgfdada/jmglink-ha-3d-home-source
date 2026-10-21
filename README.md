@@ -1,5 +1,9 @@
 # JMGLink HA 3D Home Custom
 
+> 致敬并感谢原作 [JMGLink HA 3D Home](https://gitee.com/tuotuo4ever/jmglink-ha-3d-home) 的原作者及所有贡献者。
+>
+> 本项目是基于原作的**二次开发作品**，在原有 3D 家居可视化与 Home Assistant 控制能力上继续扩展和维护。
+
 把户型、家具和 Home Assistant 设备放进同一个 3D 家居界面。
 
 本仓库提供当前公开源码；安装和版本下载请使用[安装仓库](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom)。
