@@ -1,3 +1,4 @@
+import { ActionEditor } from "./action-editor.jsx";
 import { resolveSidebarEntities, sidebarEntityName } from "../../../../../packages/schema/src/sidebar-bindings.js";
 import { a as React } from "../../vendor/react.js";
 import {
@@ -17,10 +18,12 @@ const customWidget = () => ({
   id: uid("widget"),
   name: "新实体卡片",
   kind: "custom",
+  scriptMode: "dom",
+  actions: [],
   entityId: "",
-  html: '<article class="card"><small>{{attributes.friendly_name}}</small><h2>{{state}}</h2><p>{{attributes.unit_of_measurement}}</p></article>',
+  html: '<article class="card"><small id="name"></small><h2 id="value"></h2><p id="unit"></p></article>',
   css: ".card { padding:20px; border-radius:18px; background:linear-gradient(135deg,#3d627e,#263b58); } h2 { font-size:36px; margin:14px 0; }",
-  js: "// entity 是所绑定实体的只读快照。返回用于 {{字段}} 模板的数据。\nreturn entity;",
+  js: "// ha 提供绑定实体与通用 HA 交互接口。\nfunction render(){const e=ha.entity||{};document.getElementById('name').textContent=e.name||'未绑定';document.getElementById('value').textContent=e.state||'--';document.getElementById('unit').textContent=e.attributes?.unit_of_measurement||'';}\nrender();ha.onStateChange(render);",
 });
 
 function EntityPicker({entities, widget, override, onChange, emptyLabel}) {
@@ -432,6 +435,7 @@ export default function SidebarDevelopmentCenter({
                       </label>
                       {widget.entityAttribute && <fieldset className="sb-account-names"><legend>实体显示名称</legend>{Object.values(entities).filter(e=>Object.hasOwn(e.attributes || {},widget.entityAttribute)).map((entity,i)=><label key={entity.entityId}>{entity.name || entity.entityId}<input value={widget.accountNames?.[entity.entityId] || ''} placeholder={`用电账户 ${i+1}`} onChange={event=>patchWidget('accountNames',{...widget.accountNames,[entity.entityId]:event.target.value})} /></label>)}</fieldset>}
                       <label>脚本模式<select value={widget.scriptMode || "transform"} onChange={e=>patchWidget("scriptMode",e.target.value)}><option value="transform">数据转换（Worker）</option><option value="dom">交互界面（隔离沙箱）</option></select></label>
+                      {widget.scriptMode === "dom" && <ActionEditor widget={widget} entities={effectiveBinding.entities} onChange={actions=>patchWidget("actions",actions)} onInsert={html=>patchWidget("html",widget.html+"\n"+html)}/>}
                       <label>自动选择要求的属性<input value={widget.entityAttribute || ""} onChange={e=>patchWidget("entityAttribute",e.target.value)} /></label>
                       <label>未绑定时自动选择实体域<input value={widget.entityDomain || ""} placeholder="例如 weather；留空不自动选择" onChange={e => patchWidget("entityDomain", e.target.value)} /></label>
                       {(
@@ -452,15 +456,13 @@ export default function SidebarDevelopmentCenter({
                             spellCheck="false"
                             aria-label={`${sourceTab.toUpperCase()} 编辑器`}
                             value={widget[sourceTab]}
-                            maxLength={24000}
+                            maxLength={sourceTab === "js" ? 1000000 : 24000}
                             onChange={(e) =>
                               patchWidget(sourceTab, e.target.value)
                             }
                           />
                           <p className="sb-muted">
-                            HTML 使用 {"{{state}}"}、
-                            {"{{attributes.temperature}}"}。JS 接收 entity
-                            并返回模板数据；限时 1 秒，无网络或设备控制权限。
+                            {widget.scriptMode === "dom" ? '交互模式：HTML/CSS/JS 绘制界面，ha SDK 读取绑定状态并调用已声明动作。保存草稿后可测试，发布后主页生效。' : '数据模式：HTML 使用 {{state}}、{{attributes.temperature}}；JS 返回模板数据，Worker 限时 1 秒，无设备控制权限。'}
                           </p>
                         </>
                       )}
@@ -471,7 +473,7 @@ export default function SidebarDevelopmentCenter({
                   <h2>实时预览</h2>
                   <div className="sb-widget-live-preview">
                     {widget && (
-                      <WidgetRenderer widget={widget} entities={entities} />
+                      <WidgetRenderer widget={widget} entities={entities} bindingContext={{projectId:project.id,workspace:"draft"}} />
                     )}
                   </div>
                   <h2>实体属性</h2>
@@ -496,6 +498,8 @@ export default function SidebarDevelopmentCenter({
                   </p>
                   <div className="sb-layout-canvas">
                     <SidebarPanel
+                      projectId={project.id}
+                      workspace="draft"
                       config={draft}
                       entities={entities}
                       title={project.name}

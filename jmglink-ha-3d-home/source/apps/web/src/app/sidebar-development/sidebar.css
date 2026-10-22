@@ -780,3 +780,5 @@
 .mode-home .home-insight-panel .control-error{color:#9b2929!important;background:#ffddddb8;border-color:#a9404040}
 
 .mode-home .home-insight-panel .insight-detail-toolbar :is(small,span){color:var(--device-muted)!important}
+
+.sb-action-editor{display:flex;flex-direction:column;gap:10px;border:1px solid #cad6e5;border-radius:12px;margin:14px 0;padding:14px}.sb-action-row{display:grid;gap:8px;padding:12px;border:1px solid #d7e1ed;border-radius:10px;background:#f5f8fc}.sb-action-row textarea{width:100%;box-sizing:border-box;font-family:monospace}.sb-action-editor small{overflow-wrap:anywhere;color:#536981}

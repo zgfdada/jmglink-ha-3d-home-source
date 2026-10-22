@@ -106,7 +106,7 @@ const ha = new HomeAssistantClient(
   entityHistoryStore,
   devicePlatformStore,
 );
-registerSidebarServices(app,ha);
+registerSidebarServices(app,ha,sidebarStore,projectStore);
 function refreshBoundEntityFilter() {
   try {
     const project = projectStore.getProject();

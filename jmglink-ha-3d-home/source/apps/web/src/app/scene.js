@@ -1,3 +1,4 @@
+import { overlayRefitKey } from "../domain/camera-refit.js";
 import DevicePanel from "../components/device-panel.jsx";
 import { boundPanelStates } from "../domain/device-panel.js";
 /**
@@ -11252,7 +11253,7 @@ function yi({
     }, [a, y, f, e, r]),
     L.useEffect(() => {
       ((u.current = !0), f());
-    }, [f, e, r, i, o, c.width, c.height, n.top, n.preserveViewOnPanelChange ? 0 : n.right, n.preserveViewOnPanelChange ? 0 : n.bottom, n.left, n.fitScale]),
+    }, [f, e, r, i, o, c.width, c.height, overlayRefitKey(n), n.fitScale]),
     re(() => {
       var O;
       if (!u.current) return;

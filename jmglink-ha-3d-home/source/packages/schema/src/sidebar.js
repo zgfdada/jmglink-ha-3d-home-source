@@ -1,3 +1,4 @@
+import { normalizeWidgetActions } from "./widget-actions.js";
 import { operationsWidgetCode } from "./operations-widget.js";
 import { musicWidgetCode } from "./music-widget.js";
 import { energyWidgetCode } from "./energy-widget.js";
@@ -12,6 +13,7 @@ export function defaultSidebar() {
         id: "weather",
         name: "天气概览",
         kind: "custom",
+        actions: [],
         scriptMode: "transform",
         entityAttribute: "",
         accountNames: {},
@@ -20,7 +22,7 @@ export function defaultSidebar() {
         entityIds: null,
         ...weatherWidgetCode(),
       },
-      {id:"energy",name:"家庭能耗",kind:"custom",accountNames:{},scriptMode:"dom",entityDomain:"sensor",entityAttribute:"monthlist",entityId:"",entityIds:null,...energyWidgetCode()},
+      {id:"energy",name:"家庭能耗",kind:"custom",actions:[],accountNames:{},scriptMode:"dom",entityDomain:"sensor",entityAttribute:"monthlist",entityId:"",entityIds:null,...energyWidgetCode()},
     ],
     pages: [
       {
@@ -41,7 +43,7 @@ export function defaultSidebar() {
       },
     ],
   };
-  const common={kind:"custom",accountNames:{},scriptMode:"dom",entityDomain:"",entityAttribute:"",entityId:"",entityIds:null};
+  const common={kind:"custom",actions:[],accountNames:{},scriptMode:"dom",entityDomain:"",entityAttribute:"",entityId:"",entityIds:null};
   config.widgets.push({...common,id:"operations",name:"设备运维",...operationsWidgetCode()}, {...common,id:"music",name:"音乐中心",entityDomain:"media_player",entityAttribute:"songloft_song_id",...musicWidgetCode()});
   config.pages.push({id:"operations",name:"运维",icon:"⚒",color:"#54c8af",items:[{id:"operations-main",widgetId:"operations",entityId:"",entityIds:null,height:340}]},{id:"music",name:"音乐",icon:"♫",color:"#f39b24",items:[{id:"music-main",widgetId:"music",entityId:"",entityIds:null,height:340}]});
   return config;
@@ -89,6 +91,7 @@ export function normalizeSidebar(raw) {
       id: key,
       name: text(w.name, 80, "控件名称"),
       kind: "custom",
+      actions: normalizeWidgetActions(w.actions),
       accountNames: Object.fromEntries(Object.entries(w.accountNames ?? {}).slice(0,100).map(([key,value])=>[text(key,255,"实体标识"),text(value,80,"显示名称")])),
       scriptMode: w.scriptMode === "dom" ? "dom" : "transform",
       entityAttribute: text(w.entityAttribute ?? "",80,"自动选择属性"),
