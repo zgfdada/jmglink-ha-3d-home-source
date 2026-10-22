@@ -758,3 +758,25 @@
 .sb-entity-options span,.sb-effective-entities div{min-width:0;overflow-wrap:anywhere}
 .sb-entity-options small,.sb-effective-entities small{display:block;color:#536981;font-size:11px;overflow-wrap:anywhere}
 .sb-effective-entities{padding:10px;background:#eef4fb;border-radius:8px;display:flex;flex-direction:column;gap:8px;font-size:12px;color:#20334b}
+
+/* Hide scrollbar chrome without removing mouse, touch or keyboard scrolling. */
+.sb-panel-content,.sb-navigation-pages{scrollbar-width:none!important;-ms-overflow-style:none}
+.sb-panel-content::-webkit-scrollbar,.sb-navigation-pages::-webkit-scrollbar{display:none;width:0;height:0}
+.sb-panel .sb-navigation-pages>button{box-sizing:border-box;flex:0 0 56px;height:56px;min-height:56px;padding:6px 3px;gap:4px}
+.sb-panel .sb-navigation-pages>button>span{line-height:24px}
+.sb-panel .sb-navigation-pages>button>small{line-height:12px}
+
+/* Device controls share the sidebar's glass palette, including their nested labels. */
+.home-workspace{--device-glass:rgba(57,94,116,.72);--device-ink:#f5f9ff;--device-muted:#dbe9f1;--device-line:#e6f4ff40;--device-inner:#ffffff10;--device-active:#f7c95d35;--device-accent:#ffe0a3}
+.home-workspace.theme-night{--device-glass:rgba(223,227,232,.80);--device-ink:#14283f;--device-muted:#31485e;--device-line:#ffffff70;--device-inner:#ffffff18;--device-active:#dba64535;--device-accent:#765112}
+.mode-home .home-insight-panel{--home-ink:var(--device-ink);--home-ink-strong:var(--device-ink);--home-copy:var(--device-muted);--home-muted:var(--device-muted);color:var(--device-ink)!important;text-shadow:none}
+.mode-home .home-insight-panel.entity-selected .home-insight-track{background:var(--device-glass)!important;color:var(--device-ink)!important;border:1px solid var(--device-line)!important;box-shadow:0 12px 36px #142b4324;backdrop-filter:blur(20px) saturate(125%)}
+.mode-home .home-insight-panel :is(.control-section,.state-readout,.entity-attribute-grid>div,.light-color-readout,.readonly-signal-card,.control-hint,.climate-readout-row>div,.custom-control-row){background:var(--device-inner);border-color:var(--device-line);box-shadow:none}
+.mode-home .home-insight-panel :is(h2,h3,strong,b,.control-section-heading,.custom-device-controls h3,.custom-control-row b){color:var(--device-ink)!important}
+.mode-home .home-insight-panel :is(.eyebrow,.control-section-heading span,.entity-id,.slider-row,.select-row,.preset-grid small,.light-color-readout small,.readonly-signal-card small,.control-hint,.entity-attribute-grid small,.climate-readout-row small,.custom-control-row span,.control-card>p:not(.eyebrow),.control-sync-pill){color:var(--device-muted)!important}
+.mode-home .home-insight-panel :is(.action-grid button,.preset-grid button,.select-row select,.custom-control-row input:not([type=range]),.custom-control-row select,.custom-control-choices label>span,.custom-control-action){color:var(--device-ink)!important;border-color:var(--device-line);background:var(--device-inner);box-shadow:none;color-scheme:light}
+.mode-home .home-insight-panel :is(.action-grid button.active,.action-grid button:hover:not(:disabled),.preset-grid button:hover:not(:disabled),.custom-control-choices input:checked+span){color:var(--device-ink)!important;border-color:var(--device-accent);background:var(--device-active)}
+.mode-home .home-insight-panel :is(.slider-row input,.custom-control-row input[type=range]){accent-color:var(--device-accent)}
+.mode-home .home-insight-panel .control-error{color:#9b2929!important;background:#ffddddb8;border-color:#a9404040}
+
+.mode-home .home-insight-panel .insight-detail-toolbar :is(small,span){color:var(--device-muted)!important}

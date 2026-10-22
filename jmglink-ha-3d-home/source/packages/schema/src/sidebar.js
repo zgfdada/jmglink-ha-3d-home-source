@@ -1,8 +1,10 @@
+import { operationsWidgetCode } from "./operations-widget.js";
+import { musicWidgetCode } from "./music-widget.js";
 import { energyWidgetCode } from "./energy-widget.js";
 import { weatherWidgetCode } from "./weather-widget.js";
 export const SIDEBAR_FORMAT = "ha3d-sidebar-v1";
 export function defaultSidebar() {
-  return {
+  const config = {
     format: SIDEBAR_FORMAT,
     width: 380,
     widgets: [
@@ -39,6 +41,10 @@ export function defaultSidebar() {
       },
     ],
   };
+  const common={kind:"custom",accountNames:{},scriptMode:"dom",entityDomain:"",entityAttribute:"",entityId:"",entityIds:null};
+  config.widgets.push({...common,id:"operations",name:"设备运维",...operationsWidgetCode()}, {...common,id:"music",name:"音乐中心",entityDomain:"media_player",entityAttribute:"songloft_song_id",...musicWidgetCode()});
+  config.pages.push({id:"operations",name:"运维",icon:"⚒",color:"#54c8af",items:[{id:"operations-main",widgetId:"operations",entityId:"",entityIds:null,height:340}]},{id:"music",name:"音乐",icon:"♫",color:"#f39b24",items:[{id:"music-main",widgetId:"music",entityId:"",entityIds:null,height:340}]});
+  return config;
 }
 const fail = (message) => {
   throw Object.assign(new Error(message), { statusCode: 400 });

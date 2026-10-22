@@ -45,7 +45,7 @@ new ResizeObserver(report).observe(document.getElementById('view'));new Mutation
 const clock=()=>{const now=new Date();document.querySelectorAll('[data-clock]').forEach(el=>{const type=el.getAttribute('data-clock');el.textContent=type==='date'?now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}):type==='time'?now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false}):now.toLocaleDateString('zh-CN',{weekday:'long'});});};setInterval(clock,1000);clock();report();`;
   if (widget.scriptMode === "dom") {
     const library = new URL("vendor/echarts-5.4.3.min.js", document.baseURI).href;
-    return `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' ${new URL(library).origin}; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'"><style>body{margin:0;font:14px system-ui;color:#eef5ff}${widget.css.replace(/<\/style/gi,"< /style")}</style><div id="view"></div><script src="${library}"></script><script>const viewContext=${encode(viewContext)};let entity=${encode(entity || {state:"unavailable",attributes:{}})},entities=${encode(entities)};window.addEventListener("message",event=>{if(event.source!==parent || event.data?.type!=="ha3d-entities")return;entity=event.data.entity;entities=event.data.entities;window.dispatchEvent(new CustomEvent("ha3d-entities",{detail:{entity,entities}}));});document.getElementById('view').innerHTML=${encode(widget.html)};const run=document.createElement('script');run.textContent='(function(entity,entities){'+${encode(widget.js)}+'\\n})(entity,entities)';document.body.append(run);${lifecycle}</script>`;
+    return `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' ${new URL(library).origin}; style-src 'unsafe-inline'; img-src data: ${new URL(library).origin}; connect-src 'none'; form-action 'none'; base-uri 'none'"><style>body{margin:0;font:14px system-ui;color:#eef5ff}${widget.css.replace(/<\/style/gi,"< /style")}</style><div id="view"></div><script src="${library}"></script><script>const viewContext=${encode(viewContext)};let entity=${encode(entity || {state:"unavailable",attributes:{}})},entities=${encode(entities)};window.addEventListener("message",event=>{if(event.source!==parent || event.data?.type!=="ha3d-entities")return;entity=event.data.entity;entities=event.data.entities;window.dispatchEvent(new CustomEvent("ha3d-entities",{detail:{entity,entities}}));});document.getElementById('view').innerHTML=${encode(widget.html)};const run=document.createElement('script');run.textContent='(function(entity,entities){'+${encode(widget.js)}+'\\n})(entity,entities)';document.body.append(run);${lifecycle}</script>`;
   }
   const workerCode = `onmessage = async (event) => { try { const {entity,entities} = event.data; const result = await (async function(entity,widget,entities){${widget.js || "return entity;"}\n})(entity,${JSON.stringify({name:widget.name})},entities); postMessage({result}); } catch(e) { postMessage({error:String(e.message)}); } };`;
   return `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'"><style>body{margin:0;font:14px system-ui;color:#eaf2ff;padding:12px;box-sizing:border-box}*{box-sizing:border-box}</style></head><body><div id="view"></div><script>
@@ -73,6 +73,15 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, pre
   const binding = resolveSidebarEntities(widget, {entityId,entityIds}, entities);
   const boundId = binding.ids.join("|");
   const entity = binding.entities[0];
+  React.useEffect(()=>{const handle=async event=>{
+    if(event.source!==frame.current?.contentWindow || event.data?.type!=="ha3d-service")return;
+    const {requestId,domain,service,entityId:target,data}=event.data;
+    try{if(!binding.ids.includes(target))throw new Error("此实体未绑定到当前控件");
+      const response=await fetch('api/sidebar-services/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain,service,entityId:target,data})});
+      const result=await response.json();if(!response.ok)throw new Error(result.error||"操作失败");
+      event.source.postMessage({type:'ha3d-service-result',requestId,ok:true},'*');
+    }catch(error){event.source.postMessage({type:'ha3d-service-result',requestId,error:error.message},'*');}
+  };window.addEventListener('message',handle);return()=>window.removeEventListener('message',handle);},[boundId]);
   const [detail,setDetail]=React.useState(null);
   const [naturalHeight,setNaturalHeight]=React.useState(120);
   const frame = React.useRef(null);
@@ -83,7 +92,7 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, pre
   const srcDoc = React.useMemo(
     () =>
       widget.kind === "custom"
-        ? customDocument(widget, entitySnapshot(entity), binding.entities.map(entitySnapshot), {...presentation,theme,accountNames:widget.accountNames || {}})
+        ? customDocument(widget, entitySnapshot(entity), binding.entities.map(entitySnapshot), {...presentation,assetBase:new URL("./",document.baseURI).href,theme,accountNames:widget.accountNames || {}})
         : "",
     [widget, boundId, presentation, widget.scriptMode === "dom" ? null : JSON.stringify(binding.entities)],
   );
@@ -99,7 +108,7 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, pre
       referrerPolicy="no-referrer"
       srcDoc={srcDoc}
     /></div>
-    {detail && ReactDom.createPortal(<div className="sb-floating-backdrop" onClick={()=>setDetail(null)}><section className="sb-floating-detail" data-theme={theme} role="dialog" aria-modal="true" aria-label="能耗统计详情" onClick={e=>e.stopPropagation()}><header><strong>能耗统计详情</strong><button onClick={()=>setDetail(null)} aria-label="关闭能耗详情">×</button></header><WidgetRenderer widget={widget} entityId={entityId} entityIds={entityIds} entities={entities} presentation={detail} theme={theme} /></section></div>,document.body)}
+    {detail && ReactDom.createPortal(<div className="sb-floating-backdrop" onClick={()=>setDetail(null)}><section className="sb-floating-detail" data-theme={theme} role="dialog" aria-modal="true" aria-label={`${widget.name}详情`} onClick={e=>e.stopPropagation()}><header><strong>{widget.name}详情</strong><button onClick={()=>setDetail(null)} aria-label="关闭详情">×</button></header><WidgetRenderer widget={widget} entityId={entityId} entityIds={entityIds} entities={entities} presentation={detail} theme={theme} /></section></div>,document.body)}
   </>);
 }
 export function SidebarPanel({

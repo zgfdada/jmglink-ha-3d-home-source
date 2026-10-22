@@ -636,3 +636,5 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 新增独立的服务端项目级草稿/发布快照和前后端共用布局校验。主页、控件编辑预览与页面设计使用同一个隔离渲染器；详见 [侧边栏架构和使用说明](docs/sidebar-development.md)。测试：`source/tests/sidebar.test.mjs`。
 
 能耗示例采用 electricity-info-card v3.3.0（chjspp520）适配，详见 docs/sidebar-development.md；交互模式为 opaque-origin iframe，CSP 禁止网络与同源访问，图表库本地加载。
+
+运维与音乐扩展：`operations-widget.js` 按导入的 HA 条件实体展示耗材，`music-widget.js` 适配现有 Songloft 2.1.0 卡片；新增 `SidebarServices.js` 校验服务白名单、实体类型及参数，父窗口同时限制操作为当前绑定实体。个人 HA 规则只写入运行布局，不写入源码默认样板。

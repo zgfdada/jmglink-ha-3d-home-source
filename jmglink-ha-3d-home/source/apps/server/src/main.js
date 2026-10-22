@@ -1,3 +1,4 @@
+import { registerSidebarServices } from "./sidebar/SidebarServices.js";
 import { resolveSidebarEntities } from "../../../packages/schema/src/sidebar-bindings.js";
 import { SidebarStore, registerSidebarRoutes } from "./sidebar/SidebarStore.js";
 import { ControlLibraryStore, registerControlLibraryRoutes } from "./control-library/ControlLibraryStore.js";
@@ -105,6 +106,7 @@ const ha = new HomeAssistantClient(
   entityHistoryStore,
   devicePlatformStore,
 );
+registerSidebarServices(app,ha);
 function refreshBoundEntityFilter() {
   try {
     const project = projectStore.getProject();

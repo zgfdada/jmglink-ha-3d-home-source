@@ -6533,11 +6533,15 @@ function si({
       P = w
         ? t.jsx("meshToonMaterial", {
             color: $(x, "#ffffff", 0.28),
+            emissive: n && !i ? "#79a7bf" : "#000000",
+            emissiveIntensity: n && !i ? 0.18 : 0,
             transparent: i,
             opacity: i ? 0.42 : 1,
           })
         : t.jsx("meshPhysicalMaterial", {
             color: $(x, "#ffffff", 0.42),
+            emissive: n && !i ? "#79a7bf" : "#000000",
+            emissiveIntensity: n && !i ? 0.18 : 0,
             roughness: 0.36,
             metalness: 0.22,
             clearcoat: 0.34,
@@ -8584,6 +8588,7 @@ const ii = L.memo(function ({
         t.jsx(zs, { modelId: C, target: X }),
         F &&
           !O &&
+          !C.startsWith("cover.") &&
           t.jsx("pointLight", {
             color: i === "lighting" ? "#ffd08a" : _,
             intensity: o ? (N ? 2.25 : 1.55) : 1.35,
