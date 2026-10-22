@@ -1,0 +1,15 @@
+{
+  "name": "ha3d-sidebar-widget-design",
+  "files": [
+    "SKILL.md",
+    "references/style-guide.md",
+    "references/widget-api.md",
+    "references/sidebar.js",
+    "references/weather-widget.js",
+    "references/energy-widget.js",
+    "references/energy-account.js",
+    "assets/sidebar-example.json",
+    "scripts/validate.mjs",
+    "package.json"
+  ]
+}

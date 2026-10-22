@@ -1520,6 +1520,7 @@ function re({ label: t }) {
     ],
   });
 }
+const SidebarDevelopmentCenter = n.lazy(() => import("./sidebar-development/index.jsx"));
 function ht() {
   const t = $((m) => m.load),
     e = $((m) => m.status),
@@ -1534,6 +1535,7 @@ function ht() {
     [f, u] = n.useState("home"),
     [g, l] = n.useState(!1),
     [nextCenterOpen, setNextCenterOpen] = n.useState(!1),
+    [sidebarCenterOpen, setSidebarCenterOpen] = n.useState(false),
     [homeSceneResumeKey, setHomeSceneResumeKey] = n.useState(0),
     [v, w] = n.useState(!1),
     [A, B] = n.useState(() => (typeof window > "u" ? 1440 : window.innerWidth)),
@@ -1624,7 +1626,7 @@ function ht() {
     children: [
       d && r.jsx("div", { className: "error-banner", children: d }),
       !s && !d && r.jsx(re, { label: "正在加载户型与设备" }),
-      s && f === "home" && r.jsx(et, {}),
+
       r.jsxs(n.Suspense, {
         fallback: r.jsx(re, { label: "正在加载界面" }),
         children: [
@@ -1648,9 +1650,12 @@ function ht() {
               connection: a,
               onOpenSettings: () => l(!0),
               onOpenEditor: j,
+              voiceAssistant: r.jsx(et, {}),
               onOpenDeviceDevelopmentCenter: () => setNextCenterOpen(!0),
+              onOpenSidebarDevelopmentCenter: () => setSidebarCenterOpen(true),
               sceneResumeKey: homeSceneResumeKey,
             }),
+          sidebarCenterOpen && r.jsx(SidebarDevelopmentCenter, {project: s, entities: _, onClose: () => {setSidebarCenterOpen(false);setHomeSceneResumeKey(key => key + 1);}}),
           nextCenterOpen &&
             r.jsx(nextDeviceCenter, {
               open: nextCenterOpen,

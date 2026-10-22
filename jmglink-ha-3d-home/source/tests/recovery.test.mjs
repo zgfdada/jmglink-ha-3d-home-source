@@ -2629,7 +2629,7 @@ test("3D scene uses physical furniture height instead of presentation compressio
   assert.doesNotMatch(scene, /function xn\(/);
 });
 
-test("home controls keep weather beside rotation and hide connected or voice toggles", async () => {
+test("home uses the published sidebar and keeps connection and voice controls", async () => {
   const home = await readFile(
     new URL("../apps/web/src/app/home-view.js", import.meta.url),
     "utf8",
@@ -2638,18 +2638,14 @@ test("home controls keep weather beside rotation and hide connected or voice tog
     new URL("../apps/web/src/app/app.js", import.meta.url),
     "utf8",
   );
-  const rotate = home.indexOf(
-    'className: `scene-rotate-toggle ${b ? "active" : ""}`',
-  );
-  const weather = home.indexOf("scene-weather-toggle", rotate);
-  const metadata = home.indexOf('className: "scene-title-meta"', weather);
-  assert.ok(rotate >= 0 && weather > rotate && metadata > weather);
+  assert.match(home, /e\.jsx\(PublishedSidebar, \{ projectId: t\.id, entities: F/);
+  assert.doesNotMatch(home, /e\.jsx\(mn, \{/);
   assert.match(
     home,
-    /Xe &&\s*a !== "loading" &&\s*e\.jsxs\("button", \{\s*className: "corner-dock-icon"/,
+    /Xe &&\s*a !== "loading" &&\s*e\.jsxs\("button", \{\s*className: "home-tools-item"/,
   );
   assert.doesNotMatch(home, /className: `corner-dock-action voice-toggle/);
-  assert.match(app, /s && f === "home" && r\.jsx\(et, \{\}\)/);
+  assert.match(app, /voiceAssistant: r\.jsx\(et, \{\}\)/);
 });
 
 test("washer runtime resolves bound status, remaining time, and standby", () => {

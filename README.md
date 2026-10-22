@@ -126,3 +126,8 @@ docker compose -f docker-compose.release.yml up -d
 | 8101 端口被占用 | 修改 Compose 端口左侧主机端口 |
 
 更多说明：[常见问题](docs/wiki/常见问题.md) · [数据备份与升级](docs/wiki/数据备份与升级.md) · [服务交接](docs/HA3DHome服务交接文档.md)
+
+
+### 本地开发中的侧边栏界面
+
+主页展示区内嵌导航；在主页工具菜单进入“侧边栏开发中心”，使用“控件开发”和“页面设计”两页。支持实体绑定、HTML/CSS/JS 卡片、共享渲染预览与草稿发布。详见 [侧边栏开发说明](docs/sidebar-development.md)。当前正式镜像仍为上方标注版本。

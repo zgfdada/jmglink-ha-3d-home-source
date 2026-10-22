@@ -629,3 +629,10 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 
 
 正式运行层固定使用干净官方 Node 22 镜像，不继承含旧应用的 CI 基础层；构建层复制前清空 /app。CI #67 曾拦截继承基础层带来的旧 map，相关修复保持验收门槛不变。
+
+
+## 侧边栏工作区（开发中）
+
+新增独立的服务端项目级草稿/发布快照和前后端共用布局校验。主页、控件编辑预览与页面设计使用同一个隔离渲染器；详见 [侧边栏架构和使用说明](docs/sidebar-development.md)。测试：`source/tests/sidebar.test.mjs`。
+
+能耗示例采用 electricity-info-card v3.3.0（chjspp520）适配，详见 docs/sidebar-development.md；交互模式为 opaque-origin iframe，CSP 禁止网络与同源访问，图表库本地加载。

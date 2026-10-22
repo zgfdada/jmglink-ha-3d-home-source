@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateRawSync } from "node:zlib";
 
-export const skillNames = ["ha3d-ha-assistant", "ha3d-hermes-telegram"];
+export const skillNames = ["ha3d-ha-assistant", "ha3d-hermes-telegram", "ha3d-sidebar-widget-design"];
 const resourceRoot = fileURLToPath(new URL("../../resources/agent-skills/", import.meta.url));
 const crcTable = Array.from({ length: 256 }, (_, value) => {
   for (let i = 0; i < 8; i++) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
@@ -24,7 +24,7 @@ async function filesFor(name, root) {
   const files = new Map();
   let total = 0;
   for (const relative of manifest.files) {
-    if (typeof relative !== "string" || !/^[A-Za-z0-9_/-]+\.(md|py|js|jsx|yaml)$/.test(relative) || relative.startsWith("/") || relative.split("/").includes("..")) throw new Error("Invalid skill file");
+    if (typeof relative !== "string" || !/^[A-Za-z0-9_/-]+\.(md|py|js|mjs|jsx|yaml|json)$/.test(relative) || relative.startsWith("/") || relative.split("/").includes("..")) throw new Error("Invalid skill file");
     const actual = await realpath(path.join(directory, relative));
     if (!actual.startsWith(directory + path.sep)) throw new Error("Skill file escapes directory");
     const data = await readFile(actual);

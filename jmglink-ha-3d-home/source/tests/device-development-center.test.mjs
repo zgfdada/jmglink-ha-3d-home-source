@@ -148,7 +148,7 @@ test("device center has a single new entry and keeps its project actions", async
     app,
     /onOpenDeviceDevelopmentCenter: \(\) => setNextCenterOpen\(!0\)/,
   );
-  assert.match(homeView, /children: "开发中心"/);
+  assert.match(homeView, /children: "设备开发中心"/);
   assert.doesNotMatch(homeView, /children: "新版中心"|onOpenDevicePlatform/);
   assert.match(furniture, /device-development-center\/model-preview\.jsx/);
   assert.match(

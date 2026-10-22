@@ -11187,7 +11187,7 @@ function yi({
       c.width <= 620
         ? Math.max(1, Math.min(1.52, 0.78 / Math.max(0.1, m.aspect)))
         : Math.max(1, Math.min(1.72, 0.92 / Math.max(0.1, m.aspect))),
-    x = s.distance * b * j,
+    x = s.distance * b * j * (n.fitScale ?? 1) * (n.fitAvailable ? c.height / m.safeHeight : 1),
     k = L.useMemo(
       () =>
         e === "top"
@@ -11247,7 +11247,7 @@ function yi({
     }, [a, y, f, e, r]),
     L.useEffect(() => {
       ((u.current = !0), f());
-    }, [f, e, r, i, o]),
+    }, [f, e, r, i, o, c.width, c.height, n.top, n.preserveViewOnPanelChange ? 0 : n.right, n.preserveViewOnPanelChange ? 0 : n.bottom, n.left, n.fitScale]),
     re(() => {
       var O;
       if (!u.current) return;
@@ -11625,6 +11625,7 @@ function _a({
   showLabels: c = !0,
   showGrid: l = !1,
   theme: f = "day",
+  daylight,
   presentation: u = !1,
   wallThicknessScale: h = 1,
   focusedRoom: m,
@@ -11654,6 +11655,9 @@ function _a({
         }),
       [r, m, u, e, o],
     ),
+    sunlight = typeof daylight === "number" ? Math.max(0, Math.min(1, daylight)) : 1,
+    ambientScale = daylight === undefined ? 1 : 0.22 + sunlight * 0.78,
+    directScale = daylight === undefined ? 1 : 0.1 + sunlight * 0.9,
     p = f === "night",
     v = b === "cartoon" && u,
     P = b === "cream" && u,
@@ -11717,20 +11721,20 @@ function _a({
         !u && t.jsx("color", { attach: "background", args: [z] }),
         t.jsx("fog", { attach: "fog", args: [u ? T.fog : z, K, X] }),
         t.jsx("ambientLight", {
-          intensity: (v ? 0.72 : P ? 0.54 : I ? 0.56 : u ? 0.58 : 0.76) * S,
+          intensity: (v ? 0.72 : P ? 0.54 : I ? 0.56 : u ? 0.58 : 0.76) * S * ambientScale,
           color: v ? "#fff2df" : P ? "#fff4e4" : I ? "#a8b5dc" : "#edf4ff",
         }),
         t.jsx("hemisphereLight", {
           args: [
             v ? "#fff4df" : P ? "#fff8ed" : I ? "#c3ceee" : "#f5f8ff",
             v ? "#7fa5c4" : P ? "#b9aa93" : I ? "#050817" : "#647b9a",
-            (v ? 1.08 : P ? 0.82 : I ? 0.78 : u ? 0.82 : 1.2) * S,
+            (v ? 1.08 : P ? 0.82 : I ? 0.78 : u ? 0.82 : 1.2) * S * ambientScale,
           ],
         }),
         t.jsx("directionalLight", {
           position: [8, 14, 9],
           color: v ? "#fff0cc" : P ? "#fff2d8" : I ? "#e4eaff" : "#ffffff",
-          intensity: (v ? 1.44 : P ? 1.28 : I ? 0.96 : u ? 0.88 : 1.8) * F,
+          intensity: (v ? 1.44 : P ? 1.28 : I ? 0.96 : u ? 0.88 : 1.8) * F * directScale,
           castShadow: R.shadows,
           "shadow-mapSize": R.shadowMapSize,
           "shadow-bias": -16e-5,
@@ -11754,7 +11758,7 @@ function _a({
           t.jsx("pointLight", {
             position: [-8, 5.8, 5],
             color: T.glow,
-            intensity: (I ? 1.35 : 0.72) * S,
+            intensity: (I ? 1.35 : 0.72) * S * ambientScale,
             distance: 22,
           }),
         u &&
@@ -11763,7 +11767,7 @@ function _a({
           t.jsx("pointLight", {
             position: [6, 4.4, -4],
             color: w === "lighting" ? "#ffd08a" : I ? "#d6c5b6" : "#fff4dd",
-            intensity: (I ? 1.38 : 0.78) * B,
+            intensity: (I ? 1.38 : 0.78) * B * ambientScale,
             distance: 14,
           }),
         w === "lighting" &&

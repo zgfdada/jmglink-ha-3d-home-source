@@ -1,3 +1,5 @@
+import { resolveSidebarEntities } from "../../../packages/schema/src/sidebar-bindings.js";
+import { SidebarStore, registerSidebarRoutes } from "./sidebar/SidebarStore.js";
 import { ControlLibraryStore, registerControlLibraryRoutes } from "./control-library/ControlLibraryStore.js";
 import { existsSync } from "node:fs";
 import { setDefaultResultOrder } from "node:dns";
@@ -62,6 +64,9 @@ app.log.info(
   "Runtime configuration loaded",
 );
 const projectStore = await ProjectStore.create(config.dataDir);
+const sidebarStore = await SidebarStore.create(config.dataDir);
+let sidebarChanged = () => {};
+await registerSidebarRoutes(app, sidebarStore, projectStore, () => sidebarChanged());
 const devicePlatformStore = await DevicePlatformStore.create(
   config.dataDir,
   config.assetDir,
@@ -104,12 +109,19 @@ function refreshBoundEntityFilter() {
   try {
     const project = projectStore.getProject();
     const boundIds = collectLiveEntityIds(project, ha.getEntities());
+    const sidebar = sidebarStore.get(project.id);
+    for (const config of [sidebar.draft, sidebar.published]) {
+      for (const widget of config.widgets) for (const id of resolveSidebarEntities(widget, {}, ha.getEntities()).ids) boundIds.add(id);
+      for (const page of config.pages) for (const item of page.items) for (const id of resolveSidebarEntities(config.widgets.find(w=>w.id===item.widgetId), item, ha.getEntities()).ids) boundIds.add(id);
+    }
+    for (const entity of ha.getEntities()) if (entity.domain === "weather" || entity.domain === "sun") boundIds.add(entity.entityId);
     ha.setBoundEntityFilter(boundIds.size ? boundIds : null);
   } catch (error) {
     // A failed filter refresh must not break project persistence; keep broadcasting everything.
     console.warn("Failed to refresh bound entity filter", error);
   }
 }
+sidebarChanged = refreshBoundEntityFilter;
 const unsubscribeProjectSaved = projectStore.onProjectSaved(() =>
   refreshBoundEntityFilter(),
 );

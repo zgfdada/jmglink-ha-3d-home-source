@@ -1,3 +1,5 @@
+import { resolveDaylight } from "../../../../packages/schema/src/daylight.js";
+import { PublishedSidebar } from "./sidebar-development/renderer.jsx";
 /**
  * Recovered application module from official 0.1.5 Vite artifact: HomeView-BFS1nsev.js
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.
@@ -2626,9 +2628,15 @@ function Qn({
   onOpenSettings: r,
   onOpenEditor: c,
   onOpenDeviceDevelopmentCenter: nextCenterOpen,
+  onOpenSidebarDevelopmentCenter,
+  voiceAssistant,
   sceneResumeKey,
 }) {
   var $t;
+  const [sidebarWidth, setSidebarWidth] = l.useState(380);
+  const [sidebarCollapsed, setSidebarCollapsed] = l.useState(false);
+  const [manualLight, setManualLight] = l.useState(null);
+  const [lightSettingsOpen, setLightSettingsOpen] = l.useState(false);
   const v = Se((n) => n.selectedEntityId),
     k = Se((n) => n.selectEntity),
     j = Se((n) => n.act),
@@ -2639,7 +2647,7 @@ function Qn({
       var n;
       return ((n = t.floors[0]) == null ? void 0 : n.id) ?? "all";
     }),
-    [C, te] = l.useState(() => Lt()),
+    [solarClock, setSolarClock] = l.useState(Date.now),
     T = "overview",
     [E, G] = l.useState(!1),
     [ee, I] = l.useState(!1),
@@ -2706,9 +2714,12 @@ function Qn({
     ft = Pt[U.kind],
     xt = A && U.forecast.length > 0,
     bt = xt && pe,
-    bs = t.dashboardWidgets ?? [];
+    bs = t.dashboardWidgets ?? [],
+    solar = resolveDaylight(s, solarClock),
+    lightLevel = manualLight === null ? solar.daylight : manualLight,
+    C = manualLight === null ? solar.theme : manualLight < 0.4 ? "night" : "day";
   (l.useEffect(() => {
-    const n = () => te(Lt());
+    const n = () => setSolarClock(Date.now());
     n();
     const m = window.setInterval(n, 6e4);
     return () => window.clearInterval(m);
@@ -2867,8 +2878,8 @@ function Qn({
       return n;
     }, [V, Ie]),
     $s = l.useMemo(() => {
-      if (Q <= 620)
-        return { top: 104, right: 24, bottom: E ? 238 : 118, left: 24 };
+      if (Q <= 760)
+        return { top: sidebarCollapsed ? 12 : 260, right: 24, bottom: E ? 238 : 100, left: 24 };
       if (We) {
         const n = (_, H, X) => Math.round(Math.min(Math.max(_, H), X)),
           m = n(Q * 0.34, 320, 390);
@@ -2876,13 +2887,13 @@ function Qn({
           top: n(Me * 0.08, 52, 68),
           right: le || (E && A) ? m : n(Q * 0.11, 92, 132),
           bottom: n(Me * 0.09, 56, 72),
-          left: n(Q * 0.09, 84, 116),
+          left: sidebarCollapsed ? 24 : Math.min(sidebarWidth, 330) + 40,
         };
       }
       return Q <= 960
-        ? { top: 86, right: E ? 342 : 84, bottom: 58, left: 84 }
-        : { top: 62, right: le || (E && A) ? 430 : 132, bottom: 74, left: 132 };
-    }, [A, E, We, le, Me, Q]),
+        ? { top: 86, right: E ? 342 : 84, bottom: 58, left: sidebarCollapsed ? 24 : Math.min(sidebarWidth, 330) + 40 }
+        : { top: 62, right: le || (E && A) ? 430 : 132, bottom: 74, left: sidebarCollapsed ? 24 : sidebarWidth + 48 };
+    }, [A, E, We, le, Me, Q, sidebarWidth, sidebarCollapsed]),
     Ms = ia(i) && !(i != null && i.connected),
     Xe =
       a === "loading"
@@ -2981,8 +2992,9 @@ function Qn({
     children: [
       e.jsxs("div", {
         className: "home-scene",
+        style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[139,187,211,193,210,200]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},
         children: [
-          e.jsx(Qs, {
+          e.jsx("div", {className: "sb-scene-viewport", children: e.jsx(Qs, {
             key: sceneResumeKey,
             project: xe,
             entities: ps,
@@ -2990,13 +3002,14 @@ function Qn({
             showAllFloors: $ === "all",
             showLabels: !1,
             theme: C,
+            daylight: lightLevel,
             wallMode: "full",
             wallThicknessScale: 0.56,
             presentation: !0,
             quality: g,
             visualStyle: S,
             weather: U,
-            viewportInsets: $s,
+            viewportInsets: { ...$s, fitScale: 1.16, fitAvailable: true, preserveViewOnPanelChange: true },
             focusedRoom: q,
             showDevices: A,
             showRoomBadges: A && T !== "overview" && Q > 560,
@@ -3008,111 +3021,8 @@ function Qn({
             onRoomShadeAction: Ds,
             onRoomSecuritySelect: As,
             onEntitySelect: Fs,
-          }),
-          e.jsxs("div", {
-            className: "scene-title",
-            "aria-label": "住宅概览",
-            children: [
-              e.jsxs("h1", {
-                children: [
-                  e.jsx("span", { className: "scene-name", children: t.name }),
-                  e.jsxs("span", {
-                    className: "scene-temp-pill",
-                    children: [
-                      C === "night"
-                        ? e.jsx($a, { size: 25 })
-                        : e.jsx(Kt, { size: 25 }),
-                      oe.temperature === void 0
-                        ? "--"
-                        : `${oe.temperature.toFixed(0)}°`,
-                    ],
-                  }),
-                  e.jsx("button", {
-                    type: "button",
-                    className: `scene-rotate-toggle ${b ? "active" : ""}`,
-                    onClick: () => p((n) => !n),
-                    title: b ? "关闭模型缓慢旋转" : "开启模型缓慢旋转",
-                    "aria-label": b ? "关闭模型缓慢旋转" : "开启模型缓慢旋转",
-                    "aria-pressed": b,
-                    children: e.jsx(Aa, { size: 18 }),
-                  }),
-                  xt &&
-                    e.jsx("button", {
-                      type: "button",
-                      className: `scene-rotate-toggle scene-weather-toggle ${pe ? "active" : ""}`,
-                      onClick: () => us((n) => !n),
-                      title: pe ? "隐藏天气预报" : "显示天气预报",
-                      "aria-label": pe ? "隐藏天气预报" : "显示天气预报",
-                      "aria-pressed": pe,
-                      children: e.jsx(ft, { size: 18 }),
-                    }),
-                ],
-              }),
-              e.jsxs("div", {
-                className: "scene-title-meta",
-                children: [
-                  e.jsxs("span", {
-                    children: [e.jsx(Xt, { size: 13 }), Le.temperature],
-                  }),
-                  e.jsxs("span", {
-                    children: [e.jsx(it, { size: 13 }), Le.humidity],
-                  }),
-                  e.jsxs("span", {
-                    children: [e.jsx(rt, { size: 13 }), Le.air],
-                  }),
-                  U.entityId &&
-                    e.jsxs("span", {
-                      title: `${U.entityId} · ${U.state ?? U.label}`,
-                      children: [
-                        e.jsx(ft, { size: 13 }),
-                        U.temperature === void 0
-                          ? U.label
-                          : `${U.label} · ${U.temperature.toFixed(0)}°`,
-                      ],
-                    }),
-                  kt &&
-                    e.jsxs("span", {
-                      className: "scene-people-status",
-                      children: [e.jsx(qt, { size: 13 }), kt],
-                    }),
-                ],
-              }),
-              Xe &&
-                a !== "loading" &&
-                e.jsx("button", {
-                  className: "scene-connection",
-                  onClick: r,
-                  "aria-label": `连接与服务：${Xe}`,
-                  title: "查看连接与服务",
-                  children: e.jsxs(e.Fragment, {
-                    children: [
-                      e.jsx("i", { className: "online-dot offline" }),
-                      Xe,
-                    ],
-                  }),
-                }),
-            ],
-          }),
-          bt && e.jsx(Ln, { forecast: U.forecast, weatherIcons: Pt }),
-          Te &&
-            e.jsx(Rn, {
-              candidateEntities: fs,
-              settings: re,
-              onChange: ht,
-              onClose: () => Pe(!1),
-              onOpenDashboardManager: () => {
-                (Pe(!1), ut(!0));
-              },
-            }),
-          A &&
-            e.jsx(mn, {
-              widgets: bs,
-              entities: F,
-              selectedEntity: B,
-              managerOpen: hs,
-              onManagerOpenChange: ut,
-              onSaveWidgets: ws,
-            }),
+          })}),
+          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
           !A &&
             e.jsxs("div", {
               className: "scene-data-empty",
@@ -3153,12 +3063,12 @@ function Qn({
             }),
           A && e.jsx(En, { users: Ns }),
           mt && e.jsx(On, { controls: ye, entityCount: _e, onChange: ds }),
-          e.jsxs("div", {
-            className: `home-corner-dock ${ee ? "tools-open" : ""}`,
+          e.jsxs("div", {className: "home-action-bar", children: [e.jsxs("div", {
+            className: `home-tools ${ee ? "tools-open" : ""}`,
             "aria-label": "页面工具",
             children: [
               e.jsx("button", {
-                className: "corner-dock-toggle",
+                className: "home-tools-toggle",
                 onClick: () => I((n) => !n),
                 "aria-label": ee ? "收起页面工具" : "展开页面工具",
                 "aria-expanded": ee,
@@ -3166,12 +3076,14 @@ function Qn({
                 title: ee ? "收起页面工具" : "展开页面工具",
                 children: e.jsx(Sa, { size: 17 }),
               }),
-              e.jsxs("div", {
-                className: "corner-dock-menu",
+              ee && e.jsxs("div", {
+                className: "home-tools-menu",
                 role: "menu",
                 children: [
+                  e.jsx("button", {className: "home-tools-item", role: "menuitem", onClick: () => {I(false);setLightSettingsOpen(true);}, children: "☀ 环境光"}),
+                  e.jsxs("button", {className: "home-tools-item", role: "menuitem", "aria-label": "切换模型旋转", "aria-pressed": b, onClick: () => p(n => !n), children: [e.jsx(Aa, {size: 17}), e.jsx("span", {children: b ? "停止旋转" : "旋转"})]}),
                   e.jsxs("button", {
-                    className: `corner-dock-icon quality-dock-action quality-${g}`,
+                    className: `home-tools-item quality-dock-action quality-${g}`,
                     onClick: gs,
                     title: `画质：${Ae.label} · 点击切换到${jt.label}`,
                     "aria-label": `当前画质为${Ae.label}，点击切换到${jt.label}`,
@@ -3183,7 +3095,7 @@ function Qn({
                     ],
                   }),
                   e.jsxs("button", {
-                    className: `corner-dock-icon style-dock-action style-${S}`,
+                    className: `home-tools-item style-dock-action style-${S}`,
                     onClick: js,
                     title: `风格：${Re.label} · 点击切换到${wt.label}`,
                     "aria-label": `当前 3D 风格为${Re.label}，点击切换到${wt.label}`,
@@ -3196,7 +3108,7 @@ function Qn({
                     ],
                   }),
                   e.jsxs("button", {
-                    className: "corner-dock-action",
+                    className: "home-tools-item",
                     onClick: () => {
                       (I(!1), c == null || c());
                     },
@@ -3211,7 +3123,7 @@ function Qn({
                   Xe &&
                     a !== "loading" &&
                     e.jsxs("button", {
-                      className: "corner-dock-icon",
+                      className: "home-tools-item",
                       onClick: () => {
                         (I(!1), r == null || r());
                       },
@@ -3225,7 +3137,7 @@ function Qn({
                     }),
                   e.jsxs("button", {
                     className:
-                      "corner-dock-action device-platform-action device-development-action",
+                      "home-tools-item home-development-entry device-platform-action device-development-action",
                     onClick: () => {
                       (I(!1), nextCenterOpen == null || nextCenterOpen());
                     },
@@ -3234,13 +3146,20 @@ function Qn({
                     role: "menuitem",
                     children: [
                       e.jsx(Us, { size: 17 }),
-                      e.jsx("span", { children: "开发中心" }),
+                      e.jsx("span", { children: "设备开发中心" }),
                     ],
                   }),
+                  e.jsxs("button", {className: "home-tools-item home-development-entry", role: "menuitem", "aria-label": "打开侧边栏开发中心", onClick: () => {I(false);onOpenSidebarDevelopmentCenter?.();}, children: [e.jsx(Us, {size: 17}),e.jsx("span", {children: "侧边栏开发中心"})]}),
                 ],
               }),
             ],
-          }),
+          }), lightSettingsOpen && e.jsxs("section", {className: "home-light-settings", role: "dialog", "aria-label": "环境光调节", children: [
+            e.jsxs("header", {children: [e.jsx("strong", {children: manualLight === null ? "环境光 · 自动" : "环境光 · 手动"}), e.jsx("button", {"aria-label": "关闭环境光调节", onClick: () => setLightSettingsOpen(false), children: "×"})]}),
+            e.jsxs("label", {children: [`环境光强度 · ${Math.round(lightLevel * 100)}%`, e.jsx("input", {type: "range", min: 0, max: 100, step: 1, "aria-label": "环境光强度", value: Math.round(lightLevel * 100), onChange: event => setManualLight(Number(event.target.value) / 100)})]}),
+            e.jsx("div", {className: "light-presets", children: [["夜间", 0], ["黄昏", 0.35], ["白天", 1]].map(([name,value]) => e.jsx("button", {onClick: () => setManualLight(value), children: name}, name))}),
+            e.jsx("button", {className: "auto-light", onClick: () => setManualLight(null), children: "恢复自动环境光"}),
+            e.jsx("p", {children: "自动模式跟随 HA 当地太阳高度。手动预览仅改变场景照明，不操作真实灯具；刷新后恢复自动。"})
+          ]}), voiceAssistant]}),
           ys &&
             e.jsxs("nav", {
               className: "home-floor-nav",
