@@ -13,3 +13,19 @@ export const FLOOR_ORBIT_LIMITS = {
 export function alignedTopCameraPosition(position, frameTarget, orbitTarget) {
   return position.map((value, index) => value + orbitTarget[index] - frameTarget[index]);
 }
+
+// A fitted destination must be reachable by OrbitControls, especially on tall
+// screens where safe-area framing can exceed maxDistance.
+export function reachableOrbitPosition(position, target, minDistance, maxDistance) {
+  const offset = position.map((value, index) => value - target[index]);
+  const distance = Math.hypot(...offset);
+  if (!distance) return [...position];
+  const scale = Math.max(minDistance, Math.min(maxDistance, distance)) / distance;
+  return offset.map((value, index) => target[index] + value * scale);
+}
+
+export function cancelFitOnOrbitStart(controls, fitting) {
+  const cancel = () => { fitting.current = false; };
+  controls?.addEventListener('start', cancel);
+  return () => controls?.removeEventListener('start', cancel);
+}

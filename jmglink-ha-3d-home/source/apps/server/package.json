@@ -1,6 +1,6 @@
 {
   "name": "@ha3d/recovered-server",
-  "version": "0.1.5-custom.27",
+  "version": "0.1.5-custom.28",
   "private": true,
   "type": "module",
   "main": "src/main.js",
@@ -10,7 +10,7 @@
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@fastify/static": "^10.1.3",
-    "@ha3d/schema": "0.1.5-custom.27",
+    "@ha3d/schema": "0.1.5-custom.28",
     "fastify": "^5.1.0",
     "ws": "^8.18.0"
   }

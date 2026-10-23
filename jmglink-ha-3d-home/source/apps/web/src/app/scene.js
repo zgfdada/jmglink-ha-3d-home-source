@@ -1,5 +1,5 @@
 import { overlayRefitKey } from "../domain/camera-refit.js";
-import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition } from "../domain/camera-orbit.js";
+import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
 import DevicePanel from "../components/device-panel.jsx";
 import { boundPanelStates } from "../domain/device-panel.js";
 /**
@@ -11172,7 +11172,8 @@ function yi({
   const { camera: a, size: c, controls: l, invalidate: f } = tt(),
     u = L.useRef(!0),
     h = L.useMemo(() => new fe(...s.target), [s.target]),
-    m = mi(c.width, c.height, n),
+    framingInsets = L.useMemo(() => n, [e, r, i, o, c.width, c.height, overlayRefitKey(n), n.fitScale]),
+    m = mi(c.width, c.height, framingInsets),
     y = c.width <= 620,
     w = r && o,
     b = r
@@ -11258,16 +11259,18 @@ function yi({
     L.useEffect(() => {
       ((u.current = !0), f());
     }, [f, e, r, i, o, c.width, c.height, overlayRefitKey(n), n.fitScale]),
+    L.useEffect(() => cancelFitOnOrbitStart(l, u), [l]),
     re(() => {
       var O;
       if (!u.current) return;
-      (a.position.lerp(P, 0.11), a.lookAt(G));
+      const destination = l ? new fe(...reachableOrbitPosition(P.toArray(), G.toArray(), l.minDistance, l.maxDistance)) : P;
+      (a.position.lerp(destination, 0.11), a.lookAt(G));
       const C = l;
       (C != null &&
         C.target &&
         (C.target.lerp(G, 0.18), (O = C.update) == null || O.call(C)),
-        a.position.distanceTo(P) < 0.035
-          ? (a.position.copy(P), (u.current = !1))
+        a.position.distanceTo(destination) < 0.035
+          ? (a.position.copy(destination), (u.current = !1))
           : f());
     }),
     null

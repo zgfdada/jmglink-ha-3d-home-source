@@ -499,10 +499,10 @@
   .sb-home-container {
     left: 12px;
     top: 12px;
-    bottom: auto;
+    bottom: 84px;
     width: calc(100% - 24px);
     max-width: none;
-    height: 210px;
+    height: auto;
   }
   .sb-home-container .sb-panel {
     width: 100%;
@@ -678,13 +678,13 @@
 .sb-home-panel .sb-panel{background:linear-gradient(135deg,#eefaff26,#c6e3ee14 60%,#fff1ce1c);backdrop-filter:blur(12px) saturate(135%);-webkit-backdrop-filter:blur(12px) saturate(135%);border-color:#eaf5ff85;color:#102d45;box-shadow:inset 0 1px #ffffff65,0 12px 36px #142b431a;text-shadow:0 1px 3px #ffffff50}
 .sb-home-panel .sb-panel.sb-night,.theme-night .sb-home-panel .sb-panel{background:linear-gradient(135deg,#14283e38,#13283b24);color:#f5f9ff;border-color:#d6e9ff60;box-shadow:inset 0 1px #ffffff30,0 12px 36px #0002;text-shadow:0 1px 4px #071422b0}
 .sb-home-panel .sb-navigation{background:transparent}
-@media(max-width:760px){.sb-home-container:not(.is-collapsed){height:244px}}
+
 .sb-navigation{position:relative;padding:0 6px;justify-content:normal;overflow:hidden}
 .sb-navigation-pages{flex:1;min-height:0;box-sizing:border-box;display:flex;flex-direction:column;justify-content:safe center;gap:12px;overflow:auto;padding:58px 0;scrollbar-width:thin}
 .sb-navigation .sb-rail-toggle{position:absolute;bottom:8px;left:6px;right:6px;width:calc(100% - 12px);min-height:42px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:2px;border:1px solid #e5f1ff50;border-radius:12px;background:#e1edff14;color:inherit;cursor:pointer}
 .sb-navigation .sb-rail-toggle span{font-size:23px;line-height:22px}.sb-navigation .sb-rail-toggle small{font-size:9px;line-height:12px}.sb-panel-content[hidden]{display:none}
 .sb-home-container{gap:0}.sb-home-container.is-collapsed{width:62px;max-width:62px}.sb-content-collapsed .sb-navigation{border-left:0}
-@media(max-width:760px){.sb-home-container{height:244px}.sb-home-container.is-collapsed{height:244px}}
+
 
 @media(max-width:760px){.home-tools-menu .home-development-entry{display:none}}
 
@@ -811,3 +811,72 @@
 .sb-panel .sb-navigation-pages{width:100%;align-items:center}
 .sb-panel .sb-navigation-pages>button{width:44px;max-width:100%;justify-content:center}
 .sb-panel .sb-navigation .sb-rail-toggle{left:50%;right:auto;transform:translateX(-50%);width:44px;max-width:calc(100% - 8px);box-sizing:border-box}
+
+/* Compact rails only on phone portrait; keep the existing landscape layout. */
+@media (max-width: 760px) and (orientation: portrait) {
+  .sb-home-container.has-floor-rail {
+    left: 60px;
+    width: calc(100% - 72px);
+    max-width: calc(100% - 72px);
+  }
+  .sb-home-container.is-collapsed,
+  .sb-home-container.has-floor-rail.is-collapsed {
+    width: 52px;
+    max-width: 52px;
+  }
+  .sb-floor-rail {
+    left: -50px;
+    width: 40px;
+    border-radius: 16px;
+  }
+  .sb-floor-options button[aria-current=true] { font-size: 22px; }
+  .sb-panel .sb-navigation { flex-basis: 48px; padding-inline: 2px; }
+  .sb-panel.sb-content-collapsed .sb-navigation { flex: 1 1 100%; }
+}
+
+/* The footer owns a separate grid row and never overlays the page list. */
+.sb-panel .sb-navigation {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding-block: 8px;
+  min-height: 0;
+  container: sidebar-rail / size;
+}
+.sb-panel .sb-navigation-pages {
+  padding-block: 8px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.sb-panel .sb-navigation .sb-rail-toggle {
+  position: static;
+  transform: none;
+  justify-self: center;
+  margin: 0;
+}
+@container sidebar-rail (max-height: 420px) {
+  .sb-panel .sb-navigation-pages { gap: 6px; padding-block: 4px; }
+  .sb-panel .sb-navigation-pages > button {
+    flex-basis: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding-block: 3px;
+    gap: 2px;
+    border-radius: 12px;
+  }
+  .sb-panel .sb-navigation-pages > button > span { font-size: 20px; line-height: 22px; }
+  .sb-panel .sb-navigation-pages > button > small { font-size: 9px; line-height: 11px; }
+}
+@container sidebar-rail (max-height: 280px) {
+  .sb-panel .sb-navigation-pages { gap: 4px; padding-block: 2px; }
+  .sb-panel .sb-navigation-pages > button {
+    flex-basis: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding-block: 2px;
+    gap: 0;
+  }
+  .sb-panel .sb-navigation-pages > button > span { font-size: 18px; line-height: 20px; }
+  .sb-panel .sb-navigation-pages > button > small { font-size: 9px; line-height: 10px; }
+  .sb-panel .sb-navigation .sb-rail-toggle { height: 36px; min-height: 36px; }
+}

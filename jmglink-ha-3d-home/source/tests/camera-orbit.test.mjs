@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PerspectiveCamera, Spherical, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition } from '../apps/web/src/domain/camera-orbit.js';
+import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from '../apps/web/src/domain/camera-orbit.js';
 
 test('floor orbit keeps the camera above the foundation across a full horizontal revolution',()=>{
   const camera=new PerspectiveCamera();camera.up.fromArray(FLOOR_CAMERA_UP);
@@ -38,4 +38,24 @@ test('top view matches plan X-right and Z-down axes regardless of viewport frami
     assert.ok(right.dot(new Vector3(1,0,0))>.99999,'plan X stays screen-right');
     assert.ok(down.dot(new Vector3(0,0,1))>.99999,'plan Y / scene Z stays screen-down');
   }
+});
+
+test('portrait fit finishes within orbit limits and manual tilt persists',()=>{
+ const camera=new PerspectiveCamera();camera.up.fromArray(FLOOR_CAMERA_UP);
+ const orbit=new OrbitControls(camera,null);Object.assign(orbit,FLOOR_ORBIT_LIMITS,{minDistance:3,maxDistance:26});
+ const target=[2,1,3];orbit.target.fromArray(target);
+ const destination=new Vector3(...reachableOrbitPosition([2,120,3.001],target,3,26));
+ camera.position.set(12,15,18);
+ const fitting={current:true};const cleanup=cancelFitOnOrbitStart(orbit,fitting);
+ for(let i=0;i<200&&fitting.current;i++){
+   camera.position.lerp(destination,.11);orbit.update();
+   if(camera.position.distanceTo(destination)<.035)fitting.current=false;
+ }
+ assert.equal(fitting.current,false,'framing must finish');
+ fitting.current=true;orbit.dispatchEvent({type:'start'});assert.equal(fitting.current,false);
+ const tilted=new Vector3().setFromSpherical(new Spherical(20,Math.PI/3,.7));
+ camera.position.copy(orbit.target).add(tilted);
+ for(let i=0;i<60;i++)orbit.update();
+ assert.ok(camera.position.clone().sub(orbit.target).distanceTo(tilted)<1e-6,'manual tilt persists');
+ cleanup();fitting.current=true;orbit.dispatchEvent({type:'start'});assert.equal(fitting.current,true);
 });

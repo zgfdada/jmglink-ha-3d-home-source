@@ -647,3 +647,5 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 
 
 侧栏默认配置仅主页＋天气；可选能耗/运维/音乐模板不再自动注入。图片在宿主同源会话中通过 `widget-images.js` 读取并向隔离控件提供 data URL，HAOS 服务端代理保留 `/core` 前缀；见 `tests/widget-images.test.mjs` 和 `tests/sidebar-services.test.mjs`。
+
+移动端相机：`reachableOrbitPosition` 将初始取景距离约束到 OrbitControls 的 min/maxDistance，防止竖屏 fitAvailable 放大后的目标不可达而持续插值。`cancelFitOnOrbitStart` 在触摸、旋转、缩放开始时终止自动取景，并在卸载时移除监听。侧栏变化仍通过 `overlayRefitKey` 保持相机；移动侧栏由 top/bottom 拉伸，不保留 244px 固定高度。
