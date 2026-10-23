@@ -42,3 +42,19 @@ test('generic HTTP relay enforces saved workspace, binding and service declarati
  assert.equal(calls.length,1);
  } finally {globalThis.fetch=original;await app.close();}
 });
+
+
+test('picture proxy retains HA Supervisor prefix without forwarding credentials off-origin',async()=>{
+ const original=globalThis.fetch;const calls=[];
+ globalThis.fetch=async(url,options)=>{calls.push({url:String(url),options});return new Response(new Uint8Array([255,216,255]),{headers:{'content-type':'image/jpeg'}})};
+ try {
+  for(const [restUrl,expected] of [['http://supervisor/core/api','http://supervisor/core/api/media_player_proxy/music?token=test-picture'],['http://ha.test/api','http://ha.test/api/media_player_proxy/music?token=test-picture']]){
+   let picture='/api/media_player_proxy/music?token=test-picture';const app=Fastify();
+   registerSidebarServices(app,{config:{ha:{restUrl,token:'test-only'}},getEntities:()=>[{entityId:'media_player.music',attributes:{entity_picture:picture}}]},null,null);
+   try{
+    const response=await app.inject('/api/sidebar-services/picture/media_player.music');assert.equal(response.statusCode,200);assert.equal(response.headers['content-type'],'image/jpeg');assert.equal(calls.at(-1).url,expected);assert.equal(calls.at(-1).options.redirect,'error');
+    const count=calls.length;picture='https://other.test/api/image';assert.equal((await app.inject('/api/sidebar-services/picture/media_player.music')).statusCode,403);assert.equal(calls.length,count);
+   }finally{await app.close()}
+  }
+ }finally{globalThis.fetch=original}
+});

@@ -644,3 +644,6 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 相机轨道约束统一位于 `apps/web/src/domain/camera-orbit.js`：所有预设保持世界Y轴向上，垂直旋转不进入地板下方，水平旋转无角度限制。不要为俯视切换 camera.up；屏幕取景偏移的参考向量与相机实际up轴分开处理。测试使用真实Three.js OrbitControls验证全周绕转及俯视稳定性。
 
 俯视取景使用 alignedTopCameraPosition 同时平移相机与观察目标，避免侧栏导致目标横向偏移后近垂直相机朝向转约90度；回归测试验证屏幕X向右、平面纵轴向下，并覆盖不同取景偏移。
+
+
+侧栏默认配置仅主页＋天气；可选能耗/运维/音乐模板不再自动注入。图片在宿主同源会话中通过 `widget-images.js` 读取并向隔离控件提供 data URL，HAOS 服务端代理保留 `/core` 前缀；见 `tests/widget-images.test.mjs` 和 `tests/sidebar-services.test.mjs`。

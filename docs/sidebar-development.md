@@ -122,3 +122,12 @@ HA → 3D Home：按控件绑定共享状态快照。3D Home → HA：控件使�
 ### 按楼层设计
 
 开发中心楼层选择与当前主页楼层关联，布局读写以实际floorId为作用域。旧project键继续保存原第一层布局，并记录floorId防止重排误绑；其他层以独立键保存，空白起步。动作转发也读取同一floorId的已保存草稿/发布声明，不允许从F2调用仅存在F1的控件。楼层栏来自项目floors，编号F1起，与侧边栏同一上下边界，选项居中；小屏设备面板避让楼层栏。
+
+
+## 默认布局与图片显示
+
+初次使用仅包含“主页”导航和一个天气代码控件。能耗、运维和音乐是可选代码示例，不自动创建导航或注入已保存的草稿/发布布局；用户已有控件及导航保留。新楼层仍从空白布局开始。
+
+HAOS 图片代理必须保留 HA REST 地址中 `/api` 之前的前缀，例如 `http://supervisor/core/api` 对应 `/core/api/media_player_proxy/...`。图片源仍限制为 HA 同源的 `/api/`、`/local/` 路径，不允许跳转转发凭据。
+
+隔离 iframe 无法直接依赖 HA Ingress 登录 Cookie。`widget-images.js` 由宿主页按绑定实体从相对图片代理地址读取，使用 same-origin 会话，限制图片类型及 5MB 大小，并缓存当前图片；控件快照中 `pictureData` 和已归一化的 `attributes.entity_picture` 是 data URL。`ha.imageUrl()` 保留兼容的 fragment，旧控件附加缓存参数不会破坏图片内容。原始 HA 状态及服务参数不被修改，控件不会获得登录凭据。

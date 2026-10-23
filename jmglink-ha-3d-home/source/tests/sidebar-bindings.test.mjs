@@ -13,7 +13,7 @@ test('automatic multi binding and exact overrides share one resolver',()=>{
  assert.deepEqual(resolveSidebarEntities(widget,{entityId:'sensor.b'},entities).ids,['sensor.b']);
 });
 test('multi bindings survive save and import, including explicit empty selection',()=>{
- const config=defaultSidebar();config.widgets[1].entityIds=['sensor.a','sensor.b'];config.pages[0].items[1].entityIds=[];
- const saved=normalizeSidebar(config);assert.deepEqual(saved.widgets[1].entityIds,['sensor.a','sensor.b']);assert.deepEqual(saved.pages[0].items[1].entityIds,[]);
+ const config=defaultSidebar();config.widgets[0].entityIds=['sensor.a','sensor.b'];config.pages[0].items[0].entityIds=[];
+ const saved=normalizeSidebar(config);assert.deepEqual(saved.widgets[0].entityIds,['sensor.a','sensor.b']);assert.deepEqual(saved.pages[0].items[0].entityIds,[]);
  assert.throws(()=>normalizeSidebar({...config,widgets:[{...config.widgets[0],entityIds:'bad'}]}));
 });

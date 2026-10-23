@@ -23,25 +23,7 @@ export class SidebarStore {
       for (const entry of Object.values(state)) {
         entry.draft = normalizeSidebar(entry.draft);
         entry.published = normalizeSidebar(entry.published);
-        if (!entry.floorScoped && entry.energySampleVersion !== 2) {
-          for (const config of [entry.draft,entry.published]) {
-            const sample=defaultSidebar(),home=config.pages.find(p=>p.id==='home') || config.pages[0];
-            if(!config.widgets.some(w=>w.id==='energy'))config.widgets.push(sample.widgets.find(w=>w.id==='energy'));
-            const old=config.pages.find(p=>p.id==='energy');
-            if(old){for(const item of old.items)if(!home.items.some(i=>i.id===item.id))home.items.push({...item,height:340});config.pages=config.pages.filter(p=>p!==old);}
-            if(!home.items.some(i=>i.widgetId==='energy'))home.items.push({id:'energy-main',widgetId:'energy',entityId:'',height:340});
-            if(home.id==='home' && ['天气','主页'].includes(home.name)){home.name='主页';home.icon='⌂';}
-          }
-          entry.energySampleVersion=2;
-        }
-        if(!entry.floorScoped && entry.presentationVersion!==6){
-          const defaults=defaultSidebar();
-          for(const config of [entry.draft,entry.published])for(const widget of config.widgets){
-            const sample=defaults.widgets.find(w=>w.id===widget.id);
-            if(sample && ['weather','energy'].includes(widget.id)){widget.html=sample.html;widget.css=sample.css;widget.js=sample.js;}
-          }
-          entry.presentationVersion=6;
-        }
+
       }
     } catch (e) {
       if (e.code !== "ENOENT")

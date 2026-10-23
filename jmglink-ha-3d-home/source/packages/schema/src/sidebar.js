@@ -1,7 +1,4 @@
 import { normalizeWidgetActions } from "./widget-actions.js";
-import { operationsWidgetCode } from "./operations-widget.js";
-import { musicWidgetCode } from "./music-widget.js";
-import { energyWidgetCode } from "./energy-widget.js";
 import { weatherWidgetCode } from "./weather-widget.js";
 export const SIDEBAR_FORMAT = "ha3d-sidebar-v1";
 export function defaultSidebar() {
@@ -22,7 +19,6 @@ export function defaultSidebar() {
         entityIds: null,
         ...weatherWidgetCode(),
       },
-      {id:"energy",name:"家庭能耗",kind:"custom",actions:[],accountNames:{},scriptMode:"dom",entityDomain:"sensor",entityAttribute:"monthlist",entityId:"",entityIds:null,...energyWidgetCode()},
     ],
     pages: [
       {
@@ -38,14 +34,10 @@ export function defaultSidebar() {
         entityIds: null,
             height: 340,
           },
-          {id:"energy-main",widgetId:"energy",entityId:"",entityIds:null,height:340},
         ],
       },
     ],
   };
-  const common={kind:"custom",actions:[],accountNames:{},scriptMode:"dom",entityDomain:"",entityAttribute:"",entityId:"",entityIds:null};
-  config.widgets.push({...common,id:"operations",name:"设备运维",...operationsWidgetCode()}, {...common,id:"music",name:"音乐中心",entityDomain:"media_player",entityAttribute:"songloft_song_id",...musicWidgetCode()});
-  config.pages.push({id:"operations",name:"运维",icon:"⚒",color:"#54c8af",items:[{id:"operations-main",widgetId:"operations",entityId:"",entityIds:null,height:340}]},{id:"music",name:"音乐",icon:"♫",color:"#f39b24",items:[{id:"music-main",widgetId:"music",entityId:"",entityIds:null,height:340}]});
   return config;
 }
 const fail = (message) => {

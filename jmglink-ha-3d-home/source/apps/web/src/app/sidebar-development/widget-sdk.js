@@ -9,7 +9,7 @@ const ha=Object.freeze({
  onStateChange(callback){const handler=event=>callback(event.detail.entities);window.addEventListener('ha3d-entities',handler);return()=>window.removeEventListener('ha3d-entities',handler);},
  callService(domain,service,data={},entityId=entity?.entityId){return invoke({domain,service,data,entityId});},
  runAction(actionId,data={},entityId){return invoke({actionId,data,entityId});},
- imageUrl(entityId=entity?.entityId){return new URL('api/sidebar-services/picture/'+encodeURIComponent(entityId),viewContext.assetBase).href;},
+ imageUrl(entityId=entity?.entityId){const picture=entities.find(e=>e.entityId===entityId)?.pictureData;if(picture)return picture+'#ha3d';return new URL('api/sidebar-services/picture/'+encodeURIComponent(entityId),viewContext.assetBase).href;},
  expand(section='detail'){parent.postMessage({type:'ha3d-open-detail',section},'*');}
 });window.ha=ha;
 document.getElementById('view').addEventListener('click',async event=>{const button=event.target.closest('[data-ha-action]');if(!button || button.disabled)return;const disabled=button.disabled;button.disabled=true;try{await ha.runAction(button.dataset.haAction);button.removeAttribute('data-error');}catch(error){button.dataset.error=error.message;const status=document.getElementById('ha-action-status')||document.getElementById('view').appendChild(Object.assign(document.createElement('p'),{id:'ha-action-status'}));status.setAttribute('role','alert');status.textContent=error.message;}finally{button.disabled=disabled;}});

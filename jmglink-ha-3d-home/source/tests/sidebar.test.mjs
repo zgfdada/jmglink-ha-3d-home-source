@@ -147,18 +147,24 @@ test("侧边栏路由校验真实项目、JSON、跨站修改和草稿版本", a
  assert.equal(normalizeSidebar(edited).widgets[0].html,'<b>我的天气</b>');
  });
 
-test("能耗示例保留交互源码、属性匹配及导航颜色", () => {
+test("默认仅主页和天气，能耗源码仍可作为可选示例使用", async () => {
  const config=normalizeSidebar(defaultSidebar());
- assert.equal(config.pages[0].name,'主页');
- assert.ok(config.pages[0].items.some(i=>i.widgetId==='energy'));
- const energy=config.widgets.find(w=>w.id==='energy');
- assert.equal(energy.scriptMode,'dom');
- assert.equal(energy.entityAttribute,'monthlist');
- assert.ok(energy.js.includes("customElements.define"));
- assert.ok(energy.js.includes('ResizeObserver'));
- assert.ok(energy.js.length>24000);
- config.pages[0].color='#ff8833';
- assert.equal(normalizeSidebar(config).pages[0].color,'#ff8833');
+ assert.deepEqual(config.pages.map(p=>p.id),['home']);
+ assert.deepEqual(config.widgets.map(w=>w.id),['weather']);
+ assert.deepEqual(config.pages[0].items.map(i=>i.widgetId),['weather']);
+ const {energyWidgetCode}=await import('../packages/schema/src/energy-widget.js');
+ const energy=energyWidgetCode();assert.ok(energy.js.includes('customElements.define'));assert.ok(energy.js.includes('ResizeObserver'));
+ config.pages[0].color='#ff8833';assert.equal(normalizeSidebar(config).pages[0].color,'#ff8833');
+});
+
+ test("重启不向已保存布局注入默认能耗或覆盖自定义代码",async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'sidebar-no-injection-'));
+ try {
+  const {writeFile}=await import('node:fs/promises');const config=defaultSidebar();config.widgets[0].html='<b>用户自己的天气</b>';
+  config.widgets.push({...config.widgets[0],id:'my-energy',name:'用户能耗'});
+  const entry={revision:4,draft:config,published:config};await writeFile(path.join(dir,'sidebar-workspaces.json'),JSON.stringify({project:entry}));
+  const store=await SidebarStore.create(dir);assert.deepEqual(store.get('project'),entry);
+ }finally{await rm(dir,{recursive:true,force:true})}
 });
 
 test("能耗名称优先实体 title，并允许自定义覆盖", async () => {

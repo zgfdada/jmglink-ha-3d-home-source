@@ -803,3 +803,11 @@
  background:var(--sb-shell-fill);border-color:var(--sb-shell-line);box-shadow:var(--sb-shell-shadow);
  backdrop-filter:blur(20px) saturate(135%);-webkit-backdrop-filter:blur(20px) saturate(135%);
 }
+
+/* Collapsed panels must give the navigation the full inner width. Both button
+   groups share its center line instead of retaining the expanded rail width. */
+.sb-home-container .sb-panel{box-sizing:border-box}
+.sb-panel.sb-content-collapsed .sb-navigation{flex:1 1 100%;width:100%;min-width:0}
+.sb-panel .sb-navigation-pages{width:100%;align-items:center}
+.sb-panel .sb-navigation-pages>button{width:44px;max-width:100%;justify-content:center}
+.sb-panel .sb-navigation .sb-rail-toggle{left:50%;right:auto;transform:translateX(-50%);width:44px;max-width:calc(100% - 8px);box-sizing:border-box}

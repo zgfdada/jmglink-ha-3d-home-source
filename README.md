@@ -10,7 +10,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.26`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.27`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
@@ -26,6 +26,8 @@
 | 开发中心 | 设备项目、能力映射、面板设计、模拟联调、版本快照与导出 |
 | 语音助手 | 轻触输入、长按说话；HA Assist 或 Hermes 原 Telegram Bot 会话，支持澄清选择及回复播报 |
 | 数据管理 | 项目导入导出、历史备份、独立设备包；持久化数据与应用镜像分开保存 |
+
+默认侧栏只提供“主页”和天气控件；其他控件及导航通过侧边栏开发中心自行设计或导入，已有自定义布局会保留。
 
 ## 选择安装方式
 

@@ -1,3 +1,4 @@
+import { createWidgetPictureCache } from "./widget-images.js";
 import { sidebarFloorOptions, emptyFloorSidebar } from "../../../../../packages/schema/src/sidebar-floors.js";
 import { widgetSdkSource } from "./widget-sdk.js";
 import { resolveSidebarEntities } from "../../../../../packages/schema/src/sidebar-bindings.js";
@@ -87,9 +88,15 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, bin
   const [detail,setDetail]=React.useState(null);
   const [naturalHeight,setNaturalHeight]=React.useState(120);
   const frame = React.useRef(null);
+  const pictureCache=React.useRef(null);if(!pictureCache.current)pictureCache.current=createWidgetPictureCache();
+  const snapshotState=React.useRef(null);snapshotState.current={entity,entities:binding.entities,theme};
   React.useEffect(()=>{const listener=event=>{if(event.source===frame.current?.contentWindow && event.data?.type==='ha3d-widget-height' && Number.isFinite(event.data.height)){setNaturalHeight(Math.min(100000,Math.max(40,event.data.height)));return;}if(event.source===frame.current?.contentWindow && event.data?.type==='ha3d-open-detail' && !presentation){setDetail({expanded:true,section:String(event.data.section),accountId:String(event.data.accountId || '')});}};window.addEventListener('message',listener);return()=>window.removeEventListener('message',listener);},[presentation]);
   React.useEffect(()=>{if(!detail)return;const escape=e=>{if(e.key==='Escape')setDetail(null);};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[detail]);
-  const sendSnapshot = () => {frame.current?.contentWindow?.postMessage({type:"ha3d-theme",theme},"*");frame.current?.contentWindow?.postMessage({type:"ha3d-entities",entity:entitySnapshot(entity) || {state:"unavailable",attributes:{}},entities:binding.entities.map(entitySnapshot)},"*");};
+  const sendSnapshot = () => {
+    const target=frame.current?.contentWindow;if(!target)return;
+    const push=()=>{if(frame.current?.contentWindow!==target)return;const state=snapshotState.current;const snap=e=>{if(!e)return;const data=entitySnapshot(e),picture=pictureCache.current.read(e);return {...data,pictureData:picture,attributes:picture?{...data.attributes,entity_picture:picture}:data.attributes};};target.postMessage({type:"ha3d-theme",theme:state.theme},"*");target.postMessage({type:"ha3d-entities",entity:snap(state.entity)||{state:"unavailable",attributes:{}},entities:state.entities.map(snap)},"*");};
+    push();Promise.all(snapshotState.current.entities.map(e=>pictureCache.current.load(e))).then(push);
+  };
   React.useEffect(() => {if(widget.scriptMode === "dom")sendSnapshot();}, [entity,entities,widget,theme]);
   const srcDoc = React.useMemo(
     () =>

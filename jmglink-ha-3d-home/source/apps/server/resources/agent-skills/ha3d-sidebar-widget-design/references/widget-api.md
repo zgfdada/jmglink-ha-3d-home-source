@@ -46,3 +46,5 @@ CSP 禁止网络连接、表单提交和同源访问，不提供 HA Token；服�
 ## 楼层作用域
 
 布局接口 `/api/sidebar/:project` 及 draft/publish 使用 `?floorId=实际楼层ID`；控件动作上下文由宿主自动附加 floorId，脚本不应自行覆盖。每层的草稿和发布独立；未设计楼层返回空白布局，旧布局绑定原第一层。切换开发楼层前保存当前修改。
+
+`ha.imageUrl(entityId)` 可返回宿主已读取的 data URL。HAOS Ingress 下由宿主以同源会话读取绑定实体的图片代理；控件快照的 `pictureData` 和 `attributes.entity_picture` 可以是安全 data URL。不要自行拼接 HA 地址或读取认证信息。

@@ -2,7 +2,7 @@
 
 这是 JMGLink HA 3D Home 的家居可视化应用，支持独立 Docker 和 Home Assistant Add-on 两种部署方式。
 
-当前稳定版本：**v0.1.5-custom.26**。安装与升级只需拉取已发布镜像。
+当前稳定版本：**v0.1.5-custom.27**。安装与升级只需拉取已发布镜像。
 
 ## 主要功能
 

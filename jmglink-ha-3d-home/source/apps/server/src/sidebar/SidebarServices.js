@@ -48,6 +48,9 @@ export function registerSidebarServices(app,ha,store,projects) {
     if(!entity || !picture)return reply.code(404).send();
     const base=new URL(ha.config.ha.restUrl);const url=new URL(picture,base.origin);
     if(url.origin!==base.origin || !/^\/(api|local)\//.test(url.pathname))return reply.code(403).send();
+    // Supervisor exposes HA below /core; preserve that prefix for image paths.
+    const prefix=base.pathname.replace(/\/api\/?$/,"").replace(/\/$/,"");
+    url.pathname=prefix+url.pathname;
     const response=await fetch(url,{headers:{Authorization:`Bearer ${ha.config.ha.token}`},signal:AbortSignal.timeout(10000),redirect:'error'});
     if(!response.ok)return reply.code(502).send();
     reply.type(response.headers.get('content-type')||'image/jpeg').header('Cache-Control','private,max-age=30');
