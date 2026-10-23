@@ -42,3 +42,7 @@ CSP 禁止网络连接、表单提交和同源访问，不提供 HA Token；服�
 - ha.expand(section)：在大浮层中展示同一控件，viewContext.expanded 为 true。
 
 参数内不能提供 entity_id、area_id、device_id 等目标字段；目标通过实际绑定和 SDK 最后一个参数指定。服务的实际参数和能力由 HA 校验；中间层没有针对音乐、运维或其他控件的业务白名单。尚未保存的权限配置不能执行。
+
+## 楼层作用域
+
+布局接口 `/api/sidebar/:project` 及 draft/publish 使用 `?floorId=实际楼层ID`；控件动作上下文由宿主自动附加 floorId，脚本不应自行覆盖。每层的草稿和发布独立；未设计楼层返回空白布局，旧布局绑定原第一层。切换开发楼层前保存当前修改。

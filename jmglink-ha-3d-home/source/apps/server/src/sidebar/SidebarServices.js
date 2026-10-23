@@ -1,5 +1,6 @@
 import { resolveSidebarEntities } from '../../../../packages/schema/src/sidebar-bindings.js';
 import { normalizeWidgetActions } from '../../../../packages/schema/src/widget-actions.js';
+import { resolveSidebarFloor } from '../../../../packages/schema/src/sidebar-floors.js';
 const error=(message,statusCode=400)=>Object.assign(new Error(message),{statusCode});
 export function flattenServiceCatalog(domains) {
  return domains.flatMap(domain=>Object.entries(domain.services||{}).map(([service,details])=>({domain:domain.domain,service,name:details.name||service,description:details.description||'',fields:details.fields||{},target:details.target||{}})));
@@ -31,9 +32,11 @@ export function registerSidebarServices(app,ha,store,projects) {
     if((site && site!=='same-origin') || (req.headers.origin && !site && new URL(req.headers.origin).host!==req.headers.host))throw error('不允许跨站操作',403);
     if(!req.headers['content-type']?.startsWith('application/json'))throw error('需要 JSON',415);
     const body=req.body||{};
-    if(!projects.getProject(body.projectId))throw error('项目不存在',404);
+    const project=projects.getProject(body.projectId);
+    if(!project)throw error('项目不存在',404);
+    resolveSidebarFloor(project,body.floorId);
     if(!['draft','published'].includes(body.workspace))throw error('必须指定草稿或发布版本');
-    const config=store.get(body.projectId)[body.workspace];
+    const config=store.get(store.floorKey ? store.floorKey(project,body.floorId) : body.projectId)[body.workspace];
     const action=validateSidebarService(body,{entities:ha.getEntities(),config,catalog:await catalog()});
     const response=await fetch(`${ha.config.ha.restUrl}/services/${action.domain}/${action.service}`,{method:'POST',headers:{Authorization:`Bearer ${ha.config.ha.token}`,'Content-Type':'application/json'},body:JSON.stringify(action.data),signal:AbortSignal.timeout(15000)});
     if(!response.ok)throw error(`HA 操作失败（${response.status}），请检查服务参数与实体能力`,502);

@@ -1,3 +1,4 @@
+import { sidebarFloorOptions } from "../../../../../packages/schema/src/sidebar-floors.js";
 import { ActionEditor } from "./action-editor.jsx";
 import { resolveSidebarEntities, sidebarEntityName } from "../../../../../packages/schema/src/sidebar-bindings.js";
 import { a as React } from "../../vendor/react.js";
@@ -52,9 +53,12 @@ function EntityPicker({entities, widget, override, onChange, emptyLabel}) {
 
 export default function SidebarDevelopmentCenter({
   project,
+  initialFloorId,
   entities = {},
   onClose,
 }) {
+  const floors = sidebarFloorOptions(project.floors);
+  const [floorId,setFloorId] = React.useState(project.floors?.some(floor=>floor.id===initialFloorId) ? initialFloorId : project.floors?.[0]?.id);
   const [workspace, setWorkspace] = React.useState(null),
     [draft, setDraft] = React.useState(defaultSidebar),
     [tab, setTab] = React.useState("widgets"),
@@ -78,7 +82,10 @@ export default function SidebarDevelopmentCenter({
   const load = React.useCallback(async () => {
     setBusy(true);
     try {
-      const data = await sidebarApi(project.id);
+      const data = await sidebarApi(project.id, undefined, undefined, floorId);
+      setWidgetId(data.draft.widgets[0]?.id || "weather");
+      setPageId(data.draft.pages[0]?.id || "home");
+      setItemId(null);
       setWorkspace(data);
       setDraft(data.draft);
       saved.current = JSON.stringify(data.draft);
@@ -88,7 +95,7 @@ export default function SidebarDevelopmentCenter({
     } finally {
       setBusy(false);
     }
-  }, [project.id]);
+  }, [project.id, floorId]);
   React.useEffect(() => {
     load();
   }, [load]);
@@ -138,6 +145,7 @@ export default function SidebarDevelopmentCenter({
         project.id,
         publish ? "publish" : "draft",
         { revision: workspace.revision, draft: normalized },
+        floorId,
       );
       setWorkspace(result);
       setDraft(result.draft);
@@ -227,6 +235,7 @@ export default function SidebarDevelopmentCenter({
             <small>开发中心 / 侧边栏</small>
             <h1>侧边栏开发中心</h1>
           </div>
+          <label className="sb-dev-floor-picker">楼层<select aria-label="设计楼层" value={floorId || ""} disabled={busy} onChange={e=>{if(dirty && !window.confirm("当前楼层有未保存修改，是否放弃并切换楼层？"))return;setWorkspace(null);setFloorId(e.target.value);}}>{floors.map(floor=><option key={floor.id} value={floor.id}>{floor.label} · {floor.name}</option>)}</select></label>
           <nav aria-label="开发页面">
             <button
               className={tab === "widgets" ? "active" : ""}
@@ -473,7 +482,7 @@ export default function SidebarDevelopmentCenter({
                   <h2>实时预览</h2>
                   <div className="sb-widget-live-preview">
                     {widget && (
-                      <WidgetRenderer widget={widget} entities={entities} bindingContext={{projectId:project.id,workspace:"draft"}} />
+                      <WidgetRenderer widget={widget} entities={entities} bindingContext={{projectId:project.id,floorId,workspace:"draft"}} />
                     )}
                   </div>
                   <h2>实体属性</h2>
@@ -499,6 +508,7 @@ export default function SidebarDevelopmentCenter({
                   <div className="sb-layout-canvas">
                     <SidebarPanel
                       projectId={project.id}
+                      floorId={floorId}
                       workspace="draft"
                       config={draft}
                       entities={entities}

@@ -8,7 +8,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.24`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.25`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
@@ -17,6 +17,7 @@
 | 模块 | 能力 |
 | --- | --- |
 | 户型与场景 | 多楼层、墙体、房间、门窗、底图与家具；3D 全屋展示，默认卡通风格 |
+| 楼层侧栏 | 按实际楼层选择，独立设计与发布；支持天气、能耗、运维、音乐和房间控件 |
 | 设备控制 | 按 HA 房间发现设备，多实体聚合；灯光、空调及其他设备的状态与能力映射 |
 | 模型与家具 | GLB / 自包含 GLTF、自定义外观、在线模型库；模型可用于设备或家具 |
 | 编辑工具 | 异型柜体、多选复用、对齐吸附、水平基准面；无选中对象时右键平移 2D 画布 |

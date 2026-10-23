@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile, rename, copyFile } from "node:fs/promises";
 import path from "node:path";
+import { emptyFloorSidebar, resolveSidebarFloor } from '../../../../packages/schema/src/sidebar-floors.js';
 import {
   defaultSidebar,
   normalizeSidebar,
@@ -10,6 +11,7 @@ export class SidebarStore {
     this.file = path.join(directory, "sidebar-workspaces.json");
     this.state = state;
     this.queue = Promise.resolve();
+    this.floorOwners = new Map();
   }
   static async create(directory) {
     await mkdir(directory, { recursive: true });
@@ -21,7 +23,7 @@ export class SidebarStore {
       for (const entry of Object.values(state)) {
         entry.draft = normalizeSidebar(entry.draft);
         entry.published = normalizeSidebar(entry.published);
-        if (entry.energySampleVersion !== 2) {
+        if (!entry.floorScoped && entry.energySampleVersion !== 2) {
           for (const config of [entry.draft,entry.published]) {
             const sample=defaultSidebar(),home=config.pages.find(p=>p.id==='home') || config.pages[0];
             if(!config.widgets.some(w=>w.id==='energy'))config.widgets.push(sample.widgets.find(w=>w.id==='energy'));
@@ -32,7 +34,7 @@ export class SidebarStore {
           }
           entry.energySampleVersion=2;
         }
-        if(entry.presentationVersion!==6){
+        if(!entry.floorScoped && entry.presentationVersion!==6){
           const defaults=defaultSidebar();
           for(const config of [entry.draft,entry.published])for(const widget of config.widgets){
             const sample=defaults.widgets.find(w=>w.id===widget.id);
@@ -51,10 +53,34 @@ export class SidebarStore {
     return structuredClone(
       (Object.hasOwn(this.state, project) ? this.state[project] : undefined) ?? {
         revision: 0,
-        draft: defaultSidebar(),
-        published: defaultSidebar(),
+        ...(project.startsWith('floor:') ? {floorScoped:true,draft:emptyFloorSidebar(),published:emptyFloorSidebar()} : {draft:defaultSidebar(),published:defaultSidebar()}),
       },
     );
+  }
+  floorKey(project, requested) {
+    const floorId = resolveSidebarFloor(project, requested);
+    if (!floorId) return project.id;
+    // Anchor the pre-floor layout to its original floor; never copy it to F2.
+    const legacy = this.state[project.id];
+    const primary = legacy?.floorId || this.floorOwners.get(project.id) || project.floors[0].id;
+    this.floorOwners.set(project.id, primary);
+    if (legacy && !legacy.floorId) legacy.floorId = primary;
+    return floorId === primary ? project.id : 'floor:' + JSON.stringify([project.id, floorId]);
+  }
+  async bindLegacyFloors(projects) {
+    let changed = false;
+    for (const item of projects.listProjects?.() || []) {
+      const project = projects.getProject(item.id), entry = this.state[item.id];
+      if (entry && !entry.floorId && project?.floors?.[0]) {
+        entry.floorId = project.floors[0].id;
+        changed = true;
+      }
+    }
+    if (changed) {
+      await copyFile(this.file, `${this.file}.bak`);
+      await writeFile(`${this.file}.tmp`, JSON.stringify(this.state, null, 2), 'utf8');
+      await rename(`${this.file}.tmp`, this.file);
+    }
   }
   update(project, payload, publish = false) {
     const task = this.queue
@@ -68,6 +94,8 @@ export class SidebarStore {
           );
         const draft = normalizeSidebar(payload.draft);
         const entry = {
+          ...((previous.floorId || this.floorOwners.get(project)) ? {floorId:previous.floorId || this.floorOwners.get(project)} : {}),
+          ...(previous.floorScoped ? {floorScoped:true} : {}),
           energySampleVersion: 2,
           presentationVersion: 6,
           revision: previous.revision + 1,
@@ -99,20 +127,22 @@ export async function registerSidebarRoutes(
   projects,
   onChange = () => {},
 ) {
+  await store.bindLegacyFloors(projects);
   const check = (req) => {
-    if (!projects.getProject(req.params.project))
+    const project = projects.getProject(req.params.project);
+    if (!project)
       throw Object.assign(new Error("项目不存在"), { statusCode: 404 });
+    return store.floorKey(project, req.query?.floorId);
   };
   app.get("/api/sidebar/:project", async (req) => {
-    check(req);
-    return store.get(req.params.project);
+    return store.get(check(req));
   });
   for (const action of ["draft", "publish"])
     app.put(
       `/api/sidebar/:project/${action}`,
       { bodyLimit: 1024 * 1024 },
       async (req) => {
-        check(req);
+        const workspaceKey = check(req);
         const site = req.headers["sec-fetch-site"];
         if (site && site !== "same-origin")
           throw Object.assign(new Error("请从当前 3D Home 页面保存配置"), {
@@ -130,7 +160,7 @@ export async function registerSidebarRoutes(
         if (!req.headers["content-type"]?.startsWith("application/json"))
           throw Object.assign(new Error("需要 JSON 文档"), { statusCode: 415 });
         const result = await store.update(
-          req.params.project,
+          workspaceKey,
           req.body ?? {},
           action === "publish",
         );

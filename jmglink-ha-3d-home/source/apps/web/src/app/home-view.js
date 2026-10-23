@@ -2731,7 +2731,7 @@ function Qn({
       _n(t.id, re);
     }, [re]),
     l.useEffect(() => {
-      $ !== "all" && !t.floors.some((n) => n.id === $) && x("all");
+      t.floors.length && !t.floors.some((n) => n.id === $) && x(t.floors[0].id);
     }, [$, t.floors]),
     l.useEffect(() => {
       if (!q) return;
@@ -2887,12 +2887,12 @@ function Qn({
           top: n(Me * 0.08, 52, 68),
           right: le || (E && A) ? m : n(Q * 0.11, 92, 132),
           bottom: n(Me * 0.09, 56, 72),
-          left: sidebarCollapsed ? 24 : Math.min(sidebarWidth, 330) + 40,
+          left: sidebarCollapsed ? 100 : Math.min(sidebarWidth, 330) + 116,
         };
       }
       return Q <= 960
-        ? { top: 86, right: E ? 342 : 84, bottom: 58, left: sidebarCollapsed ? 24 : Math.min(sidebarWidth, 330) + 40 }
-        : { top: 62, right: le || (E && A) ? 430 : 132, bottom: 74, left: sidebarCollapsed ? 24 : sidebarWidth + 48 };
+        ? { top: 86, right: E ? 342 : 84, bottom: 58, left: sidebarCollapsed ? 100 : Math.min(sidebarWidth, 330) + 116 }
+        : { top: 62, right: le || (E && A) ? 430 : 132, bottom: 74, left: sidebarCollapsed ? 100 : sidebarWidth + 124 };
     }, [A, E, We, le, Me, Q, sidebarWidth, sidebarCollapsed]),
     Ms = ia(i) && !(i != null && i.connected),
     Xe =
@@ -2988,7 +2988,7 @@ function Qn({
       [k, Q],
     );
   return e.jsxs("section", {
-    className: `home-workspace theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
+    className: `home-workspace ${t.floors.length ? "has-floor-selector" : ""} theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
     children: [
       e.jsxs("div", {
         className: "home-scene",
@@ -3023,7 +3023,7 @@ function Qn({
             onRoomSecuritySelect: As,
             onEntitySelect: Fs,
           })}),
-          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
+          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, key: $, floors: t.floors, floorId: $, onFloorChange: (id) => {x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
           !A &&
             e.jsxs("div", {
               className: "scene-data-empty",
@@ -3150,7 +3150,7 @@ function Qn({
                       e.jsx("span", { children: "设备开发中心" }),
                     ],
                   }),
-                  e.jsxs("button", {className: "home-tools-item home-development-entry", role: "menuitem", "aria-label": "打开侧边栏开发中心", onClick: () => {I(false);onOpenSidebarDevelopmentCenter?.();}, children: [e.jsx(Us, {size: 17}),e.jsx("span", {children: "侧边栏开发中心"})]}),
+                  e.jsxs("button", {className: "home-tools-item home-development-entry", role: "menuitem", "aria-label": "打开侧边栏开发中心", onClick: () => {I(false);onOpenSidebarDevelopmentCenter?.($);}, children: [e.jsx(Us, {size: 17}),e.jsx("span", {children: "侧边栏开发中心"})]}),
                 ],
               }),
             ],
@@ -3161,45 +3161,6 @@ function Qn({
             e.jsx("button", {className: "auto-light", onClick: () => setManualLight(null), children: "恢复自动环境光"}),
             e.jsx("p", {children: "自动模式跟随 HA 当地太阳高度。手动预览仅改变场景照明，不操作真实灯具；刷新后恢复自动。"})
           ]}), voiceAssistant]}),
-          ys &&
-            e.jsxs("nav", {
-              className: "home-floor-nav",
-              "aria-label": "楼层视图",
-              children: [
-                e.jsx("small", { children: "楼层" }),
-                e.jsxs("button", {
-                  className: $ === "all" ? "active" : "",
-                  onClick: _s,
-                  "aria-label": "查看全楼层",
-                  "aria-pressed": $ === "all",
-                  title: "查看全楼层",
-                  children: [
-                    e.jsx(Js, { size: 17 }),
-                    e.jsx("span", { children: "全楼层" }),
-                  ],
-                }),
-                Ce.map((n) =>
-                  e.jsxs(
-                    "button",
-                    {
-                      className: $ === n.id ? "active" : "",
-                      onClick: () => x(n.id),
-                      "aria-label": `查看${n.name}`,
-                      "aria-pressed": $ === n.id,
-                      title: `查看${n.name}`,
-                      children: [
-                        e.jsx("span", {
-                          className: "floor-level",
-                          children: n.level,
-                        }),
-                        e.jsx("span", { children: n.name }),
-                      ],
-                    },
-                    n.id,
-                  ),
-                ),
-              ],
-            }),
           vs &&
             e.jsx(Wn, {
               cameraRoom: L,

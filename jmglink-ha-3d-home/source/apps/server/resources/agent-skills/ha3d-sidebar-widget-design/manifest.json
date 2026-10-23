@@ -15,6 +15,7 @@
     "references/operations-widget.js",
     "references/songloft-source.js",
     "references/widget-actions.js",
-    "references/room-widget.js"
+    "references/room-widget.js",
+    "references/sidebar-floors.js"
   ]
 }

@@ -1652,10 +1652,10 @@ function ht() {
               onOpenEditor: j,
               voiceAssistant: r.jsx(et, {}),
               onOpenDeviceDevelopmentCenter: () => setNextCenterOpen(!0),
-              onOpenSidebarDevelopmentCenter: () => setSidebarCenterOpen(true),
+              onOpenSidebarDevelopmentCenter: (floorId) => setSidebarCenterOpen(floorId || true),
               sceneResumeKey: homeSceneResumeKey,
             }),
-          sidebarCenterOpen && r.jsx(SidebarDevelopmentCenter, {project: s, entities: _, onClose: () => {setSidebarCenterOpen(false);setHomeSceneResumeKey(key => key + 1);}}),
+          sidebarCenterOpen && r.jsx(SidebarDevelopmentCenter, {project: s, initialFloorId: typeof sidebarCenterOpen === "string" ? sidebarCenterOpen : undefined, entities: _, onClose: () => {setSidebarCenterOpen(false);setHomeSceneResumeKey(key => key + 1);}}),
           nextCenterOpen &&
             r.jsx(nextDeviceCenter, {
               open: nextCenterOpen,

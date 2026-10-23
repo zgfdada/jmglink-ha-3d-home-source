@@ -1,3 +1,4 @@
+import { sidebarFloorOptions, emptyFloorSidebar } from "../../../../../packages/schema/src/sidebar-floors.js";
 import { widgetSdkSource } from "./widget-sdk.js";
 import { resolveSidebarEntities } from "../../../../../packages/schema/src/sidebar-bindings.js";
 import { r as getReactDom } from "../../vendor/three.js";
@@ -7,9 +8,9 @@ import { a as React } from "../../vendor/react.js";
 import { defaultSidebar } from "../../../../../packages/schema/src/sidebar.js";
 import "./sidebar.css";
 
-export async function sidebarApi(projectId, action, body) {
+export async function sidebarApi(projectId, action, body, floorId) {
   const response = await fetch(
-    `api/sidebar/${encodeURIComponent(projectId)}${action ? `/${action}` : ""}`,
+    `api/sidebar/${encodeURIComponent(projectId)}${action ? `/${action}` : ""}${floorId ? `?floorId=${encodeURIComponent(floorId)}` : ""}`,
     body
       ? {
           method: "PUT",
@@ -116,6 +117,7 @@ export function SidebarPanel({
   config,
   projectId,
   workspace = "draft",
+  floorId,
   entities = {},
   title = "3D智家",
   pageId,
@@ -172,7 +174,7 @@ export function SidebarPanel({
                     widget={widget}
                     entityId={item.entityId}
                     entityIds={item.entityIds}
-                    bindingContext={{projectId,workspace,pageId:page.id,itemId:item.id}}
+                    bindingContext={{projectId,workspace,floorId,pageId:page.id,itemId:item.id}}
                     entities={entities}
                     theme={theme ?? resolveDaylight(entities).theme}
                   />
@@ -180,7 +182,7 @@ export function SidebarPanel({
               )
             );
           })}
-          {!page?.items.length && <p className="sb-empty">此页尚未放置控件</p>}
+          {!page?.items.length && <p className="sb-empty">{config.widgets.length ? "此页尚未放置控件" : "此楼层尚未设计侧边栏，可在开发中心添加控件"}</p>}
         </div>
       </div>
       <nav className="sb-navigation" aria-label="侧边栏导航">
@@ -209,6 +211,9 @@ export function SidebarPanel({
 }
 export function PublishedSidebar({
   projectId,
+  floors = [],
+  floorId,
+  onFloorChange,
   entities,
   title,
   refreshKey,
@@ -216,16 +221,19 @@ export function PublishedSidebar({
   onCollapsedChange,
   theme,
 }) {
-  const [config, setConfig] = React.useState(defaultSidebar);
+  const floorOptions = sidebarFloorOptions(floors);
+  const activeFloorId = floorOptions.some(f => f.id === floorId) ? floorId : floorOptions[0]?.id;
+  const initialConfig = () => activeFloorId && activeFloorId !== floors[0]?.id ? emptyFloorSidebar() : defaultSidebar();
+  const [config, setConfig] = React.useState(initialConfig);
   const [collapsed, setCollapsed] = React.useState(() => {try {return localStorage.getItem("ha3d.sidebar.collapsed") === "1";} catch {return false;}});
   React.useEffect(() => {onCollapsedChange?.(collapsed);}, [collapsed, onCollapsedChange]);
   const toggleCollapsed = (next = !collapsed) => {setCollapsed(next);try {localStorage.setItem("ha3d.sidebar.collapsed", next ? "1" : "0");} catch {}};
   const [error, setError] = React.useState("");
   React.useEffect(() => {
     let active = true;
-    setConfig(defaultSidebar());
+    setConfig(initialConfig());
     onWidthChange?.(380);
-    sidebarApi(projectId)
+    sidebarApi(projectId, undefined, undefined, activeFloorId)
       .then((value) => {
         if (active) {
           setConfig(value.published);
@@ -234,24 +242,25 @@ export function PublishedSidebar({
         }
       })
       .catch(() => {
-        if (active) setError("侧边栏配置暂时无法读取，正在显示默认天气");
+        if (active) setError("此楼层侧边栏暂时无法读取，请重试");
       });
     return () => {
       active = false;
     };
-  }, [projectId, refreshKey, onWidthChange]);
+  }, [projectId, activeFloorId, refreshKey, onWidthChange]);
   return (
     <aside
-      className={`sb-home-container ${collapsed ? "is-collapsed" : ""}`}
+      className={`sb-home-container ${floorOptions.length ? "has-floor-rail" : ""} ${collapsed ? "is-collapsed" : ""}`}
       style={{ "--sb-home-width": `${config.width}px` }}
     >
+      {!!floorOptions.length && <nav className="sb-floor-rail" aria-label="楼层选择"><div className="sb-floor-options">{[...floorOptions].reverse().map(floor => <button key={floor.id} aria-label={`切换楼层 ${floor.label} ${floor.name}`} aria-current={floor.id === activeFloorId ? "true" : undefined} title={floor.name} onClick={() => {if(floor.id !== activeFloorId)onFloorChange?.(floor.id);}}>{floor.label}</button>)}</div></nav>}
       {error && (
         <p role="status" className="sb-load-error">
           {error}
         </p>
       )}
       <div id="home-sidebar-panel" className="sb-home-panel">
-        <SidebarPanel config={config} projectId={projectId} workspace="published" entities={entities} title={title} theme={theme} collapsed={collapsed} onToggleCollapse={() => toggleCollapsed()} onPageChange={() => {if(collapsed)toggleCollapsed(false);}} />
+        <SidebarPanel key={activeFloorId} floorId={activeFloorId} config={config} projectId={projectId} workspace="published" entities={entities} title={title} theme={theme} collapsed={collapsed} onToggleCollapse={() => toggleCollapsed()} onPageChange={() => {if(collapsed)toggleCollapsed(false);}} />
       </div>
       {!collapsed && <a className="sb-skill-download" href="agent-skills/ha3d-sidebar-widget-design.zip" download>下载侧边栏控件设计 Skill</a>}
     </aside>
