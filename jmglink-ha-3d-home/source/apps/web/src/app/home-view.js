@@ -3006,6 +3006,7 @@ function Qn({
             wallMode: "full",
             wallThicknessScale: 0.56,
             presentation: !0,
+            cameraPreset: "top",
             quality: g,
             visualStyle: S,
             weather: U,

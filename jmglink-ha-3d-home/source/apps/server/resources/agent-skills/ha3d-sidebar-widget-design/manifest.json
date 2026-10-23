@@ -14,6 +14,7 @@
     "references/music-widget.js",
     "references/operations-widget.js",
     "references/songloft-source.js",
-    "references/widget-actions.js"
+    "references/widget-actions.js",
+    "references/room-widget.js"
   ]
 }

@@ -66,7 +66,7 @@ const number = (value, min, max) =>
     : fail("布局尺寸超出范围");
 function bindingIds(value) {
   if (value == null) return null;
-  if (!Array.isArray(value) || value.length > 100) fail("最多绑定 100 个实体");
+  if (!Array.isArray(value) || value.length > 200) fail("最多绑定 200 个实体");
   return [...new Set(value.map(id => text(id,255,"实体")))];
 }
 export function normalizeSidebar(raw) {

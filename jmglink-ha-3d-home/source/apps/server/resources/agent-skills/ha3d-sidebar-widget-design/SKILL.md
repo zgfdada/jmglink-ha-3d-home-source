@@ -20,3 +20,7 @@ description: 为 HA 3D Home 侧边栏创建或修改可导入的 HTML/CSS/JavaSc
 ## 通用交互资源
 
 动作字段与 SDK 用法见 [控件接口](references/widget-api.md)，字段校验见 [动作 schema](references/widget-actions.js)。交互样板可参考 [运维](references/operations-widget.js) 和 [音乐](references/music-widget.js)；音乐的完整可编辑 UI 源码在 [songloft-source.js](references/songloft-source.js)。样板中的服务声明属于前端控件配置，不是后端业务分支。读取实体更新时保留搜索、账户、歌词和浮层状态，不重新挂载整个控件。
+
+房间侧栏可参考 [房间控件](references/room-widget.js)：实体、原始模式选项与动作通过 settings 配置；一键开关等宽对称，窗帘左右对开且释放后提交，空调按真实能力展开详情。未集成房间禁用；不写入个人实体 ID。
+
+多房间使用 roomConfigurations，灯具绑定列表仅用于数量统计，不额外生成逐灯操作。遮光帘与纱帘分别配置，独立保存模拟动画状态；参数和策略信息从实际实体读取，模式动作保持原始目标和值。

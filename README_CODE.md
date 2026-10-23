@@ -638,3 +638,9 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 能耗示例采用 electricity-info-card v3.3.0（chjspp520）适配，详见 docs/sidebar-development.md；交互模式为 opaque-origin iframe，CSP 禁止网络与同源访问，图表库本地加载。
 
 运维与音乐扩展：`operations-widget.js` 按导入的 HA 条件实体展示耗材，`music-widget.js` 包含现有 Songloft 2.1.1 完整可编辑卡片代码；`SidebarServices.js` 统一校验已保存动作声明、HA 服务目录、参数及实际绑定范围，父窗口同时限制操作为当前绑定实体。个人 HA 规则只写入运行布局，不写入源码默认样板。
+
+房间侧栏样板见 `packages/schema/src/room-widget.js`：同一 HTML/CSS/JS 控件通过 roomConfigurations 切换客厅、餐厅、主卧、书房、次卧；不渲染逐灯操作，按房间配置总控/模式及双层窗帘，仍复用 SidebarServices 通用协议。
+
+相机轨道约束统一位于 `apps/web/src/domain/camera-orbit.js`：所有预设保持世界Y轴向上，垂直旋转不进入地板下方，水平旋转无角度限制。不要为俯视切换 camera.up；屏幕取景偏移的参考向量与相机实际up轴分开处理。测试使用真实Three.js OrbitControls验证全周绕转及俯视稳定性。
+
+俯视取景使用 alignedTopCameraPosition 同时平移相机与观察目标，避免侧栏导致目标横向偏移后近垂直相机朝向转约90度；回归测试验证屏幕X向右、平面纵轴向下，并覆盖不同取景偏移。

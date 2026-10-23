@@ -1,6 +1,6 @@
 export function normalizeWidgetActions(value = []) {
   const fail=message=>{throw Object.assign(new Error(message),{statusCode:400});};
-  if(!Array.isArray(value)||value.length>60)fail('每个控件最多配置 60 个动作');
+  if(!Array.isArray(value)||value.length>200)fail('每个控件最多配置 200 个动作');
   const ids=new Set();
   return value.map(action=>{
     if(!action || !/^[a-zA-Z0-9_-]{1,80}$/.test(action.id||'') || ids.has(action.id))fail('动作标识无效或重复');

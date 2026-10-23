@@ -1,4 +1,5 @@
 import { overlayRefitKey } from "../domain/camera-refit.js";
+import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition } from "../domain/camera-orbit.js";
 import DevicePanel from "../components/device-panel.jsx";
 import { boundPanelStates } from "../domain/device-panel.js";
 /**
@@ -11230,10 +11231,13 @@ function yi({
         .clone()
         .addScaledVector(N, -m.horizontalOffset * g)
         .addScaledVector(E, m.verticalOffset * g);
-    }, [h, a, e, x, c.height, k, m.horizontalOffset, m.verticalOffset]);
+    }, [h, a, e, x, c.height, k, m.horizontalOffset, m.verticalOffset]),
+    P = L.useMemo(() => e === "top"
+      ? new fe(...alignedTopCameraPosition(k.toArray(), h.toArray(), G.toArray()))
+      : k, [e, k, h, G]);
   return (
     L.useEffect(() => {
-      (a.up.set(0, e === "top" ? 0 : 1, e === "top" ? -1 : 0),
+      (a.up.fromArray(FLOOR_CAMERA_UP),
         a instanceof Tt &&
           ((a.fov = y
             ? e === "top"
@@ -11257,13 +11261,13 @@ function yi({
     re(() => {
       var O;
       if (!u.current) return;
-      (a.position.lerp(k, 0.11), a.lookAt(G));
+      (a.position.lerp(P, 0.11), a.lookAt(G));
       const C = l;
       (C != null &&
         C.target &&
         (C.target.lerp(G, 0.18), (O = C.update) == null || O.call(C)),
-        a.position.distanceTo(k) < 0.035
-          ? (a.position.copy(k), (u.current = !1))
+        a.position.distanceTo(P) < 0.035
+          ? (a.position.copy(P), (u.current = !1))
           : f());
     }),
     null
@@ -11846,7 +11850,7 @@ function _a({
           dampingFactor: 0.085,
           minDistance: 3,
           maxDistance: Math.max(26, M.distance * 3),
-          maxPolarAngle: Math.PI / 2.05,
+          ...FLOOR_ORBIT_LIMITS,
         }),
       ],
     },
