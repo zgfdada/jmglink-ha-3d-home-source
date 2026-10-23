@@ -794,3 +794,12 @@
 .sb-dev-floor-picker{display:flex;align-items:center;gap:8px;font-size:12px}.sb-dev-floor-picker select{min-width:110px;padding:7px;border:1px solid #cbd8ed;border-radius:8px;background:white;color:#243b56}
 @media(max-width:1100px) and (min-width:761px){.sb-home-container.has-floor-rail{left:92px;max-width:calc(100% - 108px)}}
 @media(max-width:760px){.sb-home-container.has-floor-rail{left:72px;width:calc(100% - 84px);max-width:calc(100% - 84px)}.sb-home-container.has-floor-rail.is-collapsed{width:62px}.sb-floor-rail{left:-60px;width:44px;border-radius:18px}.sb-floor-options{padding:8px 2px;gap:6px}.sb-floor-options button{font-size:17px}.sb-floor-options button[aria-current=true]{font-size:24px}.home-workspace.has-floor-selector .home-insight-panel.entity-selected{left:72px!important;right:12px!important;width:auto!important;max-width:calc(100% - 84px)!important}.sb-dev-floor-picker{flex-wrap:wrap}}
+
+/* Use the approved brighter floor-rail glass for both navigation shells. */
+.sb-home-container{--sb-shell-fill:linear-gradient(145deg,#e6f7ff30,#a9ccdc18);--sb-shell-line:#eef8ff88;--sb-shell-shadow:inset 0 1px #ffffff55,0 8px 30px #142b4320}
+.sb-home-container .sb-floor-rail,
+.sb-home-container .sb-home-panel .sb-panel,
+.theme-night .sb-home-container .sb-home-panel .sb-panel{
+ background:var(--sb-shell-fill);border-color:var(--sb-shell-line);box-shadow:var(--sb-shell-shadow);
+ backdrop-filter:blur(20px) saturate(135%);-webkit-backdrop-filter:blur(20px) saturate(135%);
+}
