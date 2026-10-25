@@ -649,3 +649,9 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 侧栏默认配置仅主页＋天气；可选能耗/运维/音乐模板不再自动注入。图片在宿主同源会话中通过 `widget-images.js` 读取并向隔离控件提供 data URL，HAOS 服务端代理保留 `/core` 前缀；见 `tests/widget-images.test.mjs` 和 `tests/sidebar-services.test.mjs`。
 
 移动端相机：`reachableOrbitPosition` 将初始取景距离约束到 OrbitControls 的 min/maxDistance，防止竖屏 fitAvailable 放大后的目标不可达而持续插值。`cancelFitOnOrbitStart` 在触摸、旋转、缩放开始时终止自动取景，并在卸载时移除监听。侧栏变化仍通过 `overlayRefitKey` 保持相机；移动侧栏由 top/bottom 拉伸，不保留 244px 固定高度。
+
+轮廓线：`domain/outline-settings.js` 固定默认值 10%，不读取旧浏览器偏好。OutlineEffect 更新缓存材质 uniform 并释放描边资源，不重新取景。
+
+完整实例迁移由 `routes/instanceBackup.js` 提供 `/api/instance-backup` GET/POST；格式为 `ha3d-instance-backup` v1，包含项目集合、当前项目、设备平台资源（含上传模型）、设备草稿/发布/测试记录、控件库和侧栏工作区。POST 必须明确 confirm=true、同源、JSON，最大 128MiB。校验项目与侧栏楼层引用后，保存 `data/instance-backups/before-import-*.json`；ProjectStore 使用 staging 目录切换，旧项目目录保留；失败尝试恢复前快照。不是跨文件系统断电原子事务，恢复失败需使用恢复前备份。连接凭据不在业务备份中。外部 URL 不下载嵌入。
+
+侧栏片段格式为 `ha3d-sidebar-widget-v1` / `ha3d-sidebar-page-v1`，config 为标准侧栏结构；导入时重映射控件和页面 ID，页面包含引用控件。整层格式仍为 `ha3d-sidebar-v1`。回归测试：`tests/instance-backup.test.mjs`、`tests/outline-settings.test.mjs`。

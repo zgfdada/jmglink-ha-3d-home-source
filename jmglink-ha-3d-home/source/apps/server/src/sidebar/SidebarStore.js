@@ -64,6 +64,14 @@ export class SidebarStore {
       await rename(`${this.file}.tmp`, this.file);
     }
   }
+  replaceState(state) {
+    const normalized=Object.fromEntries(Object.entries(state).map(([key,e])=>[key,{...e,revision:(Number(e.revision)||0)+1,draft:normalizeSidebar(e.draft),published:normalizeSidebar(e.published)}]));
+    const task=this.queue.catch(()=>{}).then(async()=>{
+      await writeFile(`${this.file}.tmp`,JSON.stringify(normalized,null,2),'utf8');
+      try{await copyFile(this.file,`${this.file}.bak`);}catch(e){if(e.code!=="ENOENT")throw e;}
+      await rename(`${this.file}.tmp`,this.file);this.state=normalized;this.floorOwners.clear();
+    });this.queue=task;return task;
+  }
   update(project, payload, publish = false) {
     const task = this.queue
       .catch(() => {})

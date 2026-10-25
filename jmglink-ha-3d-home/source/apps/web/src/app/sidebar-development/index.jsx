@@ -1,3 +1,6 @@
+import {reorderSidebarPages} from "../../../../../packages/schema/src/sidebar-order.js";
+import CodeEditor from "./code-editor.jsx";
+import { exportSidebarPart, importSidebarPart } from "../../../../../packages/schema/src/sidebar-transfer.js";
 import { sidebarFloorOptions } from "../../../../../packages/schema/src/sidebar-floors.js";
 import { ActionEditor } from "./action-editor.jsx";
 import { resolveSidebarEntities, sidebarEntityName } from "../../../../../packages/schema/src/sidebar-bindings.js";
@@ -51,6 +54,16 @@ function EntityPicker({entities, widget, override, onChange, emptyLabel}) {
   </div>;
 }
 
+function EntityProperties({entity}) {
+  const [query,setQuery]=React.useState(''),[mode,setMode]=React.useState('tree'),[copied,setCopied]=React.useState('');
+  const snapshot=entity?entitySnapshot(entity):null;
+  const rows=[];
+  function walk(value,path=''){if(value && typeof value==='object'){for(const [key,item] of Object.entries(value))walk(item,path?`${path}.${key}`:key);}else rows.push({path,value:String(value??'null')});}
+  if(snapshot)walk(snapshot);
+  const term=query.trim().toLocaleLowerCase(),matches=rows.filter(row=>`${row.path} ${row.value}`.toLocaleLowerCase().includes(term));
+  return <section className="sb-properties"><h2>实体属性</h2><input type="search" aria-label="搜索实体属性" placeholder="搜索属性名称、路径或值" value={query} onChange={e=>setQuery(e.target.value)}/><div className="sb-properties-tools"><button className={mode==='tree'?'active':''} onClick={()=>setMode('tree')}>属性索引</button><button className={mode==='json'?'active':''} onClick={()=>setMode('json')}>JSON</button><small>{matches.length} 项</small></div>{!snapshot?<p>请选择实体</p>:mode==='json'?<pre>{JSON.stringify(term?Object.fromEntries(matches.map(r=>[r.path,r.value])):snapshot,null,2)}</pre>:<div className="sb-property-list">{matches.map(row=><div className="sb-property-row" key={row.path}><code title={row.path}>{row.path}</code><span>{row.value}</span><button aria-label={`复制路径 ${row.path}`} onClick={async()=>{try{await navigator.clipboard.writeText(row.path);setCopied(row.path);}catch{setCopied('复制失败，请手动选择路径');}}}>复制</button></div>)}{!matches.length&&<p>没有匹配的属性</p>}</div>}<small role="status">{copied&&`已复制：${copied}`}</small></section>;
+}
+
 export default function SidebarDevelopmentCenter({
   project,
   initialFloorId,
@@ -60,16 +73,30 @@ export default function SidebarDevelopmentCenter({
   const floors = sidebarFloorOptions(project.floors);
   const [floorId,setFloorId] = React.useState(project.floors?.some(floor=>floor.id===initialFloorId) ? initialFloorId : project.floors?.[0]?.id);
   const [workspace, setWorkspace] = React.useState(null),
+    [deleteTarget,setDeleteTarget]=React.useState(null),
     [draft, setDraft] = React.useState(defaultSidebar),
     [tab, setTab] = React.useState("widgets"),
     [widgetId, setWidgetId] = React.useState("weather"),
     [pageId, setPageId] = React.useState("home"),
     [itemId, setItemId] = React.useState(null),
+    [revealItemId,setRevealItemId]=React.useState(null),
     [sourceTab, setSourceTab] = React.useState("html"),
     [busy, setBusy] = React.useState(false),
     [message, setMessage] = React.useState(""),
     [preview, setPreview] = React.useState(false),
-    [search, setSearch] = React.useState("");
+    [search, setSearch] = React.useState(""),
+    [widgetSection,setWidgetSection]=React.useState("settings"),
+    [widgetSearch,setWidgetSearch]=React.useState(""),
+    [previewTheme,setPreviewTheme]=React.useState("day"),
+    [previewDevice,setPreviewDevice]=React.useState("desktop"),
+    [inspectorTab,setInspectorTab]=React.useState("widget"),
+    [pageSearch,setPageSearch]=React.useState(""),
+    [addSearch,setAddSearch]=React.useState(""),
+    [draggedNav,setDraggedNav]=React.useState(null),
+    [previewWidth,setPreviewWidth]=React.useState(380);
+  const importKind = React.useRef("widget");
+  const chooseImport=kind=>{importKind.current=kind;file.current.click();};
+  const editorActions = React.useRef(null);
   const saved = React.useRef(""),
     file = React.useRef(null),
     dialog = React.useRef(null);
@@ -180,7 +207,7 @@ export default function SidebarDevelopmentCenter({
         .find((p) => p.id === page.id)
         .items.push({ id: next, widgetId: id, entityId: "", height: 280 }),
     );
-    setItemId(next);
+    setItemId(next);setInspectorTab('widget');setPreview(false);setRevealItemId(next);
   };
   const moveItem = (direction) =>
     change((d) => {
@@ -190,16 +217,17 @@ export default function SidebarDevelopmentCenter({
       if (i >= 0 && j >= 0 && j < items.length)
         [items[i], items[j]] = [items[j], items[i]];
     });
-  const exportFile = () => {
+  const exportFile = (kind="sidebar", id) => {
     const url = URL.createObjectURL(
-      new Blob([JSON.stringify(draft, null, 2)], { type: "application/json" }),
+      new Blob([JSON.stringify(exportSidebarPart(draft, kind, id), null, 2)], { type: "application/json" }),
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = "3dhome-sidebar.json";
+    a.download = `3dhome-${kind}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  const TransferMenu = tab === "widgets" ? "details" : "div";
   return (
     <div
       ref={dialog}
@@ -207,7 +235,7 @@ export default function SidebarDevelopmentCenter({
       className="sb-dev-overlay"
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (e.key === "Escape") close();
+        if (e.key === "Escape") { if(deleteTarget)setDeleteTarget(null);else close(); }
         if (e.key === "Tab") {
           const fields = [
             ...dialog.current.querySelectorAll(
@@ -229,13 +257,10 @@ export default function SidebarDevelopmentCenter({
       aria-modal="true"
       aria-label="侧边栏开发中心"
     >
-      <div className="sb-dev">
+      {deleteTarget&&<div className="sb-delete-backdrop" onClick={event=>{event.stopPropagation();if(event.target===event.currentTarget)setDeleteTarget(null);}}><section role="alertdialog" aria-modal="true" aria-labelledby="sb-delete-title" aria-describedby="sb-delete-description" className="sb-delete-dialog"><h2 id="sb-delete-title">{deleteTarget.type==='widget'?'删除控件':'移除页面实例'}“{deleteTarget.name}”？</h2><p id="sb-delete-description">{deleteTarget.type==='widget'?'此控件将从控件库中删除。保存或发布后生效。':'仅移除当前页面的这个实例，控件库和其他页面实例会保留。保存或发布后生效。'}</p><div><button autoFocus onClick={()=>setDeleteTarget(null)}>取消</button><button className="sb-danger-button" onClick={()=>{const target=deleteTarget;if(target.type==='widget'){if(draft.pages.some(p=>p.items.some(i=>i.widgetId===target.id))){setMessage('该控件仍被页面引用，请先移除引用');setDeleteTarget(null);return;}change(d=>d.widgets=d.widgets.filter(w=>w.id!==target.id));setWidgetId(draft.widgets.find(w=>w.id!==target.id)?.id);}else{change(d=>{const p=d.pages.find(p=>p.id===target.pageId);if(p)p.items=p.items.filter(i=>i.id!==target.id);});setItemId(null);}setDeleteTarget(null);}}>确认{deleteTarget.type==='widget'?'删除控件':'移除实例'}</button></div></section></div>}
+      <div className={`sb-dev ${tab === "widgets" ? "sb-widget-redesign" : "sb-page-redesign"}`}>
         <header className="sb-dev-header">
-          <div>
-            <small>开发中心 / 侧边栏</small>
-            <h1>侧边栏开发中心</h1>
-          </div>
-          <label className="sb-dev-floor-picker">楼层<select aria-label="设计楼层" value={floorId || ""} disabled={busy} onChange={e=>{if(dirty && !window.confirm("当前楼层有未保存修改，是否放弃并切换楼层？"))return;setWorkspace(null);setFloorId(e.target.value);}}>{floors.map(floor=><option key={floor.id} value={floor.id}>{floor.label} · {floor.name}</option>)}</select></label>
+          <div className="sb-editor-brand"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1686fa" strokeWidth="2"><path d="M3 10 12 2l9 8v11h-6v-7H9v7H3Z"/></svg><div><strong>HA 3DHome</strong><small>侧边栏开发中心</small></div></div>
           <nav aria-label="开发页面">
             <button
               className={tab === "widgets" ? "active" : ""}
@@ -251,8 +276,8 @@ export default function SidebarDevelopmentCenter({
             </button>
           </nav>
           <div className="sb-dev-actions">
-            <span>{dirty ? "未保存" : "已同步"}</span>
-            <button
+            <span className="sb-save-state">{dirty ? "未保存" : "已保存"}</span>
+            <button className="sb-reload-button"
               onClick={() => {
                 if (!dirty || window.confirm("放弃本地修改并加载服务端草稿？"))
                   load();
@@ -274,7 +299,7 @@ export default function SidebarDevelopmentCenter({
             <button onClick={close}>返回主页</button>
           </div>
         </header>
-        <div className="sb-dev-notice" role="status">
+        <div className={`sb-dev-notice ${!message ? "sb-notice-quiet" : ""}`} role="status">
           {message ||
             (busy
               ? "正在加载…"
@@ -286,6 +311,7 @@ export default function SidebarDevelopmentCenter({
           </div>
         ) : (
           <div className="sb-dev-body" inert={busy ? "" : undefined}>
+            {tab==='pages'&&<nav className="sb-design-floor-rail" aria-label="设计楼层">{[...floors].reverse().map(floor=><button key={floor.id} title={floor.name} aria-label={`设计楼层 ${floor.label} ${floor.name}`} aria-current={floor.id===floorId?'page':undefined} className={floor.id===floorId?'active':''} onClick={()=>{if(dirty&&!window.confirm('当前楼层有未保存修改，放弃并切换楼层？'))return;setWorkspace(null);setFloorId(floor.id);}}>{floor.label}</button>)}</nav>}
             <aside className="sb-dev-library">
               {tab === "widgets" ? (
                 <>
@@ -301,7 +327,8 @@ export default function SidebarDevelopmentCenter({
                       ＋ 新建
                     </button>
                   </h2>
-                  {draft.widgets.map((w) => (
+                  <input type="search" aria-label="搜索控件" placeholder="搜索控件" value={widgetSearch} onChange={e=>setWidgetSearch(e.target.value)}/>
+                  {draft.widgets.filter(w=>w.name.toLocaleLowerCase().includes(widgetSearch.toLocaleLowerCase())).map((w) => (
                     <button
                       className={`sb-library-row ${widget?.id === w.id ? "active" : ""}`}
                       key={w.id}
@@ -309,7 +336,7 @@ export default function SidebarDevelopmentCenter({
                     >
                       <strong>{w.name}</strong>
                       <small>
-                        {"HTML / CSS / JavaScript"}
+                        {w.scriptMode === "dom" ? "交互控件" : "数据控件"}
                       </small>
                     </button>
                   ))}
@@ -334,34 +361,42 @@ export default function SidebarDevelopmentCenter({
                       ＋
                     </button>
                   </h2>
-                  {draft.pages.map((p) => (
+                  <input type="search" aria-label="搜索导航页面" placeholder="搜索页面" value={pageSearch} onChange={e=>setPageSearch(e.target.value)}/>
+                  {draft.pages.filter(p=>p.name.includes(pageSearch)).map((p) => (
                     <button
                       key={p.id}
+                      draggable
+                      onDragStart={event=>{setDraggedNav(p.id);event.dataTransfer.setData('application/ha3d-navigation',p.id);}}
+                      onDragOver={event=>{if(event.dataTransfer.types.includes('application/ha3d-navigation'))event.preventDefault();}}
+                      onDrop={event=>{event.preventDefault();if(draggedNav)change(d=>d.pages=reorderSidebarPages(d.pages,draggedNav,p.id));setDraggedNav(null);}}
+                      onDragEnd={()=>setDraggedNav(null)}
                       className={`sb-library-row ${page.id === p.id ? "active" : ""}`}
                       onClick={() => {
                         setPageId(p.id);
                         setItemId(null);
                       }}
                     >
-                      {p.icon} {p.name}
-                      <small>{p.items.length} 个控件</small>
+                      <span className="sb-page-drag-handle" aria-hidden="true">⠿</span><strong>{p.name}</strong><small className="sb-page-count">{p.items.length}</small>
                     </button>
                   ))}
-                  <h2>添加控件</h2>
-                  {draft.widgets.map((w) => (
-                    <button
-                      className="sb-library-row"
-                      key={w.id}
-                      onClick={() => addItem(w.id)}
-                    >
-                      ＋ {w.name}
-                    </button>
-                  ))}
+                  <h2>添加控件</h2><input type="search" aria-label="搜索可添加控件" placeholder="搜索控件" value={addSearch} onChange={e=>setAddSearch(e.target.value)}/>
+                  {draft.widgets.filter(w=>w.name.includes(addSearch)).map(w=><div className="sb-add-widget-row" key={w.id}><span>{w.name}</span><button aria-label={`添加控件 ${w.name}`} title={`添加 ${w.name} 到当前页面`} onClick={()=>addItem(w.id)}>＋</button></div>)}
                 </>
               )}
               <div className="sb-library-footer">
-                <button onClick={exportFile}>导出布局</button>
-                <button onClick={() => file.current.click()}>导入布局</button>
+                <TransferMenu className="sb-transfer-menu">{tab==='widgets'&&<summary>导入 / 导出</summary>}
+                {tab==='widgets'?<>
+                  <button onClick={()=>chooseImport('widget')}>导入控件</button>
+                  <button disabled={!selectedWidget} onClick={()=>exportFile('widget',selectedWidget.id)}>导出当前控件</button>
+                  <button onClick={()=>chooseImport('library')}>导入控件库</button>
+                  <button onClick={()=>exportFile('library')}>导出控件库</button>
+                </>:<>
+                  <button onClick={()=>chooseImport('page')}>导入导航页</button>
+                  <button disabled={!page} onClick={()=>exportFile('page',page.id)}>导出当前导航页</button>
+                  <button onClick={()=>chooseImport('sidebar')}>导入整层侧栏</button>
+                  <button onClick={()=>exportFile()}>导出整层侧栏</button>
+                </>}
+                </TransferMenu>
                 <input
                   ref={file}
                   type="file"
@@ -369,9 +404,8 @@ export default function SidebarDevelopmentCenter({
                   hidden
                   onChange={async (e) => {
                     try {
-                      const value = normalizeSidebar(
-                        JSON.parse(await e.target.files[0].text()),
-                      );
+                      const selected=e.target.files?.[0]; if(!selected)return;
+                      const value = importSidebarPart(draft, JSON.parse(await selected.text()), importKind.current);
                       setDraft(value);
                       setMessage("已导入草稿，请检查并保存或发布");
                     } catch (err) {
@@ -402,7 +436,7 @@ export default function SidebarDevelopmentCenter({
                         >
                           复制
                         </button>
-                        <button
+                        <button className="sb-danger-button"
                           onClick={() => {
                             if (
                               draft.pages.some((p) =>
@@ -414,13 +448,7 @@ export default function SidebarDevelopmentCenter({
                               );
                               return;
                             }
-                            change(
-                              (d) =>
-                                (d.widgets = d.widgets.filter(
-                                  (w) => w.id !== widget.id,
-                                )),
-                            );
-                            setWidgetId("weather");
+                            setDeleteTarget({type:'widget',id:widget.id,name:widget.name});
                           }}
                         >
                           删除
@@ -428,8 +456,11 @@ export default function SidebarDevelopmentCenter({
                       </div>
                     )}
                   </div>
+                  {widget && <nav className="sb-widget-sections" aria-label="控件配置页面"><button className={widgetSection==='settings'?'active':''} onClick={()=>setWidgetSection('settings')}>实体与配置</button><button className={widgetSection==='code'?'active':''} onClick={()=>setWidgetSection('code')}>代码编辑</button></nav>}
                   {widget && (
                     <>
+                    {widgetSection === 'settings' && <div className="sb-widget-settings">
+                    <h3>基本信息</h3><div className="sb-settings-grid">
                       <label>
                         控件名称
                         <input
@@ -438,16 +469,13 @@ export default function SidebarDevelopmentCenter({
                           onChange={(e) => patchWidget("name", e.target.value)}
                         />
                       </label>
-                      <label>
-                        绑定实体
-                        {entitySelect()}
-                      </label>
+                      <label>脚本模式<select value={widget.scriptMode || "transform"} onChange={e=>patchWidget("scriptMode",e.target.value)}><option value="transform">数据转换（Worker）</option><option value="dom">交互界面（隔离沙箱）</option></select><small>{widget.scriptMode==='dom'?'通过已声明动作进行交互':'在 Worker 中处理数据，无设备控制权限。'}</small></label></div>
+                      <h3>默认实体</h3>{entitySelect()}
                       {widget.entityAttribute && <fieldset className="sb-account-names"><legend>实体显示名称</legend>{Object.values(entities).filter(e=>Object.hasOwn(e.attributes || {},widget.entityAttribute)).map((entity,i)=><label key={entity.entityId}>{entity.name || entity.entityId}<input value={widget.accountNames?.[entity.entityId] || ''} placeholder={`用电账户 ${i+1}`} onChange={event=>patchWidget('accountNames',{...widget.accountNames,[entity.entityId]:event.target.value})} /></label>)}</fieldset>}
-                      <label>脚本模式<select value={widget.scriptMode || "transform"} onChange={e=>patchWidget("scriptMode",e.target.value)}><option value="transform">数据转换（Worker）</option><option value="dom">交互界面（隔离沙箱）</option></select></label>
                       {widget.scriptMode === "dom" && <ActionEditor widget={widget} entities={effectiveBinding.entities} onChange={actions=>patchWidget("actions",actions)} onInsert={html=>patchWidget("html",widget.html+"\n"+html)}/>}
-                      <label>自动选择要求的属性<input value={widget.entityAttribute || ""} onChange={e=>patchWidget("entityAttribute",e.target.value)} /></label>
-                      <label>未绑定时自动选择实体域<input value={widget.entityDomain || ""} placeholder="例如 weather；留空不自动选择" onChange={e => patchWidget("entityDomain", e.target.value)} /></label>
-                      {(
+                      <p className="sb-configuration-note">修改保存在草稿中，发布后主页生效。</p>
+                    </div>}
+                      {widgetSection === 'code' && (
                         <>
                           <div className="sb-code-tabs">
                             {["html", "css", "js"].map((key) => (
@@ -459,17 +487,9 @@ export default function SidebarDevelopmentCenter({
                                 {key.toUpperCase()}
                               </button>
                             ))}
+                            <button className="sb-format-code" onClick={()=>editorActions.current?.()}>格式化代码</button>
                           </div>
-                          <textarea
-                            className="sb-code-editor"
-                            spellCheck="false"
-                            aria-label={`${sourceTab.toUpperCase()} 编辑器`}
-                            value={widget[sourceTab]}
-                            maxLength={sourceTab === "js" ? 1000000 : 24000}
-                            onChange={(e) =>
-                              patchWidget(sourceTab, e.target.value)
-                            }
-                          />
+                          <CodeEditor formatRef={editorActions} key={widget.id} language={sourceTab} value={widget[sourceTab]} maxLength={sourceTab==='js'?1000000:24000} onChange={value=>patchWidget(sourceTab,value)}/>
                           <p className="sb-muted">
                             {widget.scriptMode === "dom" ? '交互模式：HTML/CSS/JS 绘制界面，ha SDK 读取绑定状态并调用已声明动作。保存草稿后可测试，发布后主页生效。' : '数据模式：HTML 使用 {{state}}、{{attributes.temperature}}；JS 返回模板数据，Worker 限时 1 秒，无设备控制权限。'}
                           </p>
@@ -480,37 +500,26 @@ export default function SidebarDevelopmentCenter({
                 </section>
                 <aside className="sb-dev-inspector">
                   <h2>实时预览</h2>
-                  <div className="sb-widget-live-preview">
-                    {widget && (
-                      <WidgetRenderer widget={widget} entities={entities} bindingContext={{projectId:project.id,floorId,workspace:"draft"}} />
-                    )}
+                  <div className="sb-preview-toolbar"><div className="sb-preview-theme-buttons">{[['day','☀','白天'],['dusk','🌤','黄昏'],['night','☾','夜间']].map(([value,icon,label])=><button key={value} aria-pressed={previewTheme===value} className={previewTheme===value?'active':''} onClick={()=>setPreviewTheme(value)}><span aria-hidden="true">{icon}</span>{label}</button>)}</div><div className="sb-preview-device-buttons">{[['desktop','▱','桌面'],['mobile','▯','手机']].map(([value,icon,label])=><button key={value} aria-pressed={previewDevice===value} className={previewDevice===value?'active':''} onClick={()=>setPreviewDevice(value)}><span aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">{value==='desktop'?<><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M12 16v5M7 21h10"/></>:<><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 19h4"/></>}</svg></span>{label}</button>)}</div></div>
+                  <div className={`sb-widget-live-preview sb-preview-${previewTheme} sb-preview-${previewDevice}`}>
+                    {widget && <WidgetRenderer widget={widget} entities={entities} bindingContext={{projectId:project.id,floorId,workspace:"draft"}} theme={previewTheme==='day'?'day':'night'} />}
                   </div>
-                  <h2>实体属性</h2>
-                  <pre>
-                    {selectedEntity
-                      ? JSON.stringify(entitySnapshot(selectedEntity), null, 2)
-                      : "请选择实体。内置天气未绑定时自动查找天气实体。"}
-                  </pre>
+                  <EntityProperties key={widget?.id} entity={selectedEntity}/>
                 </aside>
               </>
             ) : (
               <>
                 <section className="sb-layout-area">
-                  <div className="sb-section-heading">
-                    <h2>页面组合设计</h2>
-                    <button onClick={() => setPreview(!preview)}>
-                      {preview ? "返回设计" : "交互预览"}
-                    </button>
-                  </div>
-                  <p className="sb-muted">
-                    内容从上到下完整排列；拖动控件调整顺序，选择后在右侧绑定实体。
-                  </p>
-                  <div className="sb-layout-canvas">
+                  <div className="sb-section-heading"><div><h2>{page.name}</h2><small>{page.items.length} 个控件</small></div></div>
+                  <div className="sb-layout-toolbar"><div><button className={!preview?'active':''} onClick={()=>setPreview(false)}>编辑</button><button className={preview?'active':''} onClick={()=>setPreview(true)}>交互预览</button></div><label>预览宽度<select value={previewWidth} onChange={e=>setPreviewWidth(Number(e.target.value))}>{[280,320,380,480,560].map(width=><option key={width} value={width}>{width}px</option>)}</select></label><div className="sb-layout-device"><button aria-label="桌面预览" className={previewDevice==='desktop'?'active':''} onClick={()=>setPreviewDevice('desktop')}>▱ 桌面</button><button aria-label="手机预览" className={previewDevice==='mobile'?'active':''} onClick={()=>setPreviewDevice('mobile')}>▯ 手机</button></div><div className="sb-layout-themes">{[['day','☀ 白天'],['dusk','☀ 黄昏'],['night','☾ 夜间']].map(([value,label])=><button key={value} className={previewTheme===value?'active':''} onClick={()=>setPreviewTheme(value)}>{label}</button>)}</div></div>
+                  <div className={`sb-layout-canvas sb-canvas-${previewTheme}`}>
                     <SidebarPanel
                       projectId={project.id}
                       floorId={floorId}
                       workspace="draft"
-                      config={draft}
+                      config={{...draft,width:previewDevice==='mobile'?280:previewWidth}}
+                      theme={previewTheme==='day'?'day':'night'}
+                      onReorderPages={(from,to)=>change(d=>d.pages=reorderSidebarPages(d.pages,from,to))}
                       entities={entities}
                       title={project.name}
                       pageId={page.id}
@@ -520,8 +529,9 @@ export default function SidebarDevelopmentCenter({
                       }}
                       designer={!preview}
                       selectedItemId={preview ? null : itemId}
+                      revealItemId={revealItemId}
                       onSelectItem={(id, dragged) => {
-                        setItemId(id);
+                        setItemId(id);setInspectorTab('widget');
                         if (dragged && dragged !== id)
                           change((d) => {
                             const items = d.pages.find(
@@ -539,7 +549,10 @@ export default function SidebarDevelopmentCenter({
                   </div>
                 </section>
                 <aside className="sb-dev-inspector">
-                  <h2>侧边栏与导航</h2>
+                  <div className="sb-inspector-heading"><h2>{item ? draft.widgets.find(w=>w.id===item.widgetId)?.name : '选中控件'}</h2>{item&&<button onClick={()=>{setWidgetId(item.widgetId);setWidgetSection('code');setTab('widgets');}}>编辑控件代码</button>}</div>
+                  <nav className="sb-inspector-tabs"><button className={inspectorTab==='widget'?'active':''} onClick={()=>setInspectorTab('widget')}>控件设置</button><button className={inspectorTab==='page'?'active':''} onClick={()=>setInspectorTab('page')}>页面设置</button></nav>
+                  {inspectorTab==='page'&&<div>
+                  <h3>侧边栏与导航</h3>
                   <label>
                     内容区总宽度 · {draft.width}px
                     <input
@@ -623,51 +636,30 @@ export default function SidebarDevelopmentCenter({
                       删除页面
                     </button>
                   </div>
-                  <h2>选中控件</h2>
-                  {item ? (
+                  </div>}
+                  {inspectorTab==='widget'&&(item ? (
                     <>
                       <label>
                         绑定实体（覆盖控件默认值）
                         {entitySelect()}
                       </label>
-                      <label>
-                        高度 · {item.height}px
-                        <input
-                          type="range"
-                          min="100"
-                          max="1000"
-                          step="10"
-                          value={item.height}
-                          onChange={(e) =>
-                            patchItem("height", Number(e.target.value))
-                          }
-                        />
-                      </label>
+                      <h3>显示与布局</h3><label>内容宽度<select value={draft.width} onChange={event=>change(d=>d.width=Number(event.target.value))}>{[280,320,380,480,560].map(width=><option key={width} value={width}>{width}px</option>)}</select></label><p className="sb-muted">高度随内容完整展开</p>
+                      <h3>可见性</h3><label className="sb-visibility-toggle">在侧边栏中显示<input type="checkbox" checked={!item.hidden} onChange={event=>patchItem('hidden',!event.target.checked)}/></label>
                       <div className="sb-button-row">
                         <button onClick={() => moveItem(-1)}>上移</button>
                         <button onClick={() => moveItem(1)}>下移</button>
-                        <button
+                        <button className="sb-danger-button"
                           onClick={() => {
-                            change((d) => {
-                              const p = d.pages.find((p) => p.id === page.id);
-                              p.items = p.items.filter((i) => i.id !== item.id);
-                            });
-                            setItemId(null);
+                            setDeleteTarget({type:'instance',id:item.id,pageId:page.id,name:selectedWidget?.name || '此控件'});
                           }}
                         >
-                          移除
+                          移除实例
                         </button>
                       </div>
                     </>
                   ) : (
                     <p className="sb-muted">直接点击画布中的控件进行配置。</p>
-                  )}
-                  <h2>实体属性</h2>
-                  <pre>
-                    {selectedEntity
-                      ? JSON.stringify(entitySnapshot(selectedEntity), null, 2)
-                      : "未选中实体"}
-                  </pre>
+                  ))}
                 </aside>
               </>
             )}

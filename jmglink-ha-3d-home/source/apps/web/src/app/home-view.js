@@ -1,3 +1,4 @@
+import InstanceTransfer from "./instance-transfer.jsx";
 import { resolveDaylight } from "../../../../packages/schema/src/daylight.js";
 import { PublishedSidebar } from "./sidebar-development/renderer.jsx";
 /**
@@ -2633,6 +2634,8 @@ function Qn({
   sceneResumeKey,
 }) {
   var $t;
+  const [developmentMenuOpen, setDevelopmentMenuOpen] = l.useState(false);
+  const [transferOpen, setTransferOpen] = l.useState(false);
   const [sidebarWidth, setSidebarWidth] = l.useState(380);
   const [sidebarCollapsed, setSidebarCollapsed] = l.useState(false);
   const [manualLight, setManualLight] = l.useState(null);
@@ -3064,7 +3067,7 @@ function Qn({
             }),
           A && e.jsx(En, { users: Ns }),
           mt && e.jsx(On, { controls: ye, entityCount: _e, onChange: ds }),
-          e.jsxs("div", {className: "home-action-bar", children: [e.jsxs("div", {
+          e.jsxs("div", {className: "home-action-bar", children: [(ee || lightSettingsOpen) && e.jsx("div", {className:"home-tools-backdrop", onPointerDown:event=>event.stopPropagation(), onClick:()=>{I(false);setLightSettingsOpen(false);}}), e.jsxs("div", {
             className: `home-tools ${ee ? "tools-open" : ""}`,
             "aria-label": "页面工具",
             children: [
@@ -3108,19 +3111,13 @@ function Qn({
                       e.jsx("span", { children: Re.label }),
                     ],
                   }),
-                  e.jsxs("button", {
-                    className: "home-tools-item",
-                    onClick: () => {
-                      (I(!1), c == null || c());
-                    },
-                    title: "进入户型编辑",
-                    "aria-label": "进入户型编辑",
-                    role: "menuitem",
-                    children: [
-                      e.jsx(Us, { size: 17 }),
-                      e.jsx("span", { children: "编辑" }),
-                    ],
-                  }),
+                  e.jsx("button", {className:"home-tools-item",role:"menuitem","aria-expanded":developmentMenuOpen,onClick:()=>setDevelopmentMenuOpen(v=>!v),children:developmentMenuOpen?"开发与编辑 ▴":"开发与编辑 ▾"}),
+                  developmentMenuOpen && e.jsxs("div", {className:"home-development-submenu",children:[
+                    e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);c?.();},children:"房间布局编辑"}),
+                    e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);nextCenterOpen?.();},children:"设备开发中心"}),
+                    e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);onOpenSidebarDevelopmentCenter?.($);},children:"侧边栏开发中心"})
+                  ]}),
+                  e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setTransferOpen(true);},children:"导入导出"}),
                   Xe &&
                     a !== "loading" &&
                     e.jsxs("button", {
@@ -3136,26 +3133,11 @@ function Qn({
                         e.jsx("span", { children: "连接" }),
                       ],
                     }),
-                  e.jsxs("button", {
-                    className:
-                      "home-tools-item home-development-entry device-platform-action device-development-action",
-                    onClick: () => {
-                      (I(!1), nextCenterOpen == null || nextCenterOpen());
-                    },
-                    title: "打开设备开发中心",
-                    "aria-label": "打开设备开发中心",
-                    role: "menuitem",
-                    children: [
-                      e.jsx(Us, { size: 17 }),
-                      e.jsx("span", { children: "设备开发中心" }),
-                    ],
-                  }),
-                  e.jsxs("button", {className: "home-tools-item home-development-entry", role: "menuitem", "aria-label": "打开侧边栏开发中心", onClick: () => {I(false);onOpenSidebarDevelopmentCenter?.($);}, children: [e.jsx(Us, {size: 17}),e.jsx("span", {children: "侧边栏开发中心"})]}),
                 ],
               }),
             ],
-          }), lightSettingsOpen && e.jsxs("section", {className: "home-light-settings", role: "dialog", "aria-label": "环境光调节", children: [
-            e.jsxs("header", {children: [e.jsx("strong", {children: manualLight === null ? "环境光 · 自动" : "环境光 · 手动"}), e.jsx("button", {"aria-label": "关闭环境光调节", onClick: () => setLightSettingsOpen(false), children: "×"})]}),
+          }), transferOpen && e.jsx(InstanceTransfer,{onClose:()=>setTransferOpen(false)}), lightSettingsOpen && e.jsxs("section", {className: "home-light-settings", role: "dialog", "aria-label": "环境光调节", children: [
+            e.jsxs("header", {children: [e.jsx("strong", {children: manualLight === null ? "环境光 · 自动" : "环境光 · 手动"})]}),
             e.jsxs("label", {children: [`环境光强度 · ${Math.round(lightLevel * 100)}%`, e.jsx("input", {type: "range", min: 0, max: 100, step: 1, "aria-label": "环境光强度", value: Math.round(lightLevel * 100), onChange: event => setManualLight(Number(event.target.value) / 100)})]}),
             e.jsx("div", {className: "light-presets", children: [["夜间", 0], ["黄昏", 0.35], ["白天", 1]].map(([name,value]) => e.jsx("button", {onClick: () => setManualLight(value), children: name}, name))}),
             e.jsx("button", {className: "auto-light", onClick: () => setManualLight(null), children: "恢复自动环境光"}),

@@ -1,6 +1,6 @@
 {
   "name": "@ha3d/recovered-web",
-  "version": "0.1.5-custom.28",
+  "version": "0.1.5-custom.29",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,6 +11,16 @@
     "vite": "^7.1.0"
   },
   "dependencies": {
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "acorn": "^8.8.2",
+    "codemirror": "^6.0.2",
     "three": "^0.186.0"
   }
 }

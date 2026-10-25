@@ -1,3 +1,4 @@
+import { DEFAULT_OUTLINE_SCALE, outlineThickness, updateOutlineThickness } from "../domain/outline-settings.js";
 import { overlayRefitKey } from "../domain/camera-refit.js";
 import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
 import DevicePanel from "../components/device-panel.jsx";
@@ -1755,6 +1756,8 @@ class Lo {
           : ((c[M].used = !1), (c[M].count = 0));
       }
     }
+    this.setThickness = (value) => updateOutlineThickness(h, c, value);
+    this.dispose = () => { for (const entry of Object.values(c)) entry.material.dispose(); };
     ((this.render = function (d, g) {
       if (this.enabled === !1) {
         s.render(d, g);
@@ -11276,7 +11279,7 @@ function yi({
     null
   );
 }
-function ji({ enabled: e }) {
+function ji({ enabled: e, scale = DEFAULT_OUTLINE_SCALE }) {
   const { gl: s, scene: r, camera: o, size: n } = tt(),
     i = L.useMemo(
       () =>
@@ -11284,10 +11287,13 @@ function ji({ enabled: e }) {
           defaultAlpha: 0.68,
           defaultColor: [0.08, 0.13, 0.2],
           defaultKeepAlive: !0,
-          defaultThickness: 0.0052,
+          defaultThickness: outlineThickness(DEFAULT_OUTLINE_SCALE),
         }),
       [s],
     );
+  const invalidate = tt().invalidate;
+  L.useEffect(() => { i.setThickness(outlineThickness(scale)); invalidate(); }, [i, scale, invalidate]);
+  L.useEffect(() => () => i.dispose(), [i]);
   return (
     L.useEffect(() => {
       i.setSize(n.width, n.height);
@@ -11645,6 +11651,7 @@ function _a({
   showRoomBadges: y = !1,
   presentationMode: w = "overview",
   visualStyle: b = "glass",
+  outlineScale = DEFAULT_OUTLINE_SCALE,
   onRoomFocus: j,
   onRoomLightingAction: x,
   onRoomShadeAction: k,
@@ -11846,7 +11853,7 @@ function _a({
           viewportInsets: N,
           resetKey: g,
         }),
-        v && t.jsx(ji, { enabled: v }),
+        v && t.jsx(ji, { enabled: v, scale: outlineScale }),
         t.jsx(sr, {
           makeDefault: !0,
           enableDamping: !0,

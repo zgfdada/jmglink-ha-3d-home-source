@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeFloorplanProject, sampleProject, validateFloorplanProject } from "@ha3d/schema";
 const projectFileName = (id) => `project-${Buffer.from(id).toString("base64url")}.json`;
@@ -55,6 +55,19 @@ export class ProjectStore {
                 // A failing listener must never block project persistence.
             }
         }
+    }
+    async replaceAll(projects, currentId) {
+        const next=new Map();
+        for(const project of projects){const v=validateFloorplanProject(project);if(!v.valid||!v.project||next.has(v.project.id))throw Error("户型备份校验失败");next.set(v.project.id,v.project);}
+        if(!next.has(currentId))throw Error("当前户型不存在");
+        const staging=await mkdtemp(this.projectsDirectory+"-import-");
+        for(const project of next.values())await this.writeJsonAtomically(path.join(staging,projectFileName(project.id)),project);
+        await this.writeJsonAtomically(path.join(staging,"current-project.json"),next.get(currentId));
+        const previous=this.projectsDirectory+"-before-import-"+Date.now()+"-"+Math.random().toString(36).slice(2);
+        await rename(this.projectsDirectory,previous);
+        try{await rename(staging,this.projectsDirectory);}catch(error){await rename(previous,this.projectsDirectory);throw error;}
+        this.projects=next;this.currentProjectId=currentId;
+        for(const project of next.values())this.emitProjectSaved(project);
     }
     async addAsset(input, id = this.currentProjectId) {
         const project = this.projects.get(id);

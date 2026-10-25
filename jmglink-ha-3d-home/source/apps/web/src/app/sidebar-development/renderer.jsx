@@ -97,7 +97,7 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, bin
     const push=()=>{if(frame.current?.contentWindow!==target)return;const state=snapshotState.current;const snap=e=>{if(!e)return;const data=entitySnapshot(e),picture=pictureCache.current.read(e);return {...data,pictureData:picture,attributes:picture?{...data.attributes,entity_picture:picture}:data.attributes};};target.postMessage({type:"ha3d-theme",theme:state.theme},"*");target.postMessage({type:"ha3d-entities",entity:snap(state.entity)||{state:"unavailable",attributes:{}},entities:state.entities.map(snap)},"*");};
     push();Promise.all(snapshotState.current.entities.map(e=>pictureCache.current.load(e))).then(push);
   };
-  React.useEffect(() => {if(widget.scriptMode === "dom")sendSnapshot();}, [entity,entities,widget,theme]);
+  React.useEffect(() => {sendSnapshot();}, [entity,entities,widget,theme]);
   const srcDoc = React.useMemo(
     () =>
       widget.kind === "custom"
@@ -129,7 +129,9 @@ export function SidebarPanel({
   title = "3D智家",
   pageId,
   onPageChange,
+  onReorderPages,
   selectedItemId,
+  revealItemId,
   onSelectItem,
   designer = false,
   collapsed = false,
@@ -137,24 +139,41 @@ export function SidebarPanel({
   theme,
 }) {
   const contentId = React.useId();
+  const contentRef=React.useRef(null),itemElements=React.useRef(new Map());
+  React.useEffect(()=>{
+    if(!designer||!revealItemId)return;
+    const element=itemElements.current.get(revealItemId),container=contentRef.current;if(!element||!container)return;
+    let stopped=false;
+    const reveal=()=>{if(stopped)return;const top=element.getBoundingClientRect().top-container.getBoundingClientRect().top+container.scrollTop-8;container.scrollTo({top:Math.max(0,top),behavior:'smooth'});};
+    element.focus({preventScroll:true});const frame=requestAnimationFrame(reveal);
+    const observer=new ResizeObserver(reveal);observer.observe(element);observer.observe(container);
+    const stop=()=>{stopped=true;observer.disconnect();};
+    container.addEventListener('wheel',stop,{passive:true});container.addEventListener('pointerdown',stop);
+    const timeout=setTimeout(stop,1800);
+    return()=>{stop();clearTimeout(timeout);cancelAnimationFrame(frame);container.removeEventListener('wheel',stop);container.removeEventListener('pointerdown',stop);};
+  },[revealItemId,designer]);
   const [localPage, setLocalPage] = React.useState(config.pages[0]?.id);
   const page =
     config.pages.find((p) => p.id === (pageId ?? localPage)) || config.pages[0];
   const [dragged, setDragged] = React.useState(null);
+  const navigationDrag=React.useRef(null), navigationClickSuppressed=React.useRef(false);
   return (
     <section
       className={`sb-panel ${(theme ?? resolveDaylight(entities).theme) === "night" ? "sb-night" : ""} ${designer ? "sb-design-preview" : ""} ${collapsed ? "sb-content-collapsed" : ""}`}
       style={{ "--sb-width": `${config.width}px` }}
       aria-label="自定义侧边栏"
     >
-      <div id={contentId} className="sb-panel-content" hidden={collapsed}>
+      <div ref={contentRef} id={contentId} className="sb-panel-content" hidden={collapsed}>
         <div className="sb-widget-stack">
-          {page?.items.map((item) => {
+          {page?.items.filter(item=>designer||!item.hidden).map((item) => {
             const widget = config.widgets.find((w) => w.id === item.widgetId);
             return (
               widget && (
                 <div
                   key={item.id}
+                  ref={element=>{if(element)itemElements.current.set(item.id,element);else itemElements.current.delete(item.id);}}
+                  tabIndex={designer?-1:undefined}
+                  aria-label={designer?`控件实例 ${widget.name}`:undefined}
                   className={`sb-widget-instance ${selectedItemId === item.id ? "selected" : ""}`}
                   onClick={designer ? () => onSelectItem?.(item.id) : undefined}
                   draggable={designer}
@@ -197,11 +216,17 @@ export function SidebarPanel({
         {config.pages.map((p) => (
           <button
             key={p.id}
-            title={p.name}
+            title={designer ? `${p.name} · 拖动调整导航顺序` : p.name}
+            data-navigation-id={p.id}
+            style={designer&&onReorderPages?{touchAction:'none'}:undefined}
+            onPointerDown={designer&&onReorderPages?event=>{if(event.button!==0)return;navigationDrag.current={id:p.id,x:event.clientX,y:event.clientY};event.currentTarget.setPointerCapture(event.pointerId);}:undefined}
+            onPointerUp={designer&&onReorderPages?event=>{const drag=navigationDrag.current;navigationDrag.current=null;if(!drag||Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<6)return;const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-navigation-id]');if(target&&event.currentTarget.parentElement.contains(target)){onReorderPages(drag.id,target.dataset.navigationId);navigationClickSuppressed.current=true;setTimeout(()=>navigationClickSuppressed.current=false,0);}}:undefined}
+            onPointerCancel={()=>navigationDrag.current=null}
             aria-label={p.name}
             aria-current={page?.id === p.id ? "page" : undefined}
             className={page?.id === p.id ? "active" : ""}
             onClick={() => {
+              if(navigationClickSuppressed.current)return;
               setLocalPage(p.id);
               onPageChange?.(p.id);
             }}

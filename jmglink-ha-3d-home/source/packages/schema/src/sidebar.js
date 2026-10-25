@@ -118,6 +118,7 @@ export function normalizeSidebar(raw) {
         return {
           id: key,
           widgetId: item.widgetId,
+          ...(item.hidden ? {hidden:true} : {}),
           entityIds: bindingIds(item.entityIds),
           entityId: text(item.entityId ?? "", 255, "实体"),
           height: number(item.height, 100, 1000),

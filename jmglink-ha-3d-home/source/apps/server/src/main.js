@@ -1,3 +1,4 @@
+import { registerInstanceBackup } from "./routes/instanceBackup.js";
 import { registerSidebarServices } from "./sidebar/SidebarServices.js";
 import { resolveSidebarEntities } from "../../../packages/schema/src/sidebar-bindings.js";
 import { SidebarStore, registerSidebarRoutes } from "./sidebar/SidebarStore.js";
@@ -153,6 +154,7 @@ await registerVoiceAssistantRoutes(app, await VoiceAssistant.create(config.dataD
 await registerDevicePlatformRoutes(app, devicePlatformStore, ha);
 await registerModelLibraryRoutes(app, modelLibrary);
 await registerProjectRoutes(app, projectStore, gateway, devicePlatformStore);
+await registerInstanceBackup(app,{projects:projectStore,platform:devicePlatformStore,sidebars:sidebarStore,dataDir:config.dataDir,onRestored:()=>{refreshBoundEntityFilter();sidebarChanged();}});
 app.get("/api/health", async () => ({
   ok: true,
   mode: config.mode,
