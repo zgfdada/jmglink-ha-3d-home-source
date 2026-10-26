@@ -10,7 +10,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.29`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.30`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
@@ -147,4 +147,4 @@ docker compose -f docker-compose.release.yml up -d
 
 侧边栏开发中心支持导出当前控件、当前导航页（包含引用控件）和整层侧栏；导入控件与页面自动处理 ID 冲突，整层侧栏导入替换当前楼层草稿，保存或发布后才生效。
 
-主页工具菜单「导入导出」可下载完整实例 JSON，包含所有户型、设备/模型资源、设备编辑记录、控件库和各楼层侧栏草稿与发布布局。空安装选择备份后，再确认替换即可恢复；导入前自动保留业务数据备份。HA/Hermes 地址、密钥及登录设置不迁移，恢复后需要重新连接，并核对实体 ID。外部 URL 资源仍需原地址可访问。文件上限 128MB。从 v0.1.5-custom.29 起提供。
+主页工具菜单「导入导出」可下载完整实例 JSON，包含所有户型、设备/模型资源、设备编辑记录、控件库和各楼层侧栏草稿与发布布局。空安装选择备份后，再确认替换即可恢复；导入前自动保留业务数据备份。HA/Hermes 地址、密钥及登录设置不迁移，恢复后需要重新连接，并核对实体 ID。外部 URL 资源仍需原地址可访问。文件上限 128MB。从 v0.1.5-custom.30 起提供。
