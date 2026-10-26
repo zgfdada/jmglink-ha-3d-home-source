@@ -18,12 +18,10 @@ import { DevicePlatformStore } from "./device-platform/DevicePlatformStore.js";
 import { HomeAssistantClient } from "./ha/HomeAssistantClient.js";
 import { collectLiveEntityIds } from "./ha/boundEntityFilter.js";
 import { EntityHistoryStore } from "./ha/EntityHistoryStore.js";
-import { GiteaModelLibrary } from "./model-library/GiteaModelLibrary.js";
 import { createResourceMonitor } from "./observability/resourceMonitor.js";
 import { ProjectStore } from "./projects/ProjectStore.js";
 import { registerHaRoutes } from "./routes/haRoutes.js";
 import { registerDevicePlatformRoutes } from "./routes/devicePlatformRoutes.js";
-import { registerModelLibraryRoutes } from "./routes/modelLibraryRoutes.js";
 import { registerProjectRoutes } from "./routes/projectRoutes.js";
 import { ClientGateway } from "./websocket/clientGateway.js";
 import { VoiceAssistant, registerVoiceAssistantRoutes } from "./voice-assistant/VoiceAssistant.js";
@@ -76,10 +74,6 @@ const devicePlatformStore = await DevicePlatformStore.create(
 const controlLibrary = await ControlLibraryStore.create(config.dataDir, devicePlatformStore);
 devicePlatformStore.controlLibrary = controlLibrary;
 await registerControlLibraryRoutes(app, controlLibrary);
-const modelLibrary = new GiteaModelLibrary(
-  config.modelLibrary,
-  devicePlatformStore,
-);
 function collectBoundEntityIds(project) {
   const ids = new Set();
   for (const floor of project.floors) {
@@ -152,7 +146,6 @@ await app.register(cors, { origin: true });
 await registerHaRoutes(app, ha, projectStore, haConfigStore, gateway);
 await registerVoiceAssistantRoutes(app, await VoiceAssistant.create(config.dataDir, ha));
 await registerDevicePlatformRoutes(app, devicePlatformStore, ha);
-await registerModelLibraryRoutes(app, modelLibrary);
 await registerProjectRoutes(app, projectStore, gateway, devicePlatformStore);
 await registerInstanceBackup(app,{projects:projectStore,platform:devicePlatformStore,sidebars:sidebarStore,dataDir:config.dataDir,onRestored:()=>{refreshBoundEntityFilter();sidebarChanged();}});
 app.get("/api/health", async () => ({

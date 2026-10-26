@@ -8,7 +8,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.30`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.31`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
@@ -129,3 +129,5 @@ docker compose -f docker-compose.release.yml up -d
 ### v29 设计与迁移
 
 侧边栏开发中心支持实体搜索多选、控件代码高亮／校验／格式化、楼层页面设计与导航拖动。控件开发可迁移单个控件及控件库；页面设计可迁移导航页及整层侧栏。主页工具菜单的导入导出支持完整业务实例恢复，导入前自动备份；HA/Hermes 连接信息不迁移，恢复后重新连接并核对实体。
+
+本版本移除旧在线模型目录和安装/发布接口；保留本地上传、已安装模型文件及设备引用。运维、事件等通过控件设计或导入使用。

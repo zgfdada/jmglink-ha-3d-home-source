@@ -261,7 +261,7 @@ export default function ProjectAppearance({
             <h2>模型来源与选择</h2>
             <p>
               从 3D
-              模型资源库复用本地或已安装的在线模型，配置仅作用于当前设备项目。
+              模型资源库复用本地或此前已安装的模型，配置仅作用于当前设备项目。
             </p>
             <div className="ddc-step-selected-model">
               <div className="ddc-step-model-thumb">
@@ -296,7 +296,7 @@ export default function ProjectAppearance({
                   ))}
                 </div>
                 <button onClick={onOpenLibrary}>
-                  前往模型资源库查找/安装在线模型 →
+                  前往模型资源库选择或上传本地模型 →
                 </button>
               </div>
             )}

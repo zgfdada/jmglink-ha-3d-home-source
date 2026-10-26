@@ -11,7 +11,7 @@ export function modelReferenceCount(platform, id) {
   );
 }
 
-export function buildModelCards(platform, onlineModels = []) {
+export function buildModelCards(platform) {
   const local = (platform?.modelTemplates ?? []).map((model) => ({
     key: `local:${model.id}`,
     id: model.id,
@@ -22,17 +22,7 @@ export function buildModelCards(platform, onlineModels = []) {
     tags: model.tags ?? [],
     updatedAt: model.updatedAt ?? model.createdAt ?? "",
   }));
-  const online = onlineModels.map((item) => ({
-    key: `online:${item.id}`,
-    id: item.id,
-    name: item.name ?? item.id,
-    origin: "online",
-    author: item.author ?? "未知作者",
-    tags: item.tags ?? [],
-    updatedAt: item.updatedAt ?? "",
-    summary: item,
-  }));
-  return [...local, ...online];
+  return local;
 }
 
 export function filterModelCards(
@@ -44,7 +34,6 @@ export function filterModelCards(
   return cards.filter((card) => {
     if (filter === "favorites" && !favoriteSet.has(card.key)) return false;
     if (filter === "local" && card.origin !== "local") return false;
-    if (filter === "online" && card.origin !== "online") return false;
     return (
       !needle ||
       [card.id, card.name, card.author, ...(card.tags ?? [])]

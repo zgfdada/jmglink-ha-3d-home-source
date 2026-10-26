@@ -1,3 +1,4 @@
+import {resolveLightChromaticity, mixLightColors} from "../domain/light-color.js";
 import { DEFAULT_OUTLINE_SCALE, outlineThickness, updateOutlineThickness } from "../domain/outline-settings.js";
 import { overlayRefitKey } from "../domain/camera-refit.js";
 import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
@@ -1558,16 +1559,17 @@ function ot(e) {
       r.some((b) => ["hs", "rgb", "rgbw", "rgbww", "xy"].includes(b)) ||
       Ce(e, "rgb_color").length >= 3 ||
       Ce(e, "hs_color").length >= 2;
+  const chromaticity = resolveLightChromaticity(e, Go(m), {warm:Go(f),cold:Go(u)});
   return {
     brightness: a,
     brightnessPercent: s ? Math.round(a * 100) : 0,
-    color: Po(e, Go(m)),
+    color: chromaticity.color,
     colorTempKelvin: m,
     hasBrightness: i,
     hasColor: w,
     hasColorTemperature: y,
     isOn: s,
-    usesColor: o,
+    usesColor: chromaticity.usesColor,
   };
 }
 function vt(e) {
@@ -3038,8 +3040,7 @@ const Ss = L.createContext("glass"),
     opacity: e ? 0.16 : s ? 0.11 : jn,
     threshold: e ? 18 : s ? 22 : 24,
   }),
-  vn = "#ffd15f",
-  Cs = (e) => $(vn, e, 0.12);
+  Cs = (e) => e;
 function Gt({ children: e }) {
   const s = L.useRef(null);
   return (
@@ -3206,9 +3207,8 @@ function En(e, s, r) {
       edgeOpacity: 0,
     };
   const i = Qe(n.reduce((f, u) => f + u.brightness, 0) / n.length, 0.22, 1),
-    a = n.reduce((f, u) => (u.brightness > f.brightness ? u : f), n[0]),
     c = Math.min(0.045, (n.length - 1) * 0.012),
-    l = $($(a.color, "#ffc24f", 0.74), "#fff0bd", 0.08);
+    l = mixLightColors(n);
   return {
     active: n.length,
     color: l,
@@ -4876,7 +4876,7 @@ function Xe({
   radius: o,
   scale: n = [1, 1, 1],
 }) {
-  const i = $(e, "#ffffff", 0.18);
+  const i = e;
   return t.jsxs("group", {
     position: r,
     children: [
@@ -4914,7 +4914,7 @@ function Xe({
   });
 }
 function Kt({ color: e, level: s, radius: r, position: o, elongated: n = !1 }) {
-  const i = $(e, "#ffffff", 0.16),
+  const i = e,
     a = n ? [1.65, 1, 1] : [1, 1, 1];
   return t.jsx("group", {
     position: o,
@@ -4939,7 +4939,7 @@ function Kt({ color: e, level: s, radius: r, position: o, elongated: n = !1 }) {
 function je({ color: e, brightness: s, variant: r }) {
   const o = V.clamp(s, 0, 1),
     n = Cs(e),
-    i = $(n, "#fff7d6", 0.18);
+    i = n;
   if (r === "floor")
     return t.jsxs("group", {
       children: [

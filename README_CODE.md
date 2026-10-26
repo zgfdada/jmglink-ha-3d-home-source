@@ -567,11 +567,8 @@ gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom:<version>
 - 不提交 HA 令牌、Gitea Token、证书、`.env.local` 或运行数据。
 - `docker-runtime/`、`docker-runtime-source/` 和 `.env*` 已由 `.gitignore` 排除。
 
-在线模型库由服务端 `GiteaModelLibrary` 访问，浏览器不会接触 Gitea 凭证。公开目录可在只读模式匿名访问；发布模式需要通过部署环境或 Secret 注入 `HA3D_MODEL_LIBRARY_TOKEN`，或者注入 `HA3D_MODEL_LIBRARY_USERNAME` 与 `HA3D_MODEL_LIBRARY_PASSWORD`。状态接口只返回仓库、分支和读写能力，不返回凭证。独立“在线模型库”页通过后端预览接口读取清单，上传模型文件继续由同源后端代理，网格卡片只在接近视口时创建 Three.js 预览。模型安装和预览文件均校验扩展名、15 MB 限制和 SHA-256；发布必须经过预览和二次确认。发布表单只接收作者名称，服务端默认许可证为 `MIT`，标签为空时自动使用模型名称。
+在线模型的目录、预览、安装与发布实现已从本版本移除，服务端不再初始化在线库，也不再注册 `/api/model-library/*`。本地上传、模型配置、预览、收藏及应用继续由设备平台接口提供；已安装模型的 library 来源元数据、资源文件及 ID 保留，不迁移或清空运行目录。旧在线设计文档仅作为历史参考，后续重设计不得直接恢复旧专用实现。
 
-Add-on 运行模式默认连接 `zgf/jmglink-ha-3d-model-library@main`，使用匿名 `readonly` 访问且不包含任何 Gitea 凭证；部署环境可以用 `HA3D_MODEL_LIBRARY_*` 变量覆盖默认仓库。当前公网入口只有 IPv6，运行 Add-on 的 Home Assistant 主机必须具有 IPv6 出站能力。
-
-Windows 源码环境使用 `scripts/start-source-with-model-library.ps1` 从 Git Credential Manager 临时取出 `zgf` 凭证并注入 Compose。由于当前 Gitea 域名只发布 IPv6，Compose 中的固定目标代理侧车通过主机 IPv6 路由转发 `/api/v1/repos/zgf/jmglink-ha-3d-model-library/`，主服务仍以桥接端口 `8101` 对外；代理不关闭 TLS 校验，也不接受其他仓库路径。
 - 日志只记录令牌是否存在和长度，不应输出令牌内容。
 - 调试项目导入导出时使用脱敏副本。
 - 删除或重置项目会影响持久化数据；开发破坏性功能前先导出 JSON 并保留容器绑定目录。
@@ -655,3 +652,9 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 完整实例迁移由 `routes/instanceBackup.js` 提供 `/api/instance-backup` GET/POST；格式为 `ha3d-instance-backup` v1，包含项目集合、当前项目、设备平台资源（含上传模型）、设备草稿/发布/测试记录、控件库和侧栏工作区。POST 必须明确 confirm=true、同源、JSON，最大 128MiB。校验项目与侧栏楼层引用后，保存 `data/instance-backups/before-import-*.json`；ProjectStore 使用 staging 目录切换，旧项目目录保留；失败尝试恢复前快照。不是跨文件系统断电原子事务，恢复失败需使用恢复前备份。连接凭据不在业务备份中。外部 URL 不下载嵌入。
 
 侧栏片段格式为 `ha3d-sidebar-widget-v1` / `ha3d-sidebar-page-v1`，config 为标准侧栏结构；导入时重映射控件和页面 ID，页面包含引用控件。整层格式仍为 `ha3d-sidebar-v1`。回归测试：`tests/instance-backup.test.mjs`、`tests/outline-settings.test.mjs`。
+
+
+事件与主机资源可选样板位于 packages/schema/src/monitoring-widgets.js，独立离线统计和耗材位于 operations-widget.js。仅通过绑定实体和现有通用 SDK 交互，不增加控件专属服务端路由。行为与接口见 docs/sidebar-development.md；回归覆盖原日志状态、缺失值、独立耗材和刷新目标。
+
+
+3D 灯光颜色解析位于 apps/web/src/domain/light-color.js：优先当前 color_mode，色温模式不读取残留 RGB；RGB/HS/XY/RGBW/RGBWW 按对应通道解析。scene.js 共用该颜色绘制真实光源、灯具自发光和光晕，移除固定暖黄偏色；房间光色按亮度在线性 RGB 中混合，再编码为 sRGB。色温沿用已有 Kelvin 色表，是屏幕近似渲染，不是光谱或照度标定。

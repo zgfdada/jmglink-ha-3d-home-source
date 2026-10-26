@@ -12,37 +12,8 @@ import {
 } from "../apps/web/src/app/device-development-center/model-library.js";
 import { normalizeModelTemplate } from "../apps/server/src/device-platform/devicePlatformSchema.js";
 import { DevicePlatformStore } from "../apps/server/src/device-platform/DevicePlatformStore.js";
-import { resolveInstalledModelVersion } from "../apps/server/src/model-library/GiteaModelLibrary.js";
-import { registerDevicePlatformRoutes } from "../apps/server/src/routes/devicePlatformRoutes.js";
 
-test("N2 combines local and online models without mixing their identities", () => {
-  const platform = {
-    modelTemplates: [{ id: "custom.washer", name: "洗衣机", tags: ["家电"] }],
-  };
-  const cards = buildModelCards(platform, [
-    {
-      id: "custom.washer",
-      name: "网络洗衣机",
-      author: "Alice",
-      tags: ["家电"],
-    },
-  ]);
-  assert.deepEqual(
-    cards.map((card) => card.key),
-    ["local:custom.washer", "online:custom.washer"],
-  );
-  assert.equal(filterModelCards(cards, { filter: "local" }).length, 1);
-  assert.equal(filterModelCards(cards, { filter: "online" }).length, 1);
-  assert.deepEqual(
-    filterModelCards(cards, {
-      filter: "favorites",
-      favorites: ["online:custom.washer"],
-    }).map((card) => card.key),
-    ["online:custom.washer"],
-  );
-  assert.equal(filterModelCards(cards, { query: "alice" }).length, 1);
-  assert.equal(filterModelCards(cards, { query: "家电" }).length, 2);
-});
+import { registerDevicePlatformRoutes } from "../apps/server/src/routes/devicePlatformRoutes.js";
 
 test("N2 model draft and normalized metadata preserve immutable-style IDs, tags and furniture kind", () => {
   const draft = createModelDraft();
@@ -115,41 +86,6 @@ test("N2 store allows one referenced model to serve devices and furniture togeth
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
-});
-
-test("N2 online install reuses identical hash and preserves changed hash as a new version", () => {
-  const existing = [
-    {
-      id: "custom.library-chair",
-      library: {
-        repository: "owner/repo",
-        id: "chair",
-        sha256: "a".repeat(64),
-      },
-    },
-  ];
-  assert.equal(
-    resolveInstalledModelVersion(
-      existing,
-      "owner/repo",
-      "chair",
-      "a".repeat(64),
-    ).reused.id,
-    "custom.library-chair",
-  );
-  assert.equal(
-    resolveInstalledModelVersion(
-      existing,
-      "owner/repo",
-      "chair",
-      "b".repeat(64),
-    ).id,
-    "custom.library-chair-bbbbbbbb",
-  );
-  assert.equal(
-    resolveInstalledModelVersion([], "owner/repo", "chair", "a".repeat(64)).id,
-    "custom.library-chair",
-  );
 });
 
 test("N2 model API saves metadata and blocks referenced deletion unless explicitly forced", async () => {
@@ -255,4 +191,30 @@ test("N2 model API saves metadata and blocks referenced deletion unless explicit
     await app.close();
     await rm(temporary, { recursive: true, force: true });
   }
+});
+
+test("local catalog retains installed model metadata, references and favorite identity without online entries", () => {
+  const model = {
+    id: "custom.library-lamp",
+    name: "已安装灯具",
+    tags: ["照明"],
+    source: { type: "upload", assetId: "saved-asset" },
+    library: { repository: "old/models", id: "lamp", sha256: "a".repeat(64) },
+  };
+  const platform = {
+    modelTemplates: [model],
+    deviceTemplates: [{ id: "device", modelTemplateId: model.id }],
+  };
+  const cards = buildModelCards(platform, [
+    { id: "remote", name: "不再加载的远端条目" },
+  ]);
+  assert.equal(cards.length, 1);
+  assert.equal(cards[0].key, "local:" + model.id);
+  assert.deepEqual(cards[0].model, model);
+  assert.equal(modelReferenceCount(platform, model.id), 1);
+  assert.equal(
+    filterModelCards(cards, { filter: "favorites", favorites: [cards[0].key] })
+      .length,
+    1,
+  );
 });

@@ -458,7 +458,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
             <Icon name="cube" />
             <span>
               <b>3D 模型资源库</b>
-              <small>本地 & 在线</small>
+              <small>本地 & 已安装</small>
             </span>
           </button>
           <button className={section === "controls" ? "active" : ""} onClick={() => changeSection("controls")}>

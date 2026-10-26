@@ -116,11 +116,7 @@ import {
   aggregateDeviceObjects,
   selectOperationalStateEntityId,
 } from "../apps/server/src/device-platform/deviceAggregation.js";
-import {
-  GiteaModelLibrary,
-  normalizeLibraryModelId,
-  sha256,
-} from "../apps/server/src/model-library/GiteaModelLibrary.js";
+
 import {
   builtinDeviceTemplates,
   normalizeDeviceTemplate,
@@ -350,143 +346,15 @@ test("failed complete project restore rolls the device platform back", async () 
   assert.deepEqual(importedBundles, [nextPlatform, previousPlatform]);
 });
 
-test("addon runtime enables the public model library in anonymous read-only mode", () => {
-  const config = loadRuntimeConfig({ SUPERVISOR_TOKEN: "supervisor-token" });
-  assert.deepEqual(config.modelLibrary, {
-    url: "https://gitea.700117.xyz:16666",
-    apiUrl: undefined,
-    owner: "zgf",
-    repo: "jmglink-ha-3d-model-library",
-    branch: "main",
-    token: undefined,
-    username: undefined,
-    password: undefined,
-    mode: "readonly",
-  });
-});
 
-test("addon runtime allows deployment overrides without adding credentials", () => {
-  const config = loadRuntimeConfig({
-    SUPERVISOR_TOKEN: "supervisor-token",
-    HA3D_MODEL_LIBRARY_GITEA_URL: "https://models.example.test",
-    HA3D_MODEL_LIBRARY_OWNER: "example",
-    HA3D_MODEL_LIBRARY_REPO: "models",
-    HA3D_MODEL_LIBRARY_BRANCH: "stable",
-  });
-  assert.equal(config.modelLibrary.url, "https://models.example.test");
-  assert.equal(config.modelLibrary.owner, "example");
-  assert.equal(config.modelLibrary.repo, "models");
-  assert.equal(config.modelLibrary.branch, "stable");
-  assert.equal(config.modelLibrary.mode, "readonly");
-  assert.equal(config.modelLibrary.token, undefined);
-});
 
-test("online model library normalizes ids and never exposes credentials", () => {
-  assert.equal(normalizeLibraryModelId("洗衣机 Model 01"), "model-01");
-  assert.equal(
-    sha256(Buffer.from("ha3d")),
-    "6054a63245ccd53835ed2abdd914cbcae809591fb7981f77452949afec7d24fa",
-  );
-  const library = new GiteaModelLibrary(
-    {
-      url: "https://gitea.example.test",
-      owner: "zgf",
-      repo: "models",
-      branch: "main",
-      mode: "direct",
-      username: "zgf",
-      password: "secret-value",
-    },
-    {},
-  );
-  const status = library.status();
-  assert.equal(status.configured, true);
-  assert.equal(status.writable, true);
-  assert.equal(JSON.stringify(status).includes("secret-value"), false);
-});
 
-test("online model catalog supports public read and filtering", async () => {
-  const catalog = {
-    version: 1,
-    updatedAt: "2026-09-19T00:00:00.000Z",
-    models: [
-      { id: "washer", name: "洗衣机", author: "zgf", tags: ["家电"] },
-      { id: "lamp", name: "台灯", author: "zgf", tags: ["照明"] },
-    ],
-  };
-  const requests = [];
-  const library = new GiteaModelLibrary(
-    {
-      url: "https://gitea.example.test",
-      owner: "zgf",
-      repo: "models",
-      branch: "main",
-      mode: "readonly",
-    },
-    {},
-    async (url) => {
-      requests.push(url);
-      return new Response(JSON.stringify(catalog), { status: 200 });
-    },
-  );
-  const result = await library.list({ query: "家电" });
-  assert.deepEqual(
-    result.models.map((item) => item.id),
-    ["washer"],
-  );
-  assert.equal(result.status.writable, false);
-  assert.equal(requests.length, 1);
-});
 
-test("online model library can publish procedural model definitions", async () => {
-  const model = {
-    id: "custom.washer",
-    name: "程序化洗衣机",
-    builtin: false,
-    source: { type: "procedural", shape: "washing-machine" },
-    dimensions: { width: 0.6, depth: 0.65, height: 0.85 },
-    scale: 1,
-    anchor: { x: 0, y: 0, z: 0 },
-    placement: "floor",
-    elevation: 0,
-    color: "#eef2f5",
-    roughness: 0.62,
-    metalness: 0.08,
-  };
-  const library = new GiteaModelLibrary(
-    {
-      url: "https://gitea.example.test",
-      owner: "zgf",
-      repo: "models",
-      branch: "main",
-      mode: "direct",
-      token: "test-token",
-    },
-    {
-      getModelTemplates: () => [model],
-      exportBundle: async () => ({ assets: [] }),
-    },
-  );
-  const preview = await library.previewPublish({
-    modelTemplateId: model.id,
-    libraryId: "washer",
-    name: model.name,
-    author: "zgf",
-    license: "CC-BY-4.0",
-  });
-  assert.equal(preview.fileKind, "procedural");
-  assert.equal(preview.fileName, "model.json");
-  assert.ok(preview.size > 0);
-  assert.match(preview.sha256, /^[a-f0-9]{64}$/);
 
-  const automaticMetadata = await library.previewPublish({
-    modelTemplateId: model.id,
-    libraryId: "washer-defaults",
-    author: "tester",
-  });
-  assert.equal(automaticMetadata.license, "MIT");
-  assert.deepEqual(automaticMetadata.tags, [model.name]);
-});
+
+
+
+
 
 test("project entity ids become clearly marked offline history placeholders", () => {
   const entity = createEntityPlaceholder("light.kitchen_ceiling");
@@ -2873,3 +2741,6 @@ test("washer running chip stays visible without selection and hides when idle", 
   assert.match(scene, /Z =\s*washerRuntime !== null\s*\? washerRuntime\.running/);
   assert.match(scene, /Z &&\s*t\.jsx\(ni, \{/);
 });
+
+
+test("runtime no longer initializes the removed online library in either deployment mode",()=>{for(const env of [{SUPERVISOR_TOKEN:'test-only'},{HA3D_MODE:'standalone',HA3D_MODEL_LIBRARY_GITEA_URL:'https://unused.example'}])assert.equal('modelLibrary' in loadRuntimeConfig(env),false);});

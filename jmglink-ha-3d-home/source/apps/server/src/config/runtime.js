@@ -25,25 +25,6 @@ const envValue = (env, key) => {
   const value = env[key]?.trim();
   return value ? value : undefined;
 };
-const addonModelLibraryDefaults = Object.freeze({
-  url: "https://gitea.700117.xyz:16666",
-  owner: "zgf",
-  repo: "jmglink-ha-3d-model-library",
-  branch: "main",
-  mode: "readonly",
-});
-const modelLibraryConfig = (env, defaults = {}) => ({
-  url: envValue(env, "HA3D_MODEL_LIBRARY_GITEA_URL") ?? defaults.url,
-  apiUrl: envValue(env, "HA3D_MODEL_LIBRARY_GITEA_API_URL") ?? defaults.apiUrl,
-  owner: envValue(env, "HA3D_MODEL_LIBRARY_OWNER") ?? defaults.owner,
-  repo: envValue(env, "HA3D_MODEL_LIBRARY_REPO") ?? defaults.repo,
-  branch:
-    envValue(env, "HA3D_MODEL_LIBRARY_BRANCH") ?? defaults.branch ?? "main",
-  token: envValue(env, "HA3D_MODEL_LIBRARY_TOKEN"),
-  username: envValue(env, "HA3D_MODEL_LIBRARY_USERNAME"),
-  password: envValue(env, "HA3D_MODEL_LIBRARY_PASSWORD"),
-  mode: envValue(env, "HA3D_MODEL_LIBRARY_MODE") ?? defaults.mode ?? "readonly",
-});
 export function loadRuntimeConfig(env = process.env) {
   const supervisorToken = envValue(env, "SUPERVISOR_TOKEN");
   const mode =
@@ -60,7 +41,6 @@ export function loadRuntimeConfig(env = process.env) {
         websocketUrl: "ws://supervisor/core/websocket",
         token: supervisorToken,
       },
-      modelLibrary: modelLibraryConfig(env, addonModelLibraryDefaults),
     };
   }
   const restUrl = normalizeHomeAssistantBaseUrl(
@@ -79,6 +59,5 @@ export function loadRuntimeConfig(env = process.env) {
       websocketUrl,
       token: envValue(env, "HA_TOKEN"),
     },
-    modelLibrary: modelLibraryConfig(env),
   };
 }

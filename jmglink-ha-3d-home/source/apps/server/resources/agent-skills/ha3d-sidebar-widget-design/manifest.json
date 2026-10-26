@@ -16,6 +16,7 @@
     "references/songloft-source.js",
     "references/widget-actions.js",
     "references/room-widget.js",
-    "references/sidebar-floors.js"
+    "references/sidebar-floors.js",
+    "references/monitoring-widgets.js"
   ]
 }

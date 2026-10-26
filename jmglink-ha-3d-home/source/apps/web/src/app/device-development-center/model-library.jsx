@@ -33,48 +33,13 @@ function readAsDataUrl(file) {
   });
 }
 
-function OnlineCardPreview({ id }) {
-  const host = React.useRef(null);
-  const [model, setModel] = React.useState(null);
-  React.useEffect(() => {
-    if (!host.current) return;
-    let active = true;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        observer.disconnect();
-        api(`./api/model-library/models/${encodeURIComponent(id)}/preview`)
-          .then((result) => {
-            if (active) setModel(result.model);
-          })
-          .catch(() => {});
-      },
-      { rootMargin: "160px" },
-    );
-    observer.observe(host.current);
-    return () => {
-      active = false;
-      observer.disconnect();
-    };
-  }, [id]);
-  return (
-    <div ref={host} className="ddc-model-online-preview">
-      {model ? (
-        <ModelPreview model={model} compact />
-      ) : (
-        <span className="ddc-model-online-art">◇</span>
-      )}
-    </div>
-  );
-}
-
 function ModelCard({
   card,
   favorite,
+  suspendPreview,
   onFavorite,
   onPreview,
   onConfigure,
-  onInstall,
   onApply,
   onToggleFurniture,
   busy,
@@ -82,14 +47,8 @@ function ModelCard({
   return (
     <article className="ddc-model-card">
       <div className="ddc-model-card-visual">
-        {card.model ? (
-          <ModelPreview model={card.model} compact />
-        ) : (
-          <OnlineCardPreview id={card.id} />
-        )}
-        <span className="ddc-model-origin">
-          {card.origin === "local" ? "本地模型" : "在线模型"}
-        </span>
+        {!suspendPreview && <ModelPreview model={card.model} compact />}
+        <span className="ddc-model-origin">本地模型</span>
       </div>
       <div className="ddc-model-card-body">
         <h3 title={card.name}>{card.name}</h3>
@@ -123,24 +82,14 @@ function ModelCard({
               家具
             </button>
           )}
-          {card.origin === "online" ? (
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() => onInstall(card)}
-            >
-              安装模型
+          <>
+            <button className="primary" onClick={() => onApply(card)}>
+              应用到设备
             </button>
-          ) : (
-            <>
-              <button className="primary" onClick={() => onApply(card)}>
-                应用到设备
-              </button>
-              {!card.model.builtin && (
-                <button onClick={() => onConfigure(card)}>配置</button>
-              )}
-            </>
-          )}
+            {!card.model.builtin && (
+              <button onClick={() => onConfigure(card)}>配置</button>
+            )}
+          </>
           <button
             className={`ddc-model-favorite ${favorite ? "active" : ""}`}
             onClick={() => onFavorite(card.key)}
@@ -572,9 +521,6 @@ export default function ModelLibrary({
   notify,
   globalQuery = "",
 }) {
-  const [online, setOnline] = React.useState([]);
-  const [onlineStatus, setOnlineStatus] = React.useState(null);
-  const [onlineError, setOnlineError] = React.useState("");
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState("all");
   const [sort, setSort] = React.useState("recent");
@@ -591,29 +537,7 @@ export default function ModelLibrary({
   const [preview, setPreview] = React.useState(null);
   const [applyTarget, setApplyTarget] = React.useState(null);
   const [selectedProjectId, setSelectedProjectId] = React.useState("");
-  const [previewBusy, setPreviewBusy] = React.useState(false);
   const [working, setWorking] = React.useState(false);
-  const loadOnline = React.useCallback(async (refresh = false) => {
-    try {
-      const status = await api("./api/model-library/status");
-      setOnlineStatus(status);
-      if (!status.configured) {
-        setOnline([]);
-        setOnlineError("在线模型库尚未配置，本地模型仍可正常使用。");
-        return;
-      }
-      const catalog = await api(
-        `./api/model-library/models?refresh=${refresh}`,
-      );
-      setOnline(catalog.models ?? []);
-      setOnlineError("");
-    } catch (error) {
-      setOnlineError(error.message);
-    }
-  }, []);
-  React.useEffect(() => {
-    loadOnline();
-  }, [loadOnline]);
   const toggleFavorite = (key) =>
     setFavorites((current) => {
       const next = current.includes(key)
@@ -622,41 +546,7 @@ export default function ModelLibrary({
       window.localStorage.setItem(MODEL_FAVORITES_KEY, JSON.stringify(next));
       return next;
     });
-  const showPreview = async (card) => {
-    if (card.model) {
-      setPreview({ card, model: card.model });
-      return;
-    }
-    setPreviewBusy(true);
-    try {
-      const result = await api(
-        `./api/model-library/models/${encodeURIComponent(card.id)}/preview`,
-      );
-      setPreview({ card, model: result.model });
-    } catch (error) {
-      notify(error.message, "error");
-    } finally {
-      setPreviewBusy(false);
-    }
-  };
-  const install = async (card) => {
-    setWorking(true);
-    try {
-      const result = await api(
-        `./api/model-library/models/${encodeURIComponent(card.id)}/install`,
-        { method: "POST" },
-      );
-      await reload();
-      notify(
-        `“${result.item?.name ?? card.name}”已安装到本地模型库。`,
-        "success",
-      );
-    } catch (error) {
-      notify(error.message, "error");
-    } finally {
-      setWorking(false);
-    }
-  };
+  const showPreview = (card) => setPreview({ card, model: card.model });
   const toggleFurniture = async (card) => {
     if (card.model.builtin) return;
     setWorking(true);
@@ -720,7 +610,7 @@ export default function ModelLibrary({
     }
   };
   const cards = filterModelCards(
-    filterModelCards(buildModelCards(platform, online), {
+    filterModelCards(buildModelCards(platform), {
       query,
       filter,
       favorites,
@@ -758,7 +648,7 @@ export default function ModelLibrary({
       <div className="ddc-model-library-heading">
         <div>
           <h1>3D 模型资源库</h1>
-          <p>管理本地模型，探索在线资源，为设备选择合适的 3D 外观</p>
+          <p>管理本地及已安装模型，为设备选择合适的 3D 外观</p>
         </div>
         <button className="primary" onClick={() => setEditor({})}>
           ＋ 上传本地模型
@@ -780,13 +670,11 @@ export default function ModelLibrary({
           <option value="recent">最近更新</option>
           <option value="name">名称排序</option>
         </select>
-        <button onClick={() => loadOnline(true)}>刷新目录</button>
       </div>
       <div className="ddc-model-tabs">
         {[
           ["all", "全部"],
           ["local", "本地模型"],
-          ["online", "在线模型"],
           ["favorites", "收藏"],
         ].map(([value, label]) => (
           <button
@@ -798,7 +686,6 @@ export default function ModelLibrary({
           </button>
         ))}
       </div>
-      {onlineError && <p className="ddc-model-online-notice">{onlineError}</p>}
       {!platform ? (
         <div className="ddc-next-loading">正在加载模型…</div>
       ) : cards.length ? (
@@ -807,11 +694,11 @@ export default function ModelLibrary({
             <ModelCard
               key={card.key}
               card={card}
+              suspendPreview={Boolean(preview)}
               favorite={favorites.includes(card.key)}
               onFavorite={toggleFavorite}
               onPreview={showPreview}
               onConfigure={(item) => setEditor(item.model)}
-              onInstall={install}
               onApply={apply}
               onToggleFurniture={toggleFurniture}
               busy={working}
@@ -839,10 +726,7 @@ export default function ModelLibrary({
             <header>
               <div>
                 <h2>{preview.card.name}</h2>
-                <p>
-                  {preview.card.origin === "local" ? "本地模型" : "在线模型"} ·{" "}
-                  {preview.card.author}
-                </p>
+                <p>本地模型 · {preview.card.author}</p>
               </div>
               <button
                 aria-label="关闭模型预览"
@@ -854,27 +738,16 @@ export default function ModelLibrary({
             <ModelPreview model={preview.model} />
             <footer>
               <button onClick={() => setPreview(null)}>关闭</button>
-              {preview.card.origin === "online" ? (
-                <button
-                  className="primary"
-                  onClick={() => {
-                    setPreview(null);
-                    install(preview.card);
-                  }}
-                >
-                  安装模型
-                </button>
-              ) : (
-                <button
-                  className="primary"
-                  onClick={() => {
-                    setPreview(null);
-                    apply(preview.card);
-                  }}
-                >
-                  应用到设备
-                </button>
-              )}
+
+              <button
+                className="primary"
+                onClick={() => {
+                  setPreview(null);
+                  apply(preview.card);
+                }}
+              >
+                应用到设备
+              </button>
             </footer>
           </div>
         </div>
@@ -932,14 +805,6 @@ export default function ModelLibrary({
             </footer>
           </div>
         </div>
-      )}
-      {previewBusy && (
-        <div className="ddc-next-busy">正在加载在线模型预览…</div>
-      )}
-      {onlineStatus?.configured && (
-        <small className="ddc-model-source-note">
-          在线来源：{onlineStatus.repository ?? "已配置模型库"}
-        </small>
       )}
     </div>
   );

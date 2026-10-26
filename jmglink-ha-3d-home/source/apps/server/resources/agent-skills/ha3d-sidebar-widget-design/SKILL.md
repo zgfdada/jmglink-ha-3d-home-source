@@ -36,3 +36,10 @@ description: 为 HA 3D Home 侧边栏创建或修改可导入的 HTML/CSS/JavaSc
 控件开发迁移菜单仅包含单控件导入/导出、控件库导入/导出。控件库格式 ha3d-sidebar-library-v1，version:1，widgets 数组，不包含 pages。导航页、整层侧栏的迁移位于页面设计。导入控件库为追加模式，重映射冲突 ID，不覆盖现有导航页。
 
 页面设计使用竖向实际楼层栏；导航在左侧列表或预览导航中排序，预览按钮保持居中。实例 hidden:true 可控制展示隐藏，设计模式仍保留用于重新开启；控件自然高度不设控件级滚轮。
+
+
+## 事件与运维独立控件
+
+monitoring-widgets.js 提供 eventsWidgetCode 和 hostResourcesWidgetCode；operations-widget.js 提供 offlineStatisticsWidgetCode 和 consumablesWidgetCode。事件直接读取绑定通知实体 attributes.entries，保留原次序和状态，不虚构分类、未读数或已送达手机。主机资源绑定整机 CPU、内存百分比及已用/可用实体，不能用 Core 进程数据冒充整机。耗材沿用 HA 显示条件。刷新动作明确指向保存的缓存实体，只有 HA 真实返回新统计才显示成功；超时反馈上游故障。所有实体配置留在运行布局，不能新增专用后端。
+
+事件与运维保持设计布局，但背景和文字使用宿主 --widget-text、--widget-muted、--widget-line 与统一玻璃表面，随白天/黄昏/夜间切换；不固定蓝底或白字。保留 CPU 青蓝及内存橙色作为数值色。无变化快照不重建 DOM，避免打断点击和阅读。
