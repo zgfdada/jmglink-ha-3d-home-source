@@ -21,7 +21,7 @@ for(const dir of [...sources,'apps/web/src']) for(const name of await files(path
 // Only the fixed, generated directory inside this package is replaced.
 await rm(output,{recursive:true,force:true});await mkdir(output,{recursive:true});
 for(const name of ['apps/server','apps/web/dist','packages/schema'])
-  await cp(path.join(root,name),path.join(output,name),{recursive:true,filter:source=>!source.endsWith('.map')});
+  await cp(path.join(root,name),path.join(output,name),{recursive:true,filter:source=>!source.endsWith('.map') && !/[\\/](concept|tutorials)([\\/]|$)/.test(source)});
 const manifest={version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version,obfuscated:true,sourceMaps:false,files:[]};
 for(const dir of [...sources,'apps/web/dist']) for(const file of await files(path.join(output,dir))) {
   if(!file.endsWith('.js'))continue;

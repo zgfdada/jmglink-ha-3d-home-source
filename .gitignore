@@ -18,3 +18,9 @@ Thumbs.db
 # Python verification caches.
 __pycache__/
 *.pyc
+
+# 本地教程与愿景素材不进入源码发布快照。
+docs/tutorials/
+jmglink-ha-3d-home/source/apps/web/public/concept/
+jmglink-ha-3d-home/source/apps/web/src/concept/
+jmglink-ha-3d-home/source/apps/web/scripts/build-concept-scene.mjs

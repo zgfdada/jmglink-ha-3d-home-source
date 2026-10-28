@@ -1,68 +1,16 @@
-# JMGLink HA 3D Home Custom 开发手册
-
-## 教程篇素材
-
-`docs/tutorials/01-installation/` 为第一部分教程源文件，使用原生 HTML/CSS/JS、1920×1080 浅色固定画布。12 个章节合成一个安装视频，开头先比较 App 与独立 Docker。`narration.json/md` 保存播音文案，`lesson-data.js` 保存语音实际词级时间及 28 次路径/配置/命令高亮动作，`lesson.js` 负责章节跳转、音频字幕同步与回退恢复。没有 HA 请求、真实令牌或安装命令执行。
-
-附带的 `docker-compose.release.yml` 必须与根目录发布配置一致；教程只节选展示关键配置，完整文件保留健康检查。连接字段依据前端真实名称，令牌用遮挡占位。HA App 入口名称随 HA 版本变化，以实际环境为准。令牌创建路径核对 HA 官方认证文档。配音 MP3、SRT、MP4 与离线完整素材放在 `C:\Users\ZT\Downloads\3DHome-教程01-安装与连接`，不作为应用运行资源提交。源 HTML 无配音文件时仍可选择章节阅读。更新安装说明时同步清单、画面、文案及交付素材。
-
-## 项目理念介绍页
-
-`jmglink-ha-3d-home/source/apps/web/public/concept/` 保存独立的演示式介绍页。固定 1920×1080 画布等比缩放，不纵向滚动；画布外的章节导航与上一页／下一页保持可点，支持方向键、Home/End、URL hash 和本地章节恢复。十章分别介绍理念、空间自定义、设备自定义、侧边栏自定义、灯光自动化方案、窗帘自动化方案、受众、愿景、待开发在线资源库和安装入口。章节名从 section 的 data-title 或内置名称取得，页数与 End 键终点动态生成；窄屏使用章节下拉框。三个整体视觉方案和房间模拟状态仍保存在 `ha3d-concept-v1`；章节保存在 `ha3d-concept-slide-v4`。不连接 HA 或读取实际户型。
-
-首页三维样板间源码位于 `source/apps/web/src/concept/scene.js`（前缀同上），使用项目锁定的 Three.js、`createStableRoundedBoxGeometry` 和 `FLOOR_ORBIT_LIMITS`，独立创建建筑、家具、材质、阴影和点光源，并通过 OrbitControls 与 Raycaster 实现旋转、缩放和房间选择；没有直接加载与业务状态耦合的主页 Scene 组件。离开首页或浏览器隐藏时暂停渲染，退出页面释放几何体、材质和上下文资源。WebGL 不可用时显示明确提示。
-
-前端 `prebuild` 自动执行 `apps/web/scripts/build-concept-scene.mjs`，用现有锁定构建工具 esbuild 生成兼容 `file://` 的 IIFE 文件 `public/concept/scene-runtime.js`，并同步 Three.js MIT 许可。修改三维源码后可在 source 目录执行 `node apps/web/scripts/build-concept-scene.mjs` 单独更新，禁止手工编辑生成文件。Vite 原样复制介绍页到 `dist/concept/`，没有 CDN 依赖，也无需新增部署流程。
-
-主页已移除「项目理念与愿景」入口；独立介绍素材地址 `./concept/` 保留 Docker、App Ingress 及子路径部署前缀；介绍页通过 `../index.html` 返回实例。也可直接打开 `public/concept/index.html` 预览，或在前端开发服务访问 `/concept/`。本地文件预览的返回实例入口需要实际部署后使用。
-
-`chapters.js` 管理楼层示意、侧栏页签、灯光规则与双层窗帘方案；`chapters.css` 定义新增章节。窗帘方案根据用户提供的参考图组织 A–F 时间轴：渐开纱帘、起床后全开、白天三档阈值、日落后纱帘关闭、睡眠后渐关遮光帘；情景优先于手动保护，手动调整后模拟保护 60 分钟，四次「模拟经过 15 分钟」后恢复当前时间轴。保护期间冻结双层开合度，情景退出后恢复保护状态。开合度 100% 为全开，白天关闭 25/50/75% 映射到开合度 75/50/25%。日落至日落后 1 小时维持前态；本页不执行实际时间调度，进度和保护时间均为用户操作的模拟。灯光规则为可调整示例，情景优先于占用、照度与时段判断。全部为本地模拟，不创建 HA 自动化、不发送服务指令。
-
-`lighting-presets.js` 提供日间补光、夜间起身、观影氛围、离家节能四种组合输入，通过既有 change 处理器更新决策，手动修改输入时同步选中状态。`roadmap.css` 管理增强灯光页与待开发资源库页；在线控件库、设备库、控制面板库、侧边栏控件库均为规划介绍，没有检索、下载、安装或发布实现。
-
-`narration.json` 为十页播音与字幕的结构化文本，slideId 顺序须与 HTML 的 main > section 完全一致。每条 lines 是建议字幕断句，narration 是该页完整播音文字；没有虚构音频时长。`narration.md` 供人工审阅，`narration.txt` 仅包含可供后续 TTS 的正文，不含章节标题。修改文案时同步三份文件；实际配音与 SRT 时间轴另行生成。
-
-设备自定义页使用 `public/concept/washer.glb`，为项目已有的顶开式波轮洗衣机样板；来源 SHA256 见 `washer-model-provenance.json`。`src/concept/washer.js` 复用项目 `resolveWasherRuntime` / `washerRuntimeLabel`，并采用主页 UploadedDeviceModel 相同的 `Pulsator_Disc` / `Pulsator_Blade` 旋转轴与 `Digital_Display` 发光逻辑。构建脚本将 GLB 以内嵌 base64 打包进 `washer-runtime.js`，支持本地文件离线预览。控制面板根据本地洗衣机项目已有的程序、电源、启停、状态与剩余时间能力设计，所有状态均为合成数据，不带真实绑定或凭据。暂停停止波轮，继续恢复；模型页离开后暂停渲染。
-
-默认主题为浅色「建筑画廊」。`ha3d-concept-white-v1` 标记首次迁移旧演示主题；之后用户选择仍会保存。设备章节播音同步替换为洗衣机。
-
-内容明确区分现有能力和未来愿景。验证三种风格的十章画布边界、章节直达和刷新恢复、方向键、三维旋转与房间灯光联动、WebGL 降级及生产构建。小屏幕保留整幅固定画布与留边，横屏查看更适合阅读，不重新排成长网页。
-
-本仓库 `zgf/jmglink-ha-3d-home-source` 为公开源码仓库。当前历史从本次初始提交开始，历史源码和 Git 记录已在本地另行归档，不放入此仓库。
-
-本地源码目录：`C:\Nas_Gitea\jmglink-ha-3d-home\jmglink-ha-3d-home`。公开安装库 `zgf/jmglink-ha-3d-home-custom` 保持独立，本地检出位于 `C:\Nas_Gitea\jmglink-ha-3d-home-installation`。
-
-公开安装内容由 `distribution/` 和 `distribution-manifest.json` 维护。正式发布保留现有测试、混淆、双架构镜像、latest 更新与安装库同步流程；Secrets 仅保存在 Gitea，不进入源码。当前发布说明使用 `RELEASE_NOTES.md`，不保留旧 CHANGELOG 文件。
-
-v23 发布处理：业务源码保持原样；`source/scripts/package-release.mjs` 将服务、schema 和前端产物复制至固定 `.release` 目录后混淆 JavaScript，完成后核对业务源文件哈希。Vite 仅在 `HA3D_RELEASE_BUILD=1` 时压缩并关闭 source map，开发配置保持可读。Add-on Dockerfile 只把 `.release` 与生产依赖复制到运行层；普通 CI 与正式发布显式启用发布模式。混淆固定使用离线 javascript-obfuscator 4.1.1，禁用属性改名、控制流膨胀、死代码和调试器干扰，保留 ESM 导入导出及接口字段。
-
-镜像根目录 `release-manifest.json` 记录处理文件 SHA-256；发布冒烟验证清单、无 source map、实际混淆后端、配置、语音回复恢复及 skill ZIP。接入 skill 的可读文档与参考脚本、第三方依赖及启动适配脚本不混淆；它们与业务运行产物的范围分别记录，不能宣称镜像完全隐藏全部源码。混淆不替代权限或密钥保护。
-
-用户安装统一使用 `docker-compose.release.yml` 拉取固定版本镜像；独立入口覆盖为 Node main 并设置 standalone，App 保留 Supervisor 入口。旧部署迁移沿用原数据／素材挂载且不得双容器并发写入。README 与 Wiki 不再提供本地编译部署步骤；本文件保留内部架构和维护约束。
-
-v22 回复协议：`start` 复用 `message` 的请求指纹、锁与去重缓存，立即返回 accepted；执行 Promise 在服务端保存最终 result 或脱敏 error，`interaction` 为原 clientSessionId/requestId 返回 running/completed/failed。HTTP 断开不取消服务端执行。`voice-interaction.js` 仅提交一次 start，恢复时只读原 ID，保留澄清及单次回答。完成结果保留 10 分钟，进程重启后不可恢复；原同步 message 路由保留兼容。发布运行镜像检查必须使用实际构建的前端协议，覆盖提交响应丢失和进度 502，确认仅执行一次。
-
-语音来源校验：Ingress 会改写后端 Host。写接口优先接受浏览器 `Sec-Fetch-Site: same-origin`，拒绝 same-site/cross-site；无 Fetch Metadata 时仅兼容 Origin/Host 相同，不根据任意转发头放行。服务端配置跨终端共享，clientSessionId 及澄清答案仍隔离。真实 Ingress 验收必须携带浏览器来源头并创建独立会话，不能仅用无 Origin 的脚本请求作为多终端通过证据。
-
-语音助手配置：`app/voice-assistant-settings.jsx` 提供麦克风右键菜单及配置对话框；`voice-assistant/VoiceAssistant.js` 持久化脱敏配置、分流 HA/Hermes、缓存请求 ID 及互斥请求。`Ue()` 不自动重试设备指令。Hermes 通过 `integrations/hermes-telegram-bridge` 平台插件进入现有 Telegram adapter，同一聊天／话题沿用原会话与队列，桥接不创建第二个 Agent 或 poller。普通 Hermes API 与共享 TG 网关不能混用。配置及部署见 [语音助手配置](docs/语音助手配置.md)。JS 回归为 `tests/voice-assistant.test.mjs`，Hermes 插件回归为 `integrations/hermes-telegram-bridge/test_bridge.py`。
-
-默认风格调整：`home-view.js` 的 `In()` 在无有效缓存、存储读取异常及无 window 环境下回退到 `cartoon`；仍优先采用浏览器已保存的有效风格，不覆盖用户选择。
-
-语音录入由 `domain/push-to-talk.js` 管理每次长按的识别会话：按结果索引读取累计快照，只保存 `isFinal` 文本，必须同时满足松开与 `onend` 才提交。提交前关闭会话，重复和旧会话回调无法重发；多段最终结果合并，未确认的中间结果不作为设备指令。松开后 5 秒未结束时取消并提示重试，不发送可能残缺的语句。`app.js` 使用稳定 ref 转发最新提交函数，以同步 ref 锁保护请求，避免识别回调持有旧的 React busy 状态；pointercancel、意外失去捕获、页面隐藏及卸载均取消会话。使用 pointer capture 接收按钮外的松开事件，移出按钮不提前提交；正常松开先清除按下标记，再释放捕获，避免被误判为取消。回归见 `tests/push-to-talk.test.mjs`，包含实际组件的回调执行测试；不替代真实麦克风与 HA Add-on 验证。
-
-主页固定 `overview`，整个底部模式栏及模式数组已移除，不再显示“全屋”文字或图标；`home-insight-panel` 仅在选中设备或摄像头时出现，不再展示情景快捷卡片。其他位置的情景管理及 HA 情景实体不变。2D 空白画布右键平移由 `domain/editor-canvas-pan.js` 判断：选择工具、无选中、非触控、无修饰键且未命中对象；房间的 pointerdown 仅对此平移手势放行，单击选择仍保留。家具自身右键拖动优先，左键恢复选择/框选，Shift/Ctrl/Meta 保留选择语义。平移位移达到 3px 时抑制后续点击。绘图、触控、空格和原中键行为保留。`editor-canvas-pan.css` 提供高对比度提示。回归见 `tests/editor-canvas-pan.test.mjs`。
-
-厨房柜身越界斜线已定位到旧挤出器的封面三角化：原厨房轮廓存在浮点噪声级共线点，恢复版挤出器生成 40 个三角面，其中顶底各有一个零面积面。`domain/cabinet-body-geometry.js` 仅在生成柜身几何时移除冗余共线点，使用当前几何库挤出；实际厨房柜身变为 28 面、零退化面，20 个现有柜身审计均无退化面。`scene.js` 的 `CabinetBodyGeometry` 同时供普通与分段上柜使用，几何尺寸变化或卸载时释放资源。原始柜段数据、门板分界、颜色、材质及阴影不变。回归见 `tests/cabinet-body-geometry.test.mjs`，覆盖凹多边形、逆向轮廓、体积与面积、浮点共线点及重复闭合点。用户在同角度隔离复测确认两条斜线均消失。
-
-无效的柜门材质/阴影、原生描边替换及墙体不透明试验已撤回，临时 `renderProbe` 与诊断标识已移除；不要将此前猜测保留为根因。本版纳入正式镜像；发布不自动修改 HA 部署。
-
-场景薄件几何由 `source/apps/web/src/domain/stable-surface-geometry.js` 提供：使用稳定圆角盒，半径不超过最薄尺寸的 24%，避免圆角内核归零及恢复版法线合并造成的斜纹。`scene.js` 的共用家具 `H` 在卸载或尺寸变化时释放几何；共用描边 `Y` 强制 `depthWrite: false`、`depthTest: true`，保留实体遮挡与正常门缝。回归见 `source/tests/stable-surface-geometry.test.mjs`，检查退化面、有限法线、尺寸边界和描边策略。此修复纳入本版镜像；不代表任意导入模型自身的重叠面、材质或阴影问题都已消除。
-
-失效摆放恢复由 `domain/missing-device-placement.js` 和 `app/missing-device-placements.jsx` 提供。仅 HA 已连接且实体 ID 不在当前实体表时标记失效；2D 编辑器和共享 3D 场景绘制独立黄色警告，设备侧栏通过现有 `F` 更新入口执行删除、替换，沿用撤销和保存流程。替换更新实体、设备、模板和模型引用，保留空间数据；候选排除当前层其他已摆放物理设备，同设备实体优先。原名称优先使用摆放快照，再通过只返回名称的 `/api/ha/entity-names` 读取历史名称；新摆放与替换会保存 `name`，Schema 保留该字段。侧栏使用紧凑三列与可搜索弹出选择器，3D 警告使用半透明背景。相关回归见 `tests/missing-device-placement.test.mjs`。
+# 开发说明
 
 本文面向参与源码维护、功能开发、测试和发布的开发者。安装与日常使用请阅读 [README.md](README.md)，版本变化请阅读 [RELEASE_NOTES.md](RELEASE_NOTES.md)，运维接手流程请阅读 [服务交接文档](docs/HA3DHome服务交接文档.md)。
 
-## 楼层与面板滚动（未发布）
+## 摄像头模型与监控
+
+packages/schema/src/camera-models.js 为四类内置摄像头的共享描述，后端注册 builtin.camera.* 程序化模型，scene 的摆放选择与默认外形使用同一描述。domain/camera-model.js 统一生成 Three.js 几何，供主页 CameraModel 和模型库 ModelPreview 共用；尺寸以实际包围盒归一化，镜头数与尺寸有回归测试，卸载释放几何与材质。旧 camera.wall、camera.doorbell 和已有摆放 ID 保留。
+
+device-library.js 对 camera 保留独立流实体，同物理设备的非 camera 辅助实体不再抢占名额；已摆放物理设备仍排除。编辑器始终提供 camera 分类（零实体也显示）。showHiddenEntities 为编辑器临时状态，打开后将列表数据源切为 deviceLibrary.unplaced；提示数量仍按默认 available 计算，避免开关自身消失，分类、房间和搜索共用切换后的数据源。
+
+HomeView 的设备点击回调识别 camera 域后打开 CameraMonitor 原生 dialog；CameraLiveView 复用现有 Ki 播放器，autoPlay 默认关闭、仅弹窗打开时启用，requestVersion 阻止已关闭或旧实体的异步响应回写。关闭时卸载播放器、HLS 与快照定时器；媒体仍走相对路径 HA 代理，未新增凭据或流地址持久化。隔离浏览器验收使用模拟画面，不等同于真实摄像头视频验收。
+
+## 楼层与面板滚动
 
 PublishedSidebar 的 hidden 独立于内容 collapsed 状态，SidebarVisibilityToggle 与右侧菜单、语音按钮同置 home-action-bar；完整外壳通过原生 hidden 隐藏，保留已挂载的控件和页签。HomeView 持有整栏可见状态，localStorage 键为 ha3d.sidebar.hidden，跨楼层切换不重置；画布 inset 和 has-floor-selector 跟随可见状态，悬浮按钮 aria-expanded/aria-controls 同步。
 
@@ -692,3 +640,9 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 
 
 3D 灯光颜色解析位于 apps/web/src/domain/light-color.js：优先当前 color_mode，色温模式不读取残留 RGB；RGB/HS/XY/RGBW/RGBWW 按对应通道解析。scene.js 共用该颜色绘制真实光源、灯具自发光和光晕，移除固定暖黄偏色；房间光色按亮度在线性 RGB 中混合，再编码为 sRGB。色温沿用已有 Kelvin 色表，是屏幕近似渲染，不是光谱或照度标定。
+
+摄像头扩展：cameraSettings 持久化第二路实体、外部 HTTP(S) 地址、云台服务及目标。CameraControlPanel 展示双缩略图，CameraViewer 居中标签切换时仅挂载一个播放器。cameraPtz 路由校验已保存的摆放绑定和同源请求，按实际集成与服务检测 Frigate／ONVIF；Frigate 短移后在 finally 发送停止。vertical-reference 支持 ceiling，摄像头高度根据包围盒尺寸及实例缩放计算，并将底部高度限制在层高减模型高度以内。
+
+发布范围：本地教程和愿景素材保留在开发机器，但从当前 Git 快照、镜像及安装库中排除。builtin-control-selection.js 固定 8101 的 12 项定义；legacyBuiltinControls 仅为旧面板兼容解析，不出现在新库清单。安装导出必须包含版本一致的 App CHANGELOG.md，并通过发布校验。
+
+版本 .33 的精简清单：开关双态按钮、整行按钮、下拉选择、平铺网格、刻度滑轨、步进调节、大字数值、线性进度、分段进度、环形进度、引用文本、虚线分割线。旧内置定义仅供兼容解析，库启动时过滤多余 builtin ID；不删除自定义 ID。

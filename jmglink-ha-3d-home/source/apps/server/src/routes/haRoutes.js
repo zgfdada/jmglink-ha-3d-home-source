@@ -1,3 +1,4 @@
+import {registerCameraPtzRoutes} from "./cameraPtz.js";
 import { Readable } from "node:stream";
 import { haConfigFromConnectionInput } from "../config/runtime.js";
 const kindFromDomain = (domain) => {
@@ -162,6 +163,7 @@ async function sendUpstreamCameraResponse(reply, response, path) {
     return reply.send(Readable.fromWeb(response.body));
 }
 export async function registerHaRoutes(app, ha, store, haConfigStore, gateway) {
+    registerCameraPtzRoutes(app,ha,store);
     app.get("/api/ha/status", async () => ha.getStatus());
     app.get("/api/ha/entities", async () => ({ entities: ha.getEntities() }));
     app.get("/api/ha/entity-names", async () => ({ names: Object.fromEntries([...(ha.historyStore?.getEntities() ?? []), ...ha.getEntities()].map((entity) => [entity.entityId, entity.name])) }));

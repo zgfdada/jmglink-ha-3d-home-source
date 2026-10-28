@@ -8,7 +8,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.32`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.33`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
@@ -131,3 +131,7 @@ docker compose -f docker-compose.release.yml up -d
 侧边栏开发中心支持实体搜索多选、控件代码高亮／校验／格式化、楼层页面设计与导航拖动。控件开发可迁移单个控件及控件库；页面设计可迁移导航页及整层侧栏。主页工具菜单的导入导出支持完整业务实例恢复，导入前自动备份；HA/Hermes 连接信息不迁移，恢复后重新连接并核对实体。
 
 本版本移除旧在线模型目录和安装/发布接口；保留本地上传、已安装模型文件及设备引用。运维、事件等通过控件设计或导入使用。
+
+## 摄像头与界面更新
+
+支持四类内置摄像头、双摄绑定、监控大浮层、居中标签切换、Frigate／ONVIF 云台及外部访问链接。摄像头分类与取消隐藏开关已提供；手机侧栏可整体收起。修复配置面板滚动及摄像头穿顶。内置面板控件精简为 12 项，已有快照与自定义控件保留。HAOS 更新说明由 App CHANGELOG.md 提供；发布不含本地教程及愿景素材。

@@ -50,7 +50,7 @@ const bundle = (controls) => ({
   schemaVersion: 1,
   controls,
 });
-test("资源库API数据展开保留引用元数据，39种控件列表与预览可执行渲染", async () => {
+test("资源库API数据展开保留引用元数据，12种控件列表与预览可执行渲染", async () => {
   const controls = builtinControls().map((item) => ({
     ...normalizeLibraryControl(item), references: [{ panelId: "test-panel" }],
   }));
@@ -84,7 +84,7 @@ test("资源库API数据展开保留引用元数据，39种控件列表与预览
   const count = (node) => !node || typeof node !== "object" ? 0 :
     Array.isArray(node) ? node.reduce((sum, child) => sum + count(child), 0) :
       (node.type === "article" ? 1 : 0) + count(node.children);
-  assert.equal(count(tree), 39);
+  assert.equal(count(tree), 12);
 });
 test("内置大字默认居中，实例覆盖保留；环形无重复值，引用文本突出显示", async () => {
   const metric = normalizeLibraryControl(builtinControls().find((c) => c.id === "builtin.number.metric"));
@@ -163,10 +163,10 @@ test("编辑器默认属性进入保存请求，API落盘后重建Store仍保留
     assert.match(editor, /onDefaultChange=\{changeDefault\}/);
     assert.match(editor, /withControlPropertyDefault\(parsed, key, value\)/);
   }));
-test("现有13类39风格均为可验证的库控件；老面板自动附加快照", () => {
+test("精简后8类12风格均为可验证的库控件；老面板自动附加快照", () => {
   const items = builtinControls();
-  assert.equal(items.length, 39);
-  assert.equal(new Set(items.map((item) => item.type)).size, 13);
+  assert.equal(items.length, 12);
+  assert.equal(new Set(items.map((item) => item.type)).size, 8);
   items.forEach(normalizeLibraryControl);
   const panel = normalizeControlPanelTemplate({
     id: "custom.panel",
@@ -212,7 +212,7 @@ test("控件库 CRUD、重复ID、版本递增、引用删除与重启持久化"
         method: "GET",
         url: "/api/control-library",
       });
-      assert.equal(result.json().controls.length, 39);
+      assert.equal(result.json().controls.length, 12);
       result = await app.inject({
         method: "POST",
         url: "/api/control-library",
@@ -254,7 +254,7 @@ test("控件库 CRUD、重复ID、版本递增、引用删除与重启持久化"
       });
       assert.equal(result.statusCode, 200);
       const reopened = await ControlLibraryStore.create(dir);
-      assert.equal(reopened.list().length, 38);
+      assert.equal(reopened.list().length, 11);
       assert.equal(
         reopened.list().some((c) => c.id === "builtin.number.metric"),
         false,
@@ -270,7 +270,7 @@ test("导入导出独立ID，拒绝脚本、全局样式、非法动作和过深
     const [item] = await store.import(bundle([custom()]));
     assert.match(item.id, /^custom\.import-/);
     assert.equal(item.ui.kind, "column");
-    assert.equal(normalizeLibraryPackage(store.export()).length, 40);
+    assert.equal(normalizeLibraryPackage(store.export()).length, 13);
     assert.throws(
       () => store.import({ format: "wrong", controls: [] }),
       /格式|JSON/,
@@ -324,7 +324,7 @@ test("导入导出独立ID，拒绝脚本、全局样式、非法动作和过深
     let ui = { kind: "value" };
     for (let i = 0; i < 10; i++) ui = { kind: "column", children: [ui] };
     assert.throws(() => normalizeLibraryControl({ ...custom(), ui }), /超限/);
-    assert.equal(store.list().length, 40);
+    assert.equal(store.list().length, 13);
   }));
 test("并发更新串行保存，面板与库备份保留自定义UI及固定版本", () =>
   sandbox(async (dir) => {
@@ -358,7 +358,7 @@ test("并发更新串行保存，面板与库备份保留自定义UI及固定版
       sections: [{ id: "main", controls: [frozen] }],
     });
     const exported = await platform.exportBundle();
-    assert.equal(exported.controlLibrary.controls.length, 40);
+    assert.equal(exported.controlLibrary.controls.length, 13);
     const target = await DevicePlatformStore.create(
       path.join(dir, "target"),
       path.join(dir, "assets2"),
@@ -379,7 +379,7 @@ test("并发更新串行保存，面板与库备份保留自定义UI及固定版
     assert.equal(restored.libraryDefinition.ui.kind, "column");
   }));
 
-test("39种内置风格展开为可编辑节点，标题图标占位符和多类型适配可保存", () => {
+test("12种内置风格展开为可编辑节点，标题图标占位符和多类型适配可保存", () => {
   for (const definition of builtinControls()) {
     const expanded = editableLibraryControl(definition);
     const normalized = normalizeLibraryControl(expanded);
@@ -431,7 +431,7 @@ test("回退保存前一版本，重启后仍可回退且不改面板快照", ()
       assert.equal(frozen.label, "原名称");
       const restored = await ControlLibraryStore.create(dir);
       assert.equal((await restored.rollback(first.id)).name, "第二版");
-      await assert.rejects(restored.rollback("builtin.select.radio"), /上一版/);
+      await assert.rejects(restored.rollback("builtin.select.dropdown"), /上一版/);
     } finally {
       await app.close();
     }

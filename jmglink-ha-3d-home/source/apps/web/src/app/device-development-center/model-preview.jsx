@@ -1,5 +1,7 @@
 import { a as React } from "../../vendor/react.js";
 import * as THREE from "three";
+import {createCameraModel} from "../../domain/camera-model.js";
+import {cameraModelDefinition} from "../../../../../packages/schema/src/camera-models.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import "../../styles/model-preview.css";
@@ -129,7 +131,7 @@ export default function ModelPreview({
         new THREE.BoxGeometry(width, height, depth),
         material,
       );
-      root.add(body);
+      if(cameraModelDefinition(source.shape)){body.geometry.dispose();material.dispose();root.add(createCameraModel(source.shape,{dimensions:model.dimensions,color:model.color}));}else root.add(body);
       if (source.shape === "washing-machine") {
         const door = new THREE.Mesh(
           new THREE.TorusGeometry(width * 0.23, width * 0.035, 12, 48),

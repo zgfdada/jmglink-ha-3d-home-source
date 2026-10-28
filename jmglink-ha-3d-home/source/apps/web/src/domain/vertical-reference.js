@@ -1,9 +1,10 @@
+import { cameraModelDefinition } from "../../../../packages/schema/src/camera-models.js";
 import {
   resolveDeviceModelFootprint,
   resolveLiveDeviceModel,
 } from "./device-platform-presentation.js";
 
-const TARGET_TYPES = new Set(["floor", "device", "furniture"]);
+const TARGET_TYPES = new Set(["floor", "ceiling", "device", "furniture"]);
 
 const finite = (value, fallback = 0) => {
   const numeric = Number(value);
@@ -18,7 +19,8 @@ export function normalizeVerticalReference(value, legacyOffset = 0) {
   return {
     targetType,
     targetId:
-      targetType === "floor" || typeof source.targetId !== "string"
+      ["floor", "ceiling"].includes(targetType) ||
+      typeof source.targetId !== "string"
         ? undefined
         : source.targetId,
     surface: source.surface === "bottom" ? "bottom" : "top",
@@ -33,27 +35,50 @@ const BUILTIN_DEVICE_MODEL_HEIGHTS = {
 const defaultDeviceScaleY = (modelId, presentation = false) => {
   if (!modelId) return 1;
   if (
-    ["light.strip", "cover.curtain", "cover.blind", "media_player.tv", "climate.central_ac"].includes(
+    [
+      "light.strip",
+      "cover.curtain",
+      "cover.blind",
+      "media_player.tv",
+      "climate.central_ac",
+    ].includes(modelId)
+  )
+    return 1.16;
+  if (
+    ["light.floor_lamp", "climate.floor_ac", "fan.floor", "fan.tower"].includes(
       modelId,
     )
   )
-    return 1.16;
-  if (["light.floor_lamp", "climate.floor_ac", "fan.floor", "fan.tower"].includes(modelId))
     return presentation ? 1.18 : 1.12;
   if (modelId === "vacuum.robot") return presentation ? 1.24 : 1.22;
   if (modelId === "light.downlight") return 1;
-  if (["light.ceiling_panel", "light.ceiling_round", "light.wall_sconce"].includes(modelId))
+  if (
+    [
+      "light.ceiling_panel",
+      "light.ceiling_round",
+      "light.wall_sconce",
+    ].includes(modelId)
+  )
     return presentation ? 1.06 : 1.04;
-  if (["binary_sensor.motion", "binary_sensor.presence", "binary_sensor.smoke"].includes(modelId))
+  if (
+    [
+      "binary_sensor.motion",
+      "binary_sensor.presence",
+      "binary_sensor.smoke",
+    ].includes(modelId)
+  )
     return presentation ? 1.26 : 1.34;
   if (modelId === "lock.door") return presentation ? 1.18 : 1.28;
-  if (String(modelId ?? "").startsWith("camera.")) return presentation ? 0.94 : 1.02;
-  if (String(modelId ?? "").startsWith("sensor.")) return presentation ? 1.1 : 1.24;
+  if (String(modelId ?? "").startsWith("camera."))
+    return presentation ? 0.94 : 1.02;
+  if (String(modelId ?? "").startsWith("sensor."))
+    return presentation ? 1.1 : 1.24;
   return presentation ? 1.12 : 1.24;
 };
 
 export function objectVerticalHeight(item, entity, options = {}) {
-  const configuredModel = resolveLiveDeviceModel(entity, item) ?? item?.customModel;
+  const configuredModel =
+    resolveLiveDeviceModel(entity, item) ?? item?.customModel;
   if (configuredModel?.dimensions?.height) {
     const placedScaleY = Number(item?.scale?.[1]);
     const isDevice = Array.isArray(item?.position) && item.position.length >= 3;
@@ -70,6 +95,16 @@ export function objectVerticalHeight(item, entity, options = {}) {
     );
   }
   const modelId = item?.modelId;
+  const cameraModel = cameraModelDefinition(modelId);
+  if (cameraModel) {
+    const scale = Number(item?.scale?.[1]);
+    return (
+      cameraModel.dimensions.height *
+      (Number.isFinite(scale)
+        ? Math.abs(scale)
+        : defaultDeviceScaleY(modelId, options.presentation))
+    );
+  }
   if (BUILTIN_DEVICE_MODEL_HEIGHTS[modelId]) {
     const placedScaleY = Number(item?.scale?.[1]);
     const scaleY = Number.isFinite(placedScaleY)
@@ -83,7 +118,11 @@ export function objectVerticalHeight(item, entity, options = {}) {
 const objectKey = (type, id) => `${type}:${id}`;
 
 /** Resolve every device/furniture bottom elevation, including chained references. */
-export function resolveFloorVerticalElevations(floor, entities = {}, options = {}) {
+export function resolveFloorVerticalElevations(
+  floor,
+  entities = {},
+  options = {},
+) {
   const nodes = new Map();
   for (const item of floor?.devices ?? []) {
     nodes.set(objectKey("device", item.id), {
@@ -112,17 +151,37 @@ export function resolveFloorVerticalElevations(floor, entities = {}, options = {
       return node.legacy;
     }
     visiting.add(key);
+    const constrain = (value) =>
+      node.type === "device" &&
+      (node.item.kind === "camera" || node.entity?.domain === "camera")
+        ? Math.min(
+            Math.max(0, value),
+            Math.max(
+              0,
+              finite(floor.height, 2.8) -
+                objectVerticalHeight(node.item, node.entity, options),
+            ),
+          )
+        : value;
     if (!node.item.verticalReference) {
-      resolved.set(key, node.legacy);
+      const elevation = constrain(node.legacy);
+      resolved.set(key, elevation);
       visiting.delete(key);
-      return node.legacy;
+      return elevation;
     }
     const reference = normalizeVerticalReference(
       node.item.verticalReference,
       node.legacy,
     );
-    let base = 0;
-    if (reference.targetType !== "floor" && reference.targetId) {
+    let base =
+      reference.targetType === "ceiling"
+        ? finite(floor.height, 2.8) -
+          objectVerticalHeight(node.item, node.entity, options)
+        : 0;
+    if (
+      !["floor", "ceiling"].includes(reference.targetType) &&
+      reference.targetId
+    ) {
       const targetKey = objectKey(reference.targetType, reference.targetId);
       const target = nodes.get(targetKey);
       if (target && targetKey !== key) {
@@ -131,7 +190,7 @@ export function resolveFloorVerticalElevations(floor, entities = {}, options = {
           base += objectVerticalHeight(target.item, target.entity, options);
       }
     }
-    const elevation = base + reference.offset;
+    const elevation = constrain(base + reference.offset);
     resolved.set(key, elevation);
     visiting.delete(key);
     return elevation;
@@ -140,8 +199,18 @@ export function resolveFloorVerticalElevations(floor, entities = {}, options = {
   return resolved;
 }
 
-export function getObjectVerticalElevation(floor, type, id, entities = {}, options = {}) {
-  return resolveFloorVerticalElevations(floor, entities, options).get(objectKey(type, id)) ?? 0;
+export function getObjectVerticalElevation(
+  floor,
+  type,
+  id,
+  entities = {},
+  options = {},
+) {
+  return (
+    resolveFloorVerticalElevations(floor, entities, options).get(
+      objectKey(type, id),
+    ) ?? 0
+  );
 }
 
 /** Change reference while preserving the current world-space bottom elevation. */
@@ -157,11 +226,22 @@ export function rebaseVerticalReference(
 ) {
   const elevations = resolveFloorVerticalElevations(floor, entities, options);
   const current = elevations.get(objectKey(type, id)) ?? 0;
-  let targetElevation = 0;
-  if (targetType !== "floor" && targetId) {
-    const target = (targetType === "device" ? floor.devices : floor.furniture)?.find(
-      (item) => item.id === targetId,
-    );
+  const currentItem = (
+    type === "device" ? floor.devices : floor.furniture
+  )?.find((item) => item.id === id);
+  let targetElevation =
+    targetType === "ceiling"
+      ? finite(floor.height, 2.8) -
+        objectVerticalHeight(
+          currentItem,
+          type === "device" ? entities[currentItem?.entityId] : undefined,
+          options,
+        )
+      : 0;
+  if (!["floor", "ceiling"].includes(targetType) && targetId) {
+    const target = (
+      targetType === "device" ? floor.devices : floor.furniture
+    )?.find((item) => item.id === targetId);
     if (target) {
       targetElevation = elevations.get(objectKey(targetType, targetId)) ?? 0;
       if (surface === "top")
@@ -235,7 +315,9 @@ const footprintCorners = (footprint) => {
 };
 
 const projection = (corners, axis) => {
-  const values = corners.map((corner) => corner[0] * axis[0] + corner[1] * axis[1]);
+  const values = corners.map(
+    (corner) => corner[0] * axis[0] + corner[1] * axis[1],
+  );
   return [Math.min(...values), Math.max(...values)];
 };
 
@@ -244,8 +326,12 @@ export function verticalReferenceFootprintsOverlap(first, second) {
   if (!first || !second) return false;
   const firstCorners = footprintCorners(first),
     secondCorners = footprintCorners(second),
-    axes = [first.rotation, first.rotation + Math.PI / 2, second.rotation, second.rotation + Math.PI / 2]
-      .map((angle) => [Math.cos(angle), Math.sin(angle)]);
+    axes = [
+      first.rotation,
+      first.rotation + Math.PI / 2,
+      second.rotation,
+      second.rotation + Math.PI / 2,
+    ].map((angle) => [Math.cos(angle), Math.sin(angle)]);
   return axes.every((axis) => {
     const [firstMin, firstMax] = projection(firstCorners, axis),
       [secondMin, secondMax] = projection(secondCorners, axis);
@@ -265,7 +351,9 @@ export function isVerticalReferenceCandidate({
   if (!candidate || !currentItem) return false;
   if (candidateType === currentType && candidate.id === currentId) return false;
   if (candidateType === "device") {
-    const entityDomain = String(entity?.entityId ?? candidate.entityId ?? "").split(".")[0];
+    const entityDomain = String(
+      entity?.entityId ?? candidate.entityId ?? "",
+    ).split(".")[0];
     if (
       candidate.kind === "light" ||
       entity?.domain === "light" ||
@@ -282,12 +370,14 @@ export function isVerticalReferenceCandidate({
 
 export function verticalReferenceOptionValue(reference) {
   const normalized = normalizeVerticalReference(reference);
-  return normalized.targetType === "floor"
-    ? "floor"
+  return ["floor", "ceiling"].includes(normalized.targetType)
+    ? normalized.targetType
     : `${normalized.targetType}:${normalized.targetId ?? ""}:${normalized.surface}`;
 }
 
 export function parseVerticalReferenceOption(value) {
+  if (value === "ceiling")
+    return { targetType: "ceiling", targetId: undefined, surface: "bottom" };
   if (!value || value === "floor") {
     return { targetType: "floor", targetId: undefined, surface: "top" };
   }

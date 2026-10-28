@@ -1,10 +1,9 @@
 {
   "name": "@ha3d/recovered-web",
-  "version": "0.1.5-custom.32",
+  "version": "0.1.5-custom.33",
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/build-concept-scene.mjs",
     "build": "vite build",
     "dev": "vite"
   },

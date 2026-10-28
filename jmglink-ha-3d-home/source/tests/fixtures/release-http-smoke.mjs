@@ -30,6 +30,11 @@ try {
   }
   const manifest=JSON.parse(await readFile('release-manifest.json','utf8'));
   assert.equal(manifest.obfuscated,true);
+  assert.ok(!manifest.files.some(f=>/(concept|tutorials)/.test(f.path)));
+  assert.equal((await(await fetch(base+'/api/control-library')).json()).controls.filter(c=>c.builtin).length,12);
+  const {access}=await import('node:fs/promises');
+  await assert.rejects(access('apps/web/dist/concept'));
+  await assert.rejects(access('apps/web/dist/tutorials'));
   console.log(JSON.stringify({obfuscatedHttpSmoke:'passed',standalone:true,projects:true,staticAssets:true,skills:true}));
 }finally{
   if(!exited){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}

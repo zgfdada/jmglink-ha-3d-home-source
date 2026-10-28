@@ -46,6 +46,12 @@ class PublicIsolation(unittest.TestCase):
         with self.assertRaises(ValueError):
             M.snapshot(self.root)
 
+    def test_haos_changelog_is_required_and_versioned(self):
+        p = self.root / "distribution/jmglink-ha-3d-home/CHANGELOG.md"
+        p.write_text("# missing version", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            M.snapshot(self.root)
+
     def test_broken_user_link_fails(self):
         p = self.root / "distribution/README.md"
         p.write_text(p.read_text(encoding="utf-8") + "\n[internal](README_CODE.md)\n", encoding="utf-8")

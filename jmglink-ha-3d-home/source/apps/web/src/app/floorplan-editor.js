@@ -2,6 +2,9 @@
  * Recovered application module from official 0.1.5 Vite artifact: FloorplanEditor-CWRaEIlm.js
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.
  */
+import {cameraModelDefinition} from "../../../../packages/schema/src/camera-models.js";
+import CameraPlanGlyph from '../components/camera-plan-glyph.jsx';
+import CameraSettings from '../components/camera-settings.jsx';
 import { j as t } from "../vendor/three.js";
 import { a as x } from "../vendor/react.js";
 import { shouldRightPanEmptyCanvas, canvasPanHasMoved } from "../domain/editor-canvas-pan.js";
@@ -1484,7 +1487,7 @@ function Sr(s, i, o, d, c) {
     floorId: i.id,
     roomId: v == null ? void 0 : v.id,
     position: [f[0], rn(s, i.height, o), f[1]],
-    verticalReference: {
+    verticalReference: cameraModelDefinition(o) && o !== "camera.desktop" ? {targetType:"ceiling",surface:"bottom",offset:0} : {
       targetType: "floor",
       surface: "top",
       offset: rn(s, i.height, o),
@@ -2024,6 +2027,7 @@ function _e(s, i) {
 function li({ device: s, entity: i }) {
   const o = ws(s, i),
     d = Ni(o.id);
+  if(s.kind === "camera") return t.jsx(CameraPlanGlyph,{dual:o.id === "camera.dual" || s.customModel?.source?.shape === "camera-dual" || i?.deviceModel?.source?.shape === "camera-dual"});
   if (we(o.id)) {
     if (os(s)) {
       const f = [s.position[0], s.position[2]],
@@ -2786,6 +2790,7 @@ function VerticalReferenceEditor({ floor, type, item, entities, onChange }) {
     elevation = getObjectVerticalElevation(floor, type, item.id, entities),
     options = [
       { value: "floor", label: "楼层地面" },
+      { value: "ceiling", label: "天花板（模型顶面）" },
       ...floor.devices
         .filter((candidate) =>
           isVerticalReferenceCandidate({
@@ -2873,13 +2878,13 @@ function VerticalReferenceEditor({ floor, type, item, entities, onChange }) {
               t.jsx("input", {
                 type: "number",
                 min: "-20",
-                max: "20",
+                max: reference.targetType === "ceiling" ? "0" : "20",
                 step: "0.05",
                 value: Number(reference.offset.toFixed(2)),
                 onChange: (event) =>
                   onChange({
                     ...reference,
-                    offset: Number(event.target.value) || 0,
+                    offset: reference.targetType === "ceiling" ? Math.min(0,Number(event.target.value)||0) : Number(event.target.value)||0,
                   }),
               }),
               t.jsx("i", { children: "m" }),
@@ -3028,6 +3033,7 @@ function vd({
     [qe, Hi] = x.useState(st),
     [roomFilter, setRoomFilter] = x.useState(st),
     [Ht, zi] = x.useState(""),
+    [showHiddenEntities,setShowHiddenEntities] = x.useState(false),
     [resourcePanelWidth, setResourcePanelWidth] = x.useState(() => {
       if (typeof window === "undefined") return null;
       const saved = Number(
@@ -3155,7 +3161,7 @@ function vd({
       [i, b.devices],
     ),
     Mn = deviceLibrary.unplaced,
-    Oe = deviceLibrary.available,
+    Oe = showHiddenEntities ? deviceLibrary.unplaced : deviceLibrary.available,
     haDeviceById = x.useMemo(
       () => new Map(haDevices.map((device) => [device.id, device])),
       [haDevices],
@@ -3182,10 +3188,11 @@ function vd({
           }),
       [i],
     ),
-    Wi = Mn.length - Oe.length,
+    Wi = deviceLibrary.unplaced.length - deviceLibrary.available.length,
     $n = x.useMemo(() => {
       const e = new Map();
       for (const n of Oe) e.set(n.domain, (e.get(n.domain) ?? 0) + 1);
+      if (!e.has("camera")) e.set("camera", 0);
       return [
         { domain: st, label: "全部", count: Oe.length },
         ...[...e.entries()]
@@ -3354,9 +3361,9 @@ function vd({
             onSelect: selectRoom,
           }),
           Wi > 0 &&
-            t.jsxs("p", {
-              className: "device-library-hint",
-              children: ["已隐藏 ", Wi, " 个系统/辅助实体"],
+            t.jsxs("div", {
+              className: "device-library-hint device-library-visibility",
+              children: [t.jsxs("span",{children:[showHiddenEntities ? "已显示 " : "已隐藏 ",Wi," 个系统/辅助实体"]}),t.jsxs("label",{className:"device-library-visibility-toggle",children:[t.jsx("input",{type:"checkbox",role:"switch",checked:showHiddenEntities,"aria-label":"取消隐藏系统和辅助实体",onChange:event=>setShowHiddenEntities(event.target.checked)}),"取消隐藏"]})],
             }),
           je &&
             selectedPresentation.locked &&
@@ -3736,6 +3743,7 @@ function vd({
                 {
                   ...a,
                   modelId: e,
+                  verticalReference: cameraModelDefinition(e) ? (e === "camera.desktop" ? {targetType:"floor",surface:"top",offset:r[1]} : {targetType:"ceiling",surface:"bottom",offset:0}) : a.verticalReference,
                   position: r,
                   scale: m,
                   lightStrip: l ? a.lightStrip : void 0,
@@ -4988,7 +4996,7 @@ function vd({
         kind: hi(p),
         floorId: b.id,
         position: [a[0], rn(p, b.height, N), a[1]],
-        verticalReference: {
+        verticalReference: cameraModelDefinition(N) && N !== "camera.desktop" ? {targetType:"ceiling",surface:"bottom",offset:0} : {
           targetType: "floor",
           surface: "top",
           offset: rn(p, b.height, N),
@@ -10459,6 +10467,7 @@ function vd({
                           onSelect: wo,
                         }),
                       }),
+                    q?.domain === "camera" && t.jsx(CameraSettings,{placement:w,modelId:te?.id,entity:q,entities:i,onChange:settings=>F(floor=>({...floor,devices:floor.devices.map(device=>device.id===w.id?{...device,cameraSettings:settings}:device)}))}),
                     q && t.jsx(fl, { compact: !0, entity: q }),
                     qs !== void 0 &&
                       t.jsxs("div", {

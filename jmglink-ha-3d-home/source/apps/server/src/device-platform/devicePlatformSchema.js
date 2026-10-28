@@ -3,6 +3,7 @@ import {
   normalizeLibraryControl,
   resolveLibraryControl,
 } from "../../../../packages/schema/src/control-library.js";
+import {CAMERA_MODELS} from '../../../../packages/schema/src/camera-models.js';
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]{1,127}$/;
 const ENTITY_ID_PATTERN = /^[a-z0-9_]+\.[a-z0-9_]+$/;
 
@@ -722,6 +723,7 @@ export function builtinDeviceTemplates() {
 
 export function builtinModelTemplates() {
   return [
+    ...CAMERA_MODELS.map(model=>normalizeModelTemplate({id:`builtin.${model.id}`,name:model.name,source:{type:"procedural",shape:model.shape},dimensions:model.dimensions,placement:model.placement,color:"#eef2f5",tags:["摄像头","camera"],furnitureEnabled:true},{builtin:true})),
     normalizeModelTemplate(
       {
         id: "builtin.generic",

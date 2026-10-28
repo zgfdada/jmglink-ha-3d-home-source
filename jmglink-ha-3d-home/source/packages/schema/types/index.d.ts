@@ -97,7 +97,7 @@ export type DevicePlacement = {
     verticalReference?: VerticalReference;
 };
 export type VerticalReference = {
-    targetType: "floor" | "device" | "furniture";
+    targetType: "floor" | "ceiling" | "device" | "furniture";
     targetId?: string;
     surface: "bottom" | "top";
     offset: number;
@@ -151,6 +151,7 @@ export type FurniturePlacement = {
     elevation?: number;
     modelId?: string;
     name?: string;
+    cameraSettings?: {secondaryEntityId?:string;externalUrl?:string;ptzProvider?:"auto"|"none"|"frigate"|"onvif";ptzEntityId?:string};
     customModel?: unknown;
     verticalReference?: VerticalReference;
 };

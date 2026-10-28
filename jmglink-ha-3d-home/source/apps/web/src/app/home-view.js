@@ -1,3 +1,5 @@
+import {CameraViewer} from '../components/camera-controls.jsx';
+import {CameraLiveView} from './scene.js';
 import InstanceTransfer from "./instance-transfer.jsx";
 import { resolveDaylight } from "../../../../packages/schema/src/daylight.js";
 import { PublishedSidebar, SidebarVisibilityToggle } from "./sidebar-development/renderer.jsx";
@@ -2635,6 +2637,7 @@ function Qn({
 }) {
   var $t;
   const [developmentMenuOpen, setDevelopmentMenuOpen] = l.useState(false);
+  const [cameraMonitorId,setCameraMonitorId] = l.useState(null);
   const [transferOpen, setTransferOpen] = l.useState(false);
   const [sidebarWidth, setSidebarWidth] = l.useState(380);
   const [sidebarCollapsed, setSidebarCollapsed] = l.useState(false);
@@ -2988,13 +2991,15 @@ function Qn({
     ),
     Fs = l.useCallback(
       (n) => {
+        if(F[n]?.domain === "camera"){setCameraMonitorId(n);k(void 0);G(false);return;}
         (ie(void 0), k(n), G(Q <= 960));
       },
-      [k, Q],
+      [k, Q, F],
     );
   return e.jsxs("section", {
     className: `home-workspace ${t.floors.length > 1 && !sidebarHidden ? "has-floor-selector" : ""} theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
     children: [
+      cameraMonitorId && F[cameraMonitorId] && e.jsx(CameraViewer,{key:cameraMonitorId,entity:F[cameraMonitorId],project:t,entities:F,onClose:()=>setCameraMonitorId(null),renderLive:(active,key)=>e.jsx(CameraLiveView,{entity:active,compact:true,autoPlay:true},key)}),
       e.jsxs("div", {
         className: "home-scene",
         style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[139,187,211,193,210,200]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},

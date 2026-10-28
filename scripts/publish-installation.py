@@ -47,9 +47,14 @@ def snapshot(root=ROOT):
     if ("image: gitea.700117.xyz:16666/zgf/" + IMAGE_NAME + ":latest") not in result["docker-compose.release.yml"].decode():
         raise ValueError("Public Compose must use latest")
     for name in ["README.md", "RELEASE_NOTES.md",
-                 "jmglink-ha-3d-home/RELEASE_NOTES.md"]:
+                 "jmglink-ha-3d-home/RELEASE_NOTES.md", "jmglink-ha-3d-home/CHANGELOG.md"]:
         if version not in result[name].decode():
             raise ValueError("Public version mismatch: " + name)
+    changelog = result["jmglink-ha-3d-home/CHANGELOG.md"].decode()
+    if not re.search(r"^## " + re.escape(version) + r"(?:\s|$)", changelog, re.M):
+        raise ValueError("HAOS changelog lacks current version")
+    if any(part in {"concept", "tutorials"} for name in result for part in Path(name).parts):
+        raise ValueError("Local presentation materials are not release content")
     # Every relative Markdown file link must resolve in the public snapshot.
     for name, content in result.items():
         if not name.endswith(".md"):

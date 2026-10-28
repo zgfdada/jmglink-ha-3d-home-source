@@ -23,9 +23,12 @@ export function buildDeviceLibrary(entities, placedDevices, isVisible, compare) 
       .filter((entity) => entity.domain === "climate" && entity.deviceId)
       .map((entity) => entity.deviceId),
   );
+  const cameraDeviceIds = new Set(visible.filter(entity=>entity.domain === "camera" && entity.deviceId).map(entity=>entity.deviceId));
   const seenDevices = new Set();
   const available = visible.filter((entity) => {
+    if (entity.domain === "camera") return true;
     if (!entity.deviceId) return true;
+    if (cameraDeviceIds.has(entity.deviceId)) return false;
     if (climateDeviceIds.has(entity.deviceId) && entity.domain !== "climate")
       return false;
     if (seenDevices.has(entity.deviceId)) return false;

@@ -16,5 +16,6 @@
   "jmglink-ha-3d-home/config.yaml",
   "jmglink-ha-3d-home/translations/en.yaml",
   "jmglink-ha-3d-home/translations/zh-Hans.yaml",
-  "repository.yaml"
+  "repository.yaml",
+  "jmglink-ha-3d-home/CHANGELOG.md"
 ]

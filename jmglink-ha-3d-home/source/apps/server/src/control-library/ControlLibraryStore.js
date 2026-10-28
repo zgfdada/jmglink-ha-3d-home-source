@@ -24,7 +24,8 @@ export class ControlLibraryStore {
       const saved = JSON.parse(
         await readFile(path.join(directory, "control-library.json"), "utf8"),
       );
-      items = normalizeLibraryPackage(saved);
+      const allowed = new Set(builtinControls().map(item => item.id));
+      items = normalizeLibraryPackage(saved).filter(item => !item.id.startsWith("builtin.") || allowed.has(item.id));
       for (const [id, raw] of Object.entries(saved.previous || {})) {
         if (items.some((item) => item.id === id))
           previous[id] = normalizeLibraryControl(raw);

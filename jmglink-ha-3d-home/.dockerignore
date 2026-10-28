@@ -3,3 +3,7 @@ source/node_modules
 source/apps/web/dist
 source/runtime
 source/.release
+
+source/apps/web/public/concept
+source/apps/web/src/concept
+source/apps/web/scripts/build-concept-scene.mjs

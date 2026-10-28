@@ -16,3 +16,5 @@
   stroke-width: 0.055;
   vector-effect: non-scaling-stroke;
 }
+
+.device-library-visibility{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.device-library-visibility-toggle{display:inline-flex;align-items:center;gap:6px;min-height:36px;cursor:pointer;white-space:nowrap;color:var(--editor-text,#31516c);font-size:12px}.device-library-visibility-toggle input{appearance:auto;width:16px;height:16px;margin:0;accent-color:#3c82f6;cursor:pointer}

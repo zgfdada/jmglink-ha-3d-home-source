@@ -10,21 +10,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.32`** · 支持 `linux/amd64`、`linux/arm64`
-
-## 一切，由你定义
-
-从户型与模型，到设备能力、控制面板、HTML/CSS/JS 控件与各楼层侧栏，让家的样子和交互方式由你设计。
-
-[项目理念与愿景介绍页](jmglink-ha-3d-home/source/apps/web/public/concept/index.html) 采用固定 1920×1080 画布、十章点击跳转和三种整体视觉方案（默认浅色「建筑画廊」），兼顾普通用户、HA 玩家及贡献者。首页使用与项目同源的 Three.js 实时渲染家具样板间，可旋转、缩放与选择房间；支持方向键翻页和刷新后章节恢复。空间、设备、侧边栏自定义分别独立成页；设备页使用项目实际波轮洗衣机 GLB，展示程序选择、启停、运行阶段、剩余时间和模型运行联动；智能化方案提供灯光决策与双层窗帘 A–F 时间轴、情景优先和手动保护模拟。灯光页可切换日间补光、夜间起身、观影氛围和离家节能。待开发页介绍在线控件、设备、控制面板与侧边栏控件库，明确规划状态。方案不等于已部署的自动化。小屏幕等比缩放，建议横屏观看。独立介绍素材保留在源码目录，主页不再提供该入口。演示不连接真实设备；未来愿景单独标明，不代表已交付功能。该页面属于本地新增内容，尚未包含在上方正式版本镜像中。
-
-[版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
-
-[十页播音与字幕文案](jmglink-ha-3d-home/source/apps/web/public/concept/narration.md) · [纯播音文本](jmglink-ha-3d-home/source/apps/web/public/concept/narration.txt) · [按章节组织的字幕断句 JSON](jmglink-ha-3d-home/source/apps/web/public/concept/narration.json)。配音与字幕时间轴尚未生成，后续按实际音频对齐。
-
-## 教程视频素材
-
-[第一部分：安装与首次连接](docs/tutorials/01-installation/index.html) 为浅色固定画布图解教程，开头对比 Home Assistant App 与独立 Docker，随后覆盖两种安装路线、首次连接、验收、排障和备份。[操作清单](docs/tutorials/01-installation/操作清单.md)与完整 Compose 随教程提供。源码目录提供 HTML 与播音文案；配音、字幕时间轴和成片在下载目录的交付包中。画面为操作示意，不代表已对用户主机执行安装。
+**当前版本：`0.1.5-custom.33`** · 支持 `linux/amd64`、`linux/arm64`
 
 ## 你可以做什么
 
@@ -86,6 +72,12 @@ docker compose -f docker-compose.release.yml up -d
 | `./ha3d-assets` | `/assets` | 用户模型及素材 |
 
 **从旧 Docker 部署迁移时，先备份，再把 Compose 的主机目录改为原有 `docker-runtime-source/data` 和 `docker-runtime-source/assets`。不要空目录启动后误以为旧项目丢失，也不要让两个容器同时写同一份数据。**
+
+## 内置摄像头与监控
+
+设备列表「已隐藏」数量右侧的「取消隐藏」开关可显示全部尚未摆放的系统／辅助实体，关闭恢复过滤。设备列表提供独立「摄像头」类型，未摆放的 camera 实体不会因同设备辅助开关或传感器而隐藏。提供枪型、球型单摄、球型双摄、桌面型四种内置摄像头模型，可在房间布局编辑的摄像头外形选择中使用，也可在设备开发中心的本地模型库检索「摄像头」后用于设备外观。模型不包含账号或视频地址，使用前绑定真实 HA `camera.*` 实体。
+
+在 3D 主页点击摄像头设备模型即可打开监控弹窗并自动尝试播放：优先使用 HA 提供的实时流，不支持时回退到定时快照。可停止、刷新、点击关闭或按 Esc；关闭后停止视频和快照刷新。手机端自适应。双摄模型可在设备属性中选择第二路 camera 实体，控制面板显示两个缩略图，点击播放打开大浮层，通过居中的「主摄／第二路」标签切换画面。可配置外部访问地址，以及自动检测的 Frigate／ONVIF 云台控制。枪型、球型默认绑定天花板，按模型实际高度及缩放防止穿顶；桌面型保留地面／台面安装。真实画面可用性取决于 HA 摄像头集成与浏览器支持。
 
 ## 楼层与面板
 
@@ -171,3 +163,5 @@ docker compose -f docker-compose.release.yml up -d
 可选事件与运维控件：事件直接读取原移动端通知日志；主机资源展示整机 CPU、内存和已用/可用数值；离线统计及待补充耗材可独立放置。配置与使用见[侧栏开发说明](docs/sidebar-development.md)。本版本已提供样板生成器，不会强制添加到现有侧栏。
 
 在线模型功能正准备重新设计，本版本已移除在线页面及接口；本地模型、已安装资源和既有设备引用保留。此变更已发布。
+
+内置控制面板控件为 12 项，升级保留自定义控件与既有面板快照。HAOS 更新说明通过 App 目录 CHANGELOG.md 提供。正式交付不含本地教程和愿景演示素材。

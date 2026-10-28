@@ -1,3 +1,4 @@
+import {normalizeCameraSettings} from './camera-settings.js';
 import { normalizeVanityMirrorCabinet } from "./vanity-mirror-cabinet.js";
 
 export const CURRENT_PROJECT_VERSION = 7;
@@ -95,9 +96,9 @@ function normalizeCustomDeviceModel(value) {
 function normalizeVerticalReference(value) {
     if (!isRecord(value))
         return undefined;
-    const targetType = ["floor", "device", "furniture"].includes(value.targetType) ? value.targetType : "floor";
-    const targetId = targetType === "floor" ? undefined : optionalText(value.targetId);
-    if (targetType !== "floor" && !targetId)
+    const targetType = ["floor", "ceiling", "device", "furniture"].includes(value.targetType) ? value.targetType : "floor";
+    const targetId = ["floor","ceiling"].includes(targetType) ? undefined : optionalText(value.targetId);
+    if (!["floor","ceiling"].includes(targetType) && !targetId)
         return undefined;
     return {
         targetType,
@@ -375,7 +376,7 @@ export function normalizeFloorplanProject(value) {
         const devices = (Array.isArray(floor.devices) ? floor.devices : []).map((deviceValue, deviceIndex) => {
             const device = isRecord(deviceValue) ? deviceValue : {};
             const supportedKinds = ["light", "switch", "cover", "climate", "sensor", "binary_sensor", "camera", "lock", "fan", "media_player", "alarm_control_panel", "vacuum", "custom"];
-            return { id: text(device.id, `device-${index + 1}-${deviceIndex + 1}`), entityId: text(device.entityId ?? device.primaryEntityId, ""), name: optionalText(device.name), deviceId: optionalText(device.deviceId), deviceTemplateId: optionalText(device.deviceTemplateId), deviceBindingId: optionalText(device.deviceBindingId), customModel: normalizeCustomDeviceModel(device.customModel), kind: supportedKinds.includes(device.kind) ? device.kind : "custom", floorId: id, roomId: typeof device.roomId === "string" ? device.roomId : undefined, position: vector3(device.position, [0, 1.2, 0]), rotation: vector3(device.rotation, [0, 0, 0]), scale: Array.isArray(device.scale) ? vector3(device.scale, [1, 1, 1]) : undefined, modelId: typeof device.modelId === "string" ? device.modelId : undefined, icon: typeof device.icon === "string" ? device.icon : undefined, lightStrip: normalizeLightStripPath(device.lightStrip), controlledLightFixtures: normalizeSwitchLightFixtures(device.controlledLightFixtures, id), verticalReference: normalizeVerticalReference(device.verticalReference) };
+            return { id: text(device.id, `device-${index + 1}-${deviceIndex + 1}`), entityId: text(device.entityId ?? device.primaryEntityId, ""), name: optionalText(device.name), cameraSettings: normalizeCameraSettings(device.cameraSettings, device.entityId ?? device.primaryEntityId), deviceId: optionalText(device.deviceId), deviceTemplateId: optionalText(device.deviceTemplateId), deviceBindingId: optionalText(device.deviceBindingId), customModel: normalizeCustomDeviceModel(device.customModel), kind: supportedKinds.includes(device.kind) ? device.kind : "custom", floorId: id, roomId: typeof device.roomId === "string" ? device.roomId : undefined, position: vector3(device.position, [0, 1.2, 0]), rotation: vector3(device.rotation, [0, 0, 0]), scale: Array.isArray(device.scale) ? vector3(device.scale, [1, 1, 1]) : undefined, modelId: typeof device.modelId === "string" ? device.modelId : undefined, icon: typeof device.icon === "string" ? device.icon : undefined, lightStrip: normalizeLightStripPath(device.lightStrip), controlledLightFixtures: normalizeSwitchLightFixtures(device.controlledLightFixtures, id), verticalReference: normalizeVerticalReference(device.verticalReference) };
         }).filter((device) => device.entityId);
         return { id, name: text(floor.name, `${index + 1} 层`), level: finite(floor.level, index + 1, -20, 200), height: finite(floor.height, 2.8, 1, 12), walls, rooms, openings, devices, furniture: (Array.isArray(floor.furniture) ? floor.furniture : []).map((item) => normalizeFurniture(item, id)) };
     });

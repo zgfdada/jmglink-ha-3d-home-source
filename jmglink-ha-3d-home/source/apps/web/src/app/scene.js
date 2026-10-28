@@ -1,3 +1,6 @@
+import CameraModel from '../components/camera-model.jsx';
+import CameraControlPanel from '../components/camera-controls.jsx';
+import {CAMERA_MODELS,cameraModelDefinition} from '../../../../packages/schema/src/camera-models.js';
 import {resolveLightChromaticity, mixLightColors} from "../domain/light-color.js";
 import { DEFAULT_OUTLINE_SCALE, outlineThickness, updateOutlineThickness } from "../domain/outline-settings.js";
 import { overlayRefitKey } from "../domain/camera-refit.js";
@@ -1147,22 +1150,7 @@ const rs = [
       placement: "wall",
       defaultHeight: 1.25,
     },
-    {
-      id: "camera.dome",
-      kind: "camera",
-      label: "云台球机",
-      description: "半球/云台摄像头",
-      placement: "ceiling",
-      defaultHeight: 1.5,
-    },
-    {
-      id: "camera.bullet",
-      kind: "camera",
-      label: "枪机摄像头",
-      description: "室外/走廊定向监控摄像头",
-      placement: "wall",
-      defaultHeight: 1.35,
-    },
+    ...CAMERA_MODELS.map(model=>({id:model.id,kind:"camera",label:model.name,description:model.name,placement:model.placement,defaultHeight:model.defaultHeight})),
     {
       id: "camera.doorbell",
       kind: "camera",
@@ -1421,7 +1409,7 @@ function is(e, s = e ? bt(e) : "custom") {
               : (e == null ? void 0 : e.domain) === "camera" || s === "camera"
                 ? /(门铃|doorbell|intercom|可视门铃)/i.test(r)
                   ? "camera.doorbell"
-                  : /(枪机|室外|走廊|bullet|outdoor|corridor|hallway)/i.test(r)
+                  : /(双摄|双镜头|dual.?lens|dual.?camera)/i.test(r) ? "camera.dual" : /(桌面|台式|desktop|tabletop)/i.test(r) ? "camera.desktop" : /(枪机|室外|走廊|bullet|outdoor|corridor|hallway)/i.test(r)
                     ? "camera.bullet"
                     : /(云台|球机|半球|dome|ptz|pan|tilt)/i.test(r)
                       ? "camera.dome"
@@ -2632,7 +2620,7 @@ const Xo = {
     cover: "窗帘",
     climate: "空调",
     sensor: "传感器",
-    camera: "摄像机",
+    camera: "摄像头",
     fan: "风扇",
     media_player: "影音设备",
     vacuum: "扫地机器人",
@@ -5840,7 +5828,7 @@ function ProceduralDeviceModel({ config: e, unavailable = false, running = false
     position: [r.x, (e.elevation ?? 0) + r.y, r.z],
     scale: [i, i, i],
     children: [
-      t.jsxs("mesh", {
+      cameraModelDefinition(shape) ? t.jsx(CameraModel,{shape,dimensions:s,color:a}) : t.jsxs("mesh", {
         castShadow: !0,
         receiveShadow: !0,
         position: [0, s.height / 2, 0],
@@ -7731,34 +7719,7 @@ function si({
       ],
     });
   }
-  if (s === "camera.dome")
-    return t.jsxs("group", {
-      children: [
-        t.jsxs("mesh", {
-          castShadow: !0,
-          children: [
-            t.jsx("cylinderGeometry", { args: [0.135, 0.145, 0.064, 34] }),
-            d(0.34, 0.08),
-          ],
-        }),
-        t.jsxs("mesh", {
-          position: [0, -0.056, 0],
-          scale: [1, 0.62, 1],
-          children: [
-            t.jsx("sphereGeometry", { args: [0.12, 30, 14] }),
-            g(n ? 0.62 : 0.36),
-          ],
-        }),
-        t.jsxs("mesh", {
-          position: [0, -0.056, 0.096],
-          rotation: [Math.PI / 2, 0, 0],
-          children: [
-            t.jsx("circleGeometry", { args: [0.035, 18] }),
-            g(n ? 0.82 : 0.48),
-          ],
-        }),
-      ],
-    });
+  if (cameraModelDefinition(s)) return t.jsx(CameraModel,{shape:cameraModelDefinition(s).shape,color:i ? "#84909a" : "#eef2f5"});
   if (s === "camera.wall")
     return t.jsxs("group", {
       children: [
@@ -7785,45 +7746,6 @@ function si({
           children: [
             t.jsx("circleGeometry", { args: [0.04, 24] }),
             g(n ? 0.82 : 0.45),
-          ],
-        }),
-      ],
-    });
-  if (s === "camera.bullet")
-    return t.jsxs("group", {
-      children: [
-        t.jsxs("mesh", {
-          position: [-0.095, 0.032, 0],
-          rotation: [0, 0, 0.12],
-          castShadow: !0,
-          children: [
-            t.jsx("boxGeometry", { args: [0.1, 0.044, 0.055] }),
-            d(0.42, 0.12, "detail"),
-          ],
-        }),
-        t.jsxs("mesh", {
-          position: [0.01, 0.016, 0],
-          rotation: [0, 0, Math.PI / 2],
-          castShadow: !0,
-          children: [
-            t.jsx("cylinderGeometry", { args: [0.056, 0.064, 0.22, 26] }),
-            d(0.28, 0.18),
-          ],
-        }),
-        t.jsxs("mesh", {
-          position: [0.135, 0.016, 0],
-          rotation: [0, 0, Math.PI / 2],
-          children: [
-            t.jsx("circleGeometry", { args: [0.046, 24] }),
-            g(n ? 0.86 : 0.46),
-          ],
-        }),
-        t.jsxs("mesh", {
-          position: [0.01, 0.079, 0],
-          castShadow: !0,
-          children: [
-            t.jsx("boxGeometry", { args: [0.235, 0.02, 0.068] }),
-            d(0.5, 0.08, "detail"),
           ],
         }),
       ],
@@ -12724,7 +12646,7 @@ function Vi({ label: e, onError: s, src: r }) {
     })
   );
 }
-function Ki({ compact: e = !1, entity: s }) {
+function Ki({ compact: e = !1, entity: s, autoPlay = false }) {
   var I;
   const [r, o] = L.useState(),
     [n, i] = L.useState(!1),
@@ -12746,6 +12668,7 @@ function Ki({ compact: e = !1, entity: s }) {
       x(Date.now()),
       G(Date.now()));
   }, [s.entityId]);
+  const cameraRequestVersion = L.useRef(0);
   const C = Oi(),
     O =
       !!(r != null && r.mjpegUrl) &&
@@ -12769,17 +12692,21 @@ function Ki({ compact: e = !1, entity: s }) {
     return () => window.clearInterval(F);
   }, [d]);
   async function _() {
+    const request = ++cameraRequestVersion.current;
     (c(!0), f(void 0), h(!1), y(!1), b(!1));
     try {
       const F = await qs(s.entityId);
+      if(request !== cameraRequestVersion.current)return;
       (o(F), x(Date.now()), G(Date.now()), i(!0));
     } catch (F) {
-      (f(F instanceof Error ? F.message : "摄像头画面获取失败"), i(!1));
+      if(request === cameraRequestVersion.current)(f(F instanceof Error ? F.message : "摄像头画面获取失败"), i(!1));
     } finally {
-      c(!1);
+      if(request === cameraRequestVersion.current)c(!1);
     }
   }
+  L.useEffect(()=>{if(autoPlay && s.state !== "unavailable")_();return()=>{cameraRequestVersion.current++;};},[s.entityId,autoPlay]);
   function M() {
+    cameraRequestVersion.current++;
     (i(!1), h(!1), y(!1), b(!1));
   }
   function p() {
@@ -12902,6 +12829,7 @@ function Ui({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
       })
     : t.jsx(Vs, { compact: r, entity: o });
 }
+function CameraControlsBridge({entity}){const project=Ie(state=>state.project);const entities=Ie(state=>state.entities);return t.jsx(CameraControlPanel,{entity,project,entities,renderLive:(active,key)=>t.jsx(Ki,{entity:active,compact:true,autoPlay:true},key)});}
 function qi({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
   return o.domain === "light"
     ? t.jsx(Bi, { active: e, busy: s, compact: r, entity: o, run: n })
@@ -12912,7 +12840,7 @@ function qi({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
         : o.domain === "fan"
           ? t.jsx(Wi, { active: e, busy: s, compact: r, entity: o, run: n })
           : o.domain === "camera"
-            ? t.jsx(Ki, { compact: r, entity: o })
+            ? t.jsx(CameraControlsBridge, { entity: o })
             : Hs.has(o.domain)
               ? t.jsx(Vs, { compact: r, entity: o })
               : t.jsx(Ui, {
@@ -13329,3 +13257,5 @@ export {
   ln as y,
   ya as z,
 };
+
+export {Ki as CameraLiveView};

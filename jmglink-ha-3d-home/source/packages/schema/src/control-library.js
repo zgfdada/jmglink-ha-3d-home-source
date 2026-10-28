@@ -1,3 +1,4 @@
+import { BUILTIN_CONTROL_SELECTION } from "./builtin-control-selection.js";
 export const PANEL_CONTROL_VARIANTS = {
   toggle: [
     { value: "switch", label: "滑动开关", hint: "轨道与圆形滑块", mark: "◉" },
@@ -226,7 +227,10 @@ function typesFor(type) {
           ? ["action", "boolean"]
           : ["string", "boolean", "number", "enum"];
 }
-export function builtinControls() {
+export function builtinControls() { return structuredClone(BUILTIN_CONTROL_SELECTION); }
+
+// Keep old native definitions resolvable for existing panel snapshots.
+export function legacyBuiltinControls() {
   return PANEL_COMPONENTS.flatMap((component) =>
     (PANEL_CONTROL_VARIANTS[component.type] || []).map((variant) => ({
       id: `builtin.${component.type}.${variant.value}`,
@@ -403,7 +407,7 @@ export function normalizeLibraryPackage(bundle) {
 }
 export function resolveLibraryControl(
   control,
-  definitions = builtinControls(),
+  definitions = [...builtinControls(), ...legacyBuiltinControls()],
 ) {
   return (
     control.libraryDefinition ||
