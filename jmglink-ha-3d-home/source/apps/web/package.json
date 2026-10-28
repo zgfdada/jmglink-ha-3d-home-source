@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/build-concept-scene.mjs",
     "build": "vite build",
     "dev": "vite"
   },

@@ -12,7 +12,19 @@
 
 **当前版本：`0.1.5-custom.32`** · 支持 `linux/amd64`、`linux/arm64`
 
+## 一切，由你定义
+
+从户型与模型，到设备能力、控制面板、HTML/CSS/JS 控件与各楼层侧栏，让家的样子和交互方式由你设计。
+
+[项目理念与愿景介绍页](jmglink-ha-3d-home/source/apps/web/public/concept/index.html) 采用固定 1920×1080 画布、十章点击跳转和三种整体视觉方案（默认浅色「建筑画廊」），兼顾普通用户、HA 玩家及贡献者。首页使用与项目同源的 Three.js 实时渲染家具样板间，可旋转、缩放与选择房间；支持方向键翻页和刷新后章节恢复。空间、设备、侧边栏自定义分别独立成页；设备页使用项目实际波轮洗衣机 GLB，展示程序选择、启停、运行阶段、剩余时间和模型运行联动；智能化方案提供灯光决策与双层窗帘 A–F 时间轴、情景优先和手动保护模拟。灯光页可切换日间补光、夜间起身、观影氛围和离家节能。待开发页介绍在线控件、设备、控制面板与侧边栏控件库，明确规划状态。方案不等于已部署的自动化。小屏幕等比缩放，建议横屏观看。独立介绍素材保留在源码目录，主页不再提供该入口。演示不连接真实设备；未来愿景单独标明，不代表已交付功能。该页面属于本地新增内容，尚未包含在上方正式版本镜像中。
+
 [版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
+
+[十页播音与字幕文案](jmglink-ha-3d-home/source/apps/web/public/concept/narration.md) · [纯播音文本](jmglink-ha-3d-home/source/apps/web/public/concept/narration.txt) · [按章节组织的字幕断句 JSON](jmglink-ha-3d-home/source/apps/web/public/concept/narration.json)。配音与字幕时间轴尚未生成，后续按实际音频对齐。
+
+## 教程视频素材
+
+[第一部分：安装与首次连接](docs/tutorials/01-installation/index.html) 为浅色固定画布图解教程，开头对比 Home Assistant App 与独立 Docker，随后覆盖两种安装路线、首次连接、验收、排障和备份。[操作清单](docs/tutorials/01-installation/操作清单.md)与完整 Compose 随教程提供。源码目录提供 HTML 与播音文案；配音、字幕时间轴和成片在下载目录的交付包中。画面为操作示意，不代表已对用户主机执行安装。
 
 ## 你可以做什么
 
@@ -74,6 +86,12 @@ docker compose -f docker-compose.release.yml up -d
 | `./ha3d-assets` | `/assets` | 用户模型及素材 |
 
 **从旧 Docker 部署迁移时，先备份，再把 Compose 的主机目录改为原有 `docker-runtime-source/data` 和 `docker-runtime-source/assets`。不要空目录启动后误以为旧项目丢失，也不要让两个容器同时写同一份数据。**
+
+## 楼层与面板
+
+左下角悬浮按钮可一键隐藏／显示整块侧边栏和楼层选择栏，手机端收起后只保留小按钮。原有的内容折叠功能仍可使用；重新展开恢复原楼层和侧栏状态，显示选择仅保存在当前浏览器，不修改户型或设备。
+
+通过左侧楼层选择器切换楼层，各层保留独立侧栏。只有一个楼层时隐藏楼层选择区域。设备开发中心的控制面板画布支持滚轮、触屏和键盘滚动，可访问长面板的底部控件。
 
 ## 开始使用
 

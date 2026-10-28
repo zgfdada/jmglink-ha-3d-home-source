@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="gallery">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="3DHome Custom：从户型、模型到设备能力、控件与侧栏，把家的样子与交互交还给你。了解项目理念、现有能力和未来愿景。"
+    />
+    <meta name="theme-color" content="#0b1019" />
+    <title>3DHome Custom · 一切，由你定义</title>
+    <link rel="stylesheet" href="./concept.css" />
+    <link rel="stylesheet" href="./deck.css" />
+    <link rel="stylesheet" href="./chapters.css" />
+    <link rel="stylesheet" href="./roadmap.css" />
+    <link rel="stylesheet" href="./washer.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到正文</a>
+    <header class="site-header wrap">
+      <a class="brand" href="#"
+        ><span class="brand-mark" aria-hidden="true">3D</span
+        ><span>3DHome <small>CUSTOM</small></span></a
+      >
+      <nav aria-label="主导航">
+        <a href="#freedom">自定义的边界</a><a href="#experience">智能化方案</a
+        ><a href="#vision">项目愿景</a>
+      </nav>
+      <a class="header-action" href="#start"
+        >开始构建 <span aria-hidden="true">↗</span></a
+      >
+    </header>
+    <main id="main">
+      <section id="home" class="hero wrap">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="live-dot"></span> HOME ASSISTANT × YOUR IMAGINATION
+          </p>
+          <h1>你的家，<br />不止一种<span class="accent">可能。</span></h1>
+          <p class="hero-statement">一切，由你定义。</p>
+          <p class="intro">
+            让真实的空间，成为智能生活的界面。<br />从一面墙的形状，到一个控件的交互，把家的样子和使用方式，交还给你。
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#experience"
+              >探索智能化 <span aria-hidden="true">↗</span></a
+            ><a class="text-link" href="#freedom"
+              >了解项目理念 <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <div class="hero-footnote">
+            <span>3D 空间</span><i></i><span>真实实体</span><i></i
+            ><span>自由交互</span>
+          </div>
+        </div>
+        <div class="space-demo" aria-label="可交互的概念空间演示">
+          <div class="demo-top">
+            <span><span class="live-dot"></span> MY HOME / 我的空间</span
+            ><span class="demo-tag">交互概念演示</span>
+          </div>
+          <div
+            class="space-stage"
+            id="scene-host"
+            aria-label="三维样板间，可拖动旋转、滚轮缩放"
+          >
+            <div id="scene-fallback" role="status">正在初始化三维场景…</div>
+            <div class="scene-overlay">
+              <span>THREE.JS / LIVE 3D</span
+              ><span>拖动旋转 · 滚轮缩放 · 点击房间</span>
+            </div>
+          </div>
+          <div class="space-controls">
+            <span id="space-status" aria-live="polite">客厅 · 灯光已开启</span
+            ><button id="light-toggle" aria-pressed="true">切换灯光</button
+            ><button id="view-toggle" aria-pressed="false">平面视角</button>
+          </div>
+          <p class="demo-caption">
+            真实三维样板间 · 家具、材质与光影实时渲染 · 演示不连接真实设备。
+          </p>
+        </div>
+      </section>
+      <div class="principle-strip">
+        <div class="wrap">
+          <span>从空间出发</span><span>以实体连接</span><span>用控件表达</span
+          ><span>由自己定义</span>
+        </div>
+      </div>
+
+      <section
+        id="freedom"
+        class="section wrap detail-slide"
+        data-title="空间自定义"
+      >
+        <div class="detail-heading">
+          <p class="eyebrow">01 / SPACE CUSTOMIZATION</p>
+          <h2>空间自定义<span>户型与楼层</span></h2>
+          <p>先定义家的结构，再让设备与生活各就其位。</p>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-copy">
+            <h3>按真实的家来设计。</h3>
+            <p>
+              绘制墙体、房间、门窗与底图，设置实际尺寸。户型可以重新组织，家具和设备有各自的位置。
+            </p>
+            <div class="detail-points">
+              <article>
+                <b>01</b>
+                <div>
+                  <h4>户型不被矩形限制</h4>
+                  <p>把房间轮廓、门窗位置与空间关系表达清楚。</p>
+                </div>
+              </article>
+              <article>
+                <b>02</b>
+                <div>
+                  <h4>每层都有自己的生活</h4>
+                  <p>组织多楼层，为不同楼层配置独立侧栏和导航。</p>
+                </div>
+              </article>
+              <article>
+                <b>03</b>
+                <div>
+                  <h4>外观与布置继续生长</h4>
+                  <p>摆放家具，使用本地 GLB / 自包含 GLTF，调整自己的空间。</p>
+                </div>
+              </article>
+            </div>
+            <a class="text-link" href="#device-custom"
+              >下一步：定义设备与交互 ↗</a
+            >
+          </div>
+          <div class="blueprint-board">
+            <div class="board-title">
+              <span>MY HOME / 户型规划示意</span>
+              <div class="floor-choices" role="group" aria-label="示意楼层">
+                <button data-demo-floor="1" aria-pressed="true">
+                  1F 生活层</button
+                ><button data-demo-floor="2" aria-pressed="false">
+                  2F 私享层
+                </button>
+              </div>
+            </div>
+            <div class="blueprint-layout" data-floor="1">
+              <div class="bp-room bp-a">
+                <span id="floor-room-a">客厅 · 餐厅</span><i class="bp-sofa"></i
+                ><i class="bp-table"></i>
+              </div>
+              <div class="bp-room bp-b">
+                <span id="floor-room-b">书房</span><i class="bp-desk"></i>
+              </div>
+              <div class="bp-room bp-c">
+                <span id="floor-room-c">厨房</span><i class="bp-counter"></i>
+              </div>
+              <div class="bp-door"></div>
+              <span class="bp-measure">空间，按你的生活定义</span>
+            </div>
+            <div class="board-foot">
+              <span id="floor-note">1F / 公共空间与日常动线</span
+              ><span>楼层切换示意，不修改真实户型</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        id="device-custom"
+        class="section wrap detail-slide"
+        data-title="设备自定义"
+      >
+        <div class="detail-heading">
+          <p class="eyebrow">02 / DEVICE CUSTOMIZATION</p>
+          <h2>设备自定义<span>3D 模型与控制面板</span></h2>
+          <p>同一个设备，外观可以像它，操作也可以像你。</p>
+        </div>
+        <div class="washer-showcase">
+          <div class="washer-story">
+            <h3>一个设备，三层自定义。</h3>
+            <div class="device-chain">
+              <article>
+                <span>01 / MODEL</span>
+                <h4>真实三维模型</h4>
+                <p>
+                  项目中的顶开式波轮洗衣机 GLB，保留机身、上盖、内桶与波轮细节。
+                </p>
+              </article>
+              <article>
+                <span>02 / PANEL</span>
+                <h4>自己的控制面板</h4>
+                <p>程序选择、电源与启停操作，通过能力映射连接对应实体。</p>
+              </article>
+              <article>
+                <span>03 / STATE</span>
+                <h4>看得见的运行状态</h4>
+                <p>
+                  运行阶段、剩余时间与模型动画联动；暂停时停止波轮，恢复后继续。
+                </p>
+              </article>
+            </div>
+            <p class="detail-note">
+              模型来自本项目；演示状态为模拟数据，不控制真实设备。
+            </p>
+          </div>
+          <div class="washer-model-card">
+            <div class="board-title">
+              <span>3D MODEL / 项目模型</span><span>顶开式波轮洗衣机</span>
+            </div>
+            <div id="washer-model-host">
+              <p id="washer-model-fallback">正在加载洗衣机三维模型…</p>
+            </div>
+            <div class="washer-model-status">
+              <i></i><span id="washer-model-label">待机</span>
+            </div>
+            <p class="washer-model-hint">
+              拖动旋转 · 滚轮缩放 · 运行时波轮转动
+            </p>
+          </div>
+          <div class="washer-panel">
+            <div class="board-title">
+              <span>CONTROL PANEL</span><span>模拟联调</span>
+            </div>
+            <div class="washer-panel-heading">
+              <h3>波轮洗衣机</h3>
+              <span id="washer-state">待机</span>
+            </div>
+            <div class="washer-metrics">
+              <div>
+                <span>当前程序</span
+                ><strong id="washer-program-label">标准</strong>
+              </div>
+              <div>
+                <span>剩余时间</span><strong id="washer-remaining">—</strong>
+              </div>
+            </div>
+            <label class="washer-program-field"
+              >洗衣程序<select id="washer-program">
+                <option>标准</option>
+                <option>速洗</option>
+                <option>家纺</option>
+                <option>羊毛</option>
+                <option>浸洗</option>
+                <option>记忆</option>
+                <option>童装</option>
+                <option>强洗</option>
+                <option>桶自洁</option>
+              </select></label
+            >
+            <div class="washer-actions">
+              <button id="washer-power" aria-pressed="true">
+                电源 · 已开启</button
+              ><button id="washer-toggle">启动</button>
+            </div>
+            <p class="washer-phase-heading">运行阶段演示</p>
+            <div
+              class="washer-phases"
+              role="group"
+              aria-label="模拟洗衣机运行阶段"
+            >
+              <button data-washer-phase="idle" aria-pressed="true">待机</button
+              ><button data-washer-phase="washing" aria-pressed="false">
+                洗涤</button
+              ><button data-washer-phase="rinsing" aria-pressed="false">
+                漂洗</button
+              ><button data-washer-phase="spinning" aria-pressed="false">
+                脱水</button
+              ><button data-washer-phase="done" aria-pressed="false">
+                完成
+              </button>
+            </div>
+            <p id="washer-runtime-detail" aria-live="polite">
+              选择程序后，启动模拟洗衣流程。
+            </p>
+            <div class="washer-capability-note">
+              模型外观 → 能力映射 → 控制面板 → 运行状态
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        id="sidebar-custom"
+        class="section wrap detail-slide"
+        data-title="侧边栏自定义"
+      >
+        <div class="detail-heading">
+          <p class="eyebrow">03 / SIDEBAR CUSTOMIZATION</p>
+          <h2>侧边栏自定义<span>常用功能与极致效果</span></h2>
+          <p>把每天会用到的东西，做成自己最顺手、最喜欢的样子。</p>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-copy">
+            <h3>功能由你挑，效果由你写。</h3>
+            <p>
+              房间、音乐、事件、运维和耗材，可以是入口，也可以是一个常驻控件。HTML
+              / CSS / JS 让信息密度、动效和交互有自己的表达。
+            </p>
+            <div class="detail-points">
+              <article>
+                <b>01</b>
+                <div>
+                  <h4>常用功能，一眼可达</h4>
+                  <p>组织导航与控件，为每个楼层安排自己的首页。</p>
+                </div>
+              </article>
+              <article>
+                <b>02</b>
+                <div>
+                  <h4>极致效果，留给创造</h4>
+                  <p>
+                    设计配色、排版、状态动画与交互细节，实际效果取决于控件代码与设备性能。
+                  </p>
+                </div>
+              </article>
+              <article>
+                <b>03</b>
+                <div>
+                  <h4>作品可以复用与迁移</h4>
+                  <p>保存草稿、发布布局，导入导出控件、页面或整层侧栏。</p>
+                </div>
+              </article>
+            </div>
+          </div>
+          <div class="sidebar-showcase">
+            <div class="board-title">
+              <span>1F / MY DAILY LIFE</span><span>侧栏设计示意</span>
+            </div>
+            <div class="sidebar-tabs" role="tablist" aria-label="侧栏示例">
+              <button role="tab" data-sidebar-tab="rooms" aria-selected="true">
+                房间</button
+              ><button
+                role="tab"
+                data-sidebar-tab="music"
+                aria-selected="false"
+              >
+                音乐</button
+              ><button
+                role="tab"
+                data-sidebar-tab="status"
+                aria-selected="false"
+              >
+                状态
+              </button>
+            </div>
+            <div
+              id="sidebar-demo-content"
+              role="tabpanel"
+              aria-live="polite"
+            ></div>
+            <div class="board-foot">
+              <span>HTML · CSS · JS</span><span>常用功能 × 自由表达</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="experience"
+        class="section wrap detail-slide automation-slide"
+        data-title="灯光自动化"
+      >
+        <div class="detail-heading">
+          <p class="eyebrow">04 / INTELLIGENT LIGHTING</p>
+          <h2>智能化方案<span>灯光自动化</span></h2>
+          <p>不只远程开关，让灯光理解人在不在、环境亮不亮、此刻想做什么。</p>
+        </div>
+        <div
+          class="lighting-presets"
+          role="group"
+          aria-label="灯光自动化方案示例"
+        >
+          <button data-light-preset="day" aria-pressed="true">
+            <span>01 / 日间补光</span><small>有人 + 偏暗 → 舒适照明</small>
+          </button>
+          <button data-light-preset="night" aria-pressed="false">
+            <span>02 / 夜间起身</span><small>夜间有人 → 低亮暖光</small>
+          </button>
+          <button data-light-preset="movie" aria-pressed="false">
+            <span>03 / 观影氛围</span><small>电影情景 → 优先氛围照明</small>
+          </button>
+          <button data-light-preset="away" aria-pressed="false">
+            <span>04 / 离家节能</span><small>持续无人 → 延时关闭</small>
+          </button>
+        </div>
+        <div class="lighting-grid">
+          <div class="lighting-rules">
+            <div class="scheme-badge">示例方案 / 规则可按家庭习惯调整</div>
+            <h3>状态触发，情景优先。</h3>
+            <div class="rule-flow">
+              <article>
+                <span>感知</span>
+                <p>有人 / 无人<br />照度 / 时段</p>
+              </article>
+              <b>→</b>
+              <article>
+                <span>判断</span>
+                <p>环境是否偏暗<br />是否有情景覆盖</p>
+              </article>
+              <b>→</b>
+              <article>
+                <span>执行</span>
+                <p>亮度与色温<br />开启或关闭</p>
+              </article>
+            </div>
+            <ul class="scheme-list">
+              <li><b>白天</b>有人且偏暗时补光，采光充足时不额外开灯。</li>
+              <li><b>夜间</b>有人时使用低亮暖光，避免突然刺眼。</li>
+              <li><b>无人</b>示例配置：持续无人 5 分钟后关闭。</li>
+              <li><b>情景</b>电影或睡眠模式覆盖常规照明规则。</li>
+            </ul>
+            <p class="detail-note">
+              规则在 HA
+              自动化或你配置的控制逻辑中执行。此页仅演示决策，不写入自动化、不发送设备指令。
+            </p>
+          </div>
+          <div class="lighting-simulator">
+            <div class="board-title">
+              <span>LIGHTING / 方案模拟</span
+              ><span id="lighting-result-tag">自动模式</span>
+            </div>
+            <div class="light-room-demo">
+              <div class="light-window"></div>
+              <div class="light-pool"></div>
+              <div class="light-sofa"></div>
+              <span id="lighting-output" aria-live="polite"></span>
+            </div>
+            <div class="lighting-inputs">
+              <label
+                >空间占用<select id="light-presence">
+                  <option value="present">有人</option>
+                  <option value="absent">持续无人超过 5 分钟</option>
+                </select></label
+              ><label
+                >环境采光<select id="light-environment">
+                  <option value="dim">偏暗</option>
+                  <option value="bright">充足</option>
+                </select></label
+              ><label
+                >当前时段<select id="light-period">
+                  <option value="day">白天</option>
+                  <option value="night">夜间</option>
+                </select></label
+              ><label
+                >情景覆盖<select id="light-scene">
+                  <option value="auto">无 / 自动模式</option>
+                  <option value="movie">电影模式</option>
+                  <option value="sleep">睡眠模式</option>
+                </select></label
+              >
+            </div>
+            <p id="lighting-reason" class="simulation-reason"></p>
+          </div>
+        </div>
+      </section>
+      <section
+        id="curtain-automation"
+        class="section wrap detail-slide curtain-slide"
+        data-title="窗帘自动化"
+      >
+        <div class="detail-heading">
+          <p class="eyebrow">05 / INTELLIGENT CURTAINS</p>
+          <h2>智能化方案<span>窗帘自动化</span></h2>
+          <p>跟随一天的节奏，也随时尊重你的临时决定。</p>
+        </div>
+        <div class="curtain-timeline" role="group" aria-label="窗帘全天时间段">
+          <button data-curtain-phase="A" aria-pressed="true">
+            <b>A</b><strong>00:00 → 日出前 15 分</strong
+            ><small>打开遮光帘 / 关闭纱帘</small></button
+          ><button data-curtain-phase="B" aria-pressed="false">
+            <b>B</b><strong>日出前 15 分 → 起床</strong
+            ><small>每 15 分钟渐开纱帘</small></button
+          ><button data-curtain-phase="C" aria-pressed="false">
+            <b>C</b><strong>起床 → 起床后 2 小时</strong
+            ><small>两层窗帘全部打开</small></button
+          ><button data-curtain-phase="D" aria-pressed="false">
+            <b>D</b><strong>起床后 2h → 日落</strong
+            ><small>光照 / 温度三段阈值</small></button
+          ><button data-curtain-phase="E" aria-pressed="false">
+            <b>E</b><strong>日落后 1 小时</strong
+            ><small>关闭纱帘 / 遮光帘保持</small></button
+          ><button data-curtain-phase="F" aria-pressed="false">
+            <b>F</b><strong>睡眠 → 24:00</strong
+            ><small>每 15 分钟渐关遮光帘</small>
+          </button>
+        </div>
+        <div class="curtain-grid">
+          <div class="curtain-preview">
+            <div class="board-title">
+              <span>DUAL LAYER / 双层窗帘</span
+              ><span id="curtain-mode-badge">自动模式</span>
+            </div>
+            <div class="curtain-window">
+              <div class="window-view"><i></i><i></i><i></i></div>
+              <div class="sheer left"></div>
+              <div class="sheer right"></div>
+              <div class="blackout left"></div>
+              <div class="blackout right"></div>
+            </div>
+            <div class="curtain-readouts">
+              <span>遮光帘开合度 <b id="blackout-value"></b></span
+              ><span>纱帘开合度 <b id="sheer-value"></b></span>
+            </div>
+            <p
+              id="curtain-rule"
+              class="simulation-reason"
+              aria-live="polite"
+            ></p>
+          </div>
+          <div class="curtain-config">
+            <div class="curtain-adjust">
+              <label
+                >时段进度（按 15 分钟步进示意）<input
+                  id="curtain-progress"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="25"
+                  value="50" /></label
+              ><label
+                >白天阈值<select id="curtain-threshold">
+                  <option value="low">低：约关闭 25%</option>
+                  <option value="medium">中：约关闭 50%</option>
+                  <option value="high">高：约关闭 75%</option>
+                </select></label
+              >
+            </div>
+            <div class="scene-priority">
+              <span class="small-label">情景模式 / 高优先级</span>
+              <div
+                class="curtain-scene-buttons"
+                role="group"
+                aria-label="窗帘情景模式"
+              >
+                <button data-curtain-scene="auto" aria-pressed="true">
+                  自动</button
+                ><button data-curtain-scene="sleep" aria-pressed="false">
+                  睡眠</button
+                ><button data-curtain-scene="movie" aria-pressed="false">
+                  电影</button
+                ><button data-curtain-scene="privacy" aria-pressed="false">
+                  极隐私
+                </button>
+              </div>
+              <p id="curtain-scene-note">
+                情景开启时，两层窗帘关闭；睡眠方案还可联动轻音乐。
+              </p>
+            </div>
+            <div class="manual-protection">
+              <div>
+                <label for="manual-curtain">手动调整遮光帘</label
+                ><span id="manual-status">自动控制中</span>
+              </div>
+              <input
+                id="manual-curtain"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value="100"
+              /><button id="advance-manual">模拟经过 15 分钟</button
+              ><button id="reset-curtain">恢复自动</button>
+            </div>
+            <div class="priority-equation">
+              <strong>情景模式</strong><b>＞</b><strong>手动保护 1 小时</strong
+              ><b>＞</b><strong>自动时间轴</strong>
+            </div>
+          </div>
+        </div>
+        <p class="curtain-footnote">
+          方案依据参考图：日出、起床、日落与睡眠时间由用户配置；日落至日落后 1
+          小时保持前态。开合度 100% = 全开。阈值数值与设备服务需在实际 HA
+          规则中配置，本页仅模拟。
+        </p>
+      </section>
+      <section id="audience" class="section wrap audience-section">
+        <div class="section-heading">
+          <p class="eyebrow">03 / DIFFERENT WAYS IN. THE SAME FREEDOM.</p>
+          <h2>从第一次尝试，到下一次创造。</h2>
+        </div>
+        <div class="audience-grid">
+          <article>
+            <span class="feature-index">FOR EXPLORERS</span>
+            <h3>先把自己的家放进来。</h3>
+            <p>
+              创建户型、放置设备，使用已有控件，逐步搭建一个看得懂、用得顺的家居界面。
+            </p>
+            <a href="#start">从安装开始 ↗</a>
+          </article>
+          <article>
+            <span class="feature-index">FOR HA MAKERS</span>
+            <h3>让每个实体各得其所。</h3>
+            <p>
+              用能力映射连接真实设备，用面板和侧栏组织操作，把已有的 HA
+              系统变成空间体验。
+            </p>
+            <a
+              href="https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki"
+              >阅读使用 Wiki ↗</a
+            >
+          </article>
+          <article>
+            <span class="feature-index">FOR BUILDERS</span>
+            <h3>把想法变成可复用的作品。</h3>
+            <p>
+              开发自定义控件、调试模拟状态，导出控件、页面或侧栏，让设计成为下一次创造的起点。
+            </p>
+            <a
+              href="https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-source"
+              >探索项目源码 ↗</a
+            >
+          </article>
+        </div>
+      </section>
+      <section id="vision" class="vision-section wrap">
+        <p class="eyebrow">04 / THE VISION</p>
+        <h2>
+          让每个家，<br />都有自己的<span class="accent">操作方式。</span>
+        </h2>
+        <div class="vision-copy">
+          <p class="vision-lead">
+            我们希望，智能家居的界面<br />能够像家本身一样，因人而异。
+          </p>
+          <p>
+            3DHome
+            的方向，是让空间、设备和交互可以一起被设计：从看见家，到理解家，再到用自己的方式与家相处。
+          </p>
+          <p>
+            继续降低创作门槛，让更多设计可以复用与迁移，让第一次使用的人和愿意深入创造的人，都能找到自己的起点。
+          </p>
+          <span class="vision-label"
+            >未来愿景 · 持续探索的方向，不代表已交付功能</span
+          >
+        </div>
+      </section>
+      <section
+        id="roadmap"
+        class="section wrap detail-slide roadmap-slide"
+        data-title="待开发功能"
+      >
+        <div class="detail-heading">
+          <p class="eyebrow">NEXT / CREATE ONCE. INSPIRE MORE.</p>
+          <h2>待开发功能<span>让自定义，拥有更多起点。</span></h2>
+          <p>
+            从自己动手，到发现、选择与复用他人的作品，探索在线资源库的下一步。
+          </p>
+        </div>
+        <div class="roadmap-status">
+          <span>规划中 / 尚未实现</span>
+          <p>
+            以下为待开发方向，当前页面不提供在线检索、下载、安装或发布功能；交互与分发规范仍需设计。
+          </p>
+        </div>
+        <div class="roadmap-grid">
+          <article>
+            <span class="roadmap-number">01 / CONTROL</span>
+            <h3>在线控件库</h3>
+            <p>
+              计划收录可复用的基础控件，让按钮、状态、数值和交互单元成为面板创作的起点。
+            </p>
+            <div class="roadmap-tags">
+              <span>基础控件</span><span>交互单元</span><span>复用与组合</span>
+            </div>
+          </article>
+          <article>
+            <span class="roadmap-number">02 / DEVICE</span>
+            <h3>在线设备库</h3>
+            <p>
+              计划沉淀设备定义与三维外观参考，减少从零配置；真实实体和设备能力仍需按家庭实际情况绑定。
+            </p>
+            <div class="roadmap-tags">
+              <span>设备定义</span><span>模型参考</span><span>能力映射</span>
+            </div>
+          </article>
+          <article>
+            <span class="roadmap-number">03 / PANEL</span>
+            <h3>在线控制面板库</h3>
+            <p>
+              计划提供可参考、可调整的面板设计，让常见设备的操作布局可以在现有作品上继续完善。
+            </p>
+            <div class="roadmap-tags">
+              <span>面板布局</span><span>操作编排</span><span>继续自定义</span>
+            </div>
+          </article>
+          <article>
+            <span class="roadmap-number">04 / SIDEBAR</span>
+            <h3>在线侧边栏控件库</h3>
+            <p>
+              计划汇集房间、音乐、状态等侧栏卡片，把常用功能与视觉表达带到不同楼层的首页。
+            </p>
+            <div class="roadmap-tags">
+              <span>功能卡片</span><span>视觉效果</span><span>楼层首页</span>
+            </div>
+          </article>
+        </div>
+        <div class="roadmap-principle">
+          <strong>发现作品</strong><b>→</b><strong>理解与适配</strong><b>→</b
+          ><strong>继续自定义</strong
+          ><span>目标体验示意，具体范围与交付时间待确定。</span>
+        </div>
+      </section>
+      <section id="start" class="section wrap start-section">
+        <div>
+          <p class="eyebrow">MAKE ROOM FOR YOUR IDEAS</p>
+          <h2>家的下一种可能，<br />从你开始。</h2>
+          <p>Home Assistant App 或独立 Docker，选择适合你的起点。</p>
+        </div>
+        <div class="start-links">
+          <a
+            class="button primary"
+            href="https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom"
+            >查看安装指南 <span>↗</span></a
+          ><a
+            class="button secondary"
+            href="https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases"
+            >版本与更新 <span>↗</span></a
+          ><a class="text-link" href="../index.html"
+            >进入当前 3DHome 实例 <span>↗</span></a
+          ><small>需要已安装并配置的项目实例。独立预览时请使用安装指南。</small>
+        </div>
+      </section>
+    </main>
+    <footer class="wrap">
+      <div class="brand">3DHome <small>CUSTOM</small></div>
+      <p>
+        基于 JMGLink HA 3D Home 的二次开发作品。<br />致敬并感谢
+        <a href="https://gitee.com/tuotuo4ever/jmglink-ha-3d-home"
+          >原作者及贡献者</a
+        >。
+      </p>
+      <span>YOUR HOME. YOUR WAY.</span>
+    </footer>
+    <aside class="style-switcher" aria-label="页面视觉方案">
+      <button
+        id="style-trigger"
+        aria-expanded="false"
+        aria-controls="style-options"
+      >
+        视觉方案 <span id="current-style">01 / 深空蓝图</span> <b>＋</b>
+      </button>
+      <div id="style-options" hidden>
+        <p>同一个理念，三种表达</p>
+        <button data-theme-choice="orbit" aria-pressed="true">
+          <i class="swatch orbit"></i
+          ><span>01 / 深空蓝图<small>冷蓝 · 空间 · 科技</small></span></button
+        ><button data-theme-choice="gallery" aria-pressed="false">
+          <i class="swatch gallery"></i
+          ><span>02 / 建筑画廊<small>暖白 · 秩序 · 留白</small></span></button
+        ><button data-theme-choice="signal" aria-pressed="false">
+          <i class="swatch signal"></i
+          ><span>03 / 自由信号<small>墨黑 · 荧绿 · 实验</small></span>
+        </button>
+      </div>
+    </aside>
+    <script src="./deck.js" defer></script>
+    <script src="./chapters.js" defer></script>
+    <script src="./lighting-presets.js" defer></script>
+    <script src="./concept.js" defer></script>
+    <script src="./scene-runtime.js" defer></script>
+    <script src="./washer-runtime.js" defer></script>
+  </body>
+</html>

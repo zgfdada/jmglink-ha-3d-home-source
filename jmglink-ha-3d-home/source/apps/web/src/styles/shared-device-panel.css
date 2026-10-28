@@ -44,7 +44,7 @@
 .ha3d-panel{padding:0;border-radius:0;background:transparent;backdrop-filter:none}
 .ha3d-panel .hp-editor-hit{position:absolute;inset:0;z-index:2;cursor:grab}
 .ha3d-panel .hp-editor-warning{z-index:3}
-.ddc-panel-canvas:has(.ha3d-panel){padding:14px;border:1px solid #ffffff26;border-radius:16px;overflow:visible}
+.ddc-panel-canvas:has(.ha3d-panel){padding:14px;border:1px solid #ffffff26;border-radius:16px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;min-height:0;max-height:min(650px,65dvh)}
 .ddc-panel-canvas .ddc-panel-device-title{border-radius:10px;margin-bottom:8px}
 .ha3d-panel .type-button.variant-primary button{background:#749ee4;border-color:#99baff;color:#142d55;font-weight:600}
 .ha3d-panel .type-button.variant-outline button{background:transparent;border-color:#b8d0ff}

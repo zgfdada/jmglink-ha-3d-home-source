@@ -1,5 +1,33 @@
 # JMGLink HA 3D Home Custom 开发手册
 
+## 教程篇素材
+
+`docs/tutorials/01-installation/` 为第一部分教程源文件，使用原生 HTML/CSS/JS、1920×1080 浅色固定画布。12 个章节合成一个安装视频，开头先比较 App 与独立 Docker。`narration.json/md` 保存播音文案，`lesson-data.js` 保存语音实际词级时间及 28 次路径/配置/命令高亮动作，`lesson.js` 负责章节跳转、音频字幕同步与回退恢复。没有 HA 请求、真实令牌或安装命令执行。
+
+附带的 `docker-compose.release.yml` 必须与根目录发布配置一致；教程只节选展示关键配置，完整文件保留健康检查。连接字段依据前端真实名称，令牌用遮挡占位。HA App 入口名称随 HA 版本变化，以实际环境为准。令牌创建路径核对 HA 官方认证文档。配音 MP3、SRT、MP4 与离线完整素材放在 `C:\Users\ZT\Downloads\3DHome-教程01-安装与连接`，不作为应用运行资源提交。源 HTML 无配音文件时仍可选择章节阅读。更新安装说明时同步清单、画面、文案及交付素材。
+
+## 项目理念介绍页
+
+`jmglink-ha-3d-home/source/apps/web/public/concept/` 保存独立的演示式介绍页。固定 1920×1080 画布等比缩放，不纵向滚动；画布外的章节导航与上一页／下一页保持可点，支持方向键、Home/End、URL hash 和本地章节恢复。十章分别介绍理念、空间自定义、设备自定义、侧边栏自定义、灯光自动化方案、窗帘自动化方案、受众、愿景、待开发在线资源库和安装入口。章节名从 section 的 data-title 或内置名称取得，页数与 End 键终点动态生成；窄屏使用章节下拉框。三个整体视觉方案和房间模拟状态仍保存在 `ha3d-concept-v1`；章节保存在 `ha3d-concept-slide-v4`。不连接 HA 或读取实际户型。
+
+首页三维样板间源码位于 `source/apps/web/src/concept/scene.js`（前缀同上），使用项目锁定的 Three.js、`createStableRoundedBoxGeometry` 和 `FLOOR_ORBIT_LIMITS`，独立创建建筑、家具、材质、阴影和点光源，并通过 OrbitControls 与 Raycaster 实现旋转、缩放和房间选择；没有直接加载与业务状态耦合的主页 Scene 组件。离开首页或浏览器隐藏时暂停渲染，退出页面释放几何体、材质和上下文资源。WebGL 不可用时显示明确提示。
+
+前端 `prebuild` 自动执行 `apps/web/scripts/build-concept-scene.mjs`，用现有锁定构建工具 esbuild 生成兼容 `file://` 的 IIFE 文件 `public/concept/scene-runtime.js`，并同步 Three.js MIT 许可。修改三维源码后可在 source 目录执行 `node apps/web/scripts/build-concept-scene.mjs` 单独更新，禁止手工编辑生成文件。Vite 原样复制介绍页到 `dist/concept/`，没有 CDN 依赖，也无需新增部署流程。
+
+主页已移除「项目理念与愿景」入口；独立介绍素材地址 `./concept/` 保留 Docker、App Ingress 及子路径部署前缀；介绍页通过 `../index.html` 返回实例。也可直接打开 `public/concept/index.html` 预览，或在前端开发服务访问 `/concept/`。本地文件预览的返回实例入口需要实际部署后使用。
+
+`chapters.js` 管理楼层示意、侧栏页签、灯光规则与双层窗帘方案；`chapters.css` 定义新增章节。窗帘方案根据用户提供的参考图组织 A–F 时间轴：渐开纱帘、起床后全开、白天三档阈值、日落后纱帘关闭、睡眠后渐关遮光帘；情景优先于手动保护，手动调整后模拟保护 60 分钟，四次「模拟经过 15 分钟」后恢复当前时间轴。保护期间冻结双层开合度，情景退出后恢复保护状态。开合度 100% 为全开，白天关闭 25/50/75% 映射到开合度 75/50/25%。日落至日落后 1 小时维持前态；本页不执行实际时间调度，进度和保护时间均为用户操作的模拟。灯光规则为可调整示例，情景优先于占用、照度与时段判断。全部为本地模拟，不创建 HA 自动化、不发送服务指令。
+
+`lighting-presets.js` 提供日间补光、夜间起身、观影氛围、离家节能四种组合输入，通过既有 change 处理器更新决策，手动修改输入时同步选中状态。`roadmap.css` 管理增强灯光页与待开发资源库页；在线控件库、设备库、控制面板库、侧边栏控件库均为规划介绍，没有检索、下载、安装或发布实现。
+
+`narration.json` 为十页播音与字幕的结构化文本，slideId 顺序须与 HTML 的 main > section 完全一致。每条 lines 是建议字幕断句，narration 是该页完整播音文字；没有虚构音频时长。`narration.md` 供人工审阅，`narration.txt` 仅包含可供后续 TTS 的正文，不含章节标题。修改文案时同步三份文件；实际配音与 SRT 时间轴另行生成。
+
+设备自定义页使用 `public/concept/washer.glb`，为项目已有的顶开式波轮洗衣机样板；来源 SHA256 见 `washer-model-provenance.json`。`src/concept/washer.js` 复用项目 `resolveWasherRuntime` / `washerRuntimeLabel`，并采用主页 UploadedDeviceModel 相同的 `Pulsator_Disc` / `Pulsator_Blade` 旋转轴与 `Digital_Display` 发光逻辑。构建脚本将 GLB 以内嵌 base64 打包进 `washer-runtime.js`，支持本地文件离线预览。控制面板根据本地洗衣机项目已有的程序、电源、启停、状态与剩余时间能力设计，所有状态均为合成数据，不带真实绑定或凭据。暂停停止波轮，继续恢复；模型页离开后暂停渲染。
+
+默认主题为浅色「建筑画廊」。`ha3d-concept-white-v1` 标记首次迁移旧演示主题；之后用户选择仍会保存。设备章节播音同步替换为洗衣机。
+
+内容明确区分现有能力和未来愿景。验证三种风格的十章画布边界、章节直达和刷新恢复、方向键、三维旋转与房间灯光联动、WebGL 降级及生产构建。小屏幕保留整幅固定画布与留边，横屏查看更适合阅读，不重新排成长网页。
+
 本仓库 `zgf/jmglink-ha-3d-home-source` 为公开源码仓库。当前历史从本次初始提交开始，历史源码和 Git 记录已在本地另行归档，不放入此仓库。
 
 本地源码目录：`C:\Nas_Gitea\jmglink-ha-3d-home\jmglink-ha-3d-home`。公开安装库 `zgf/jmglink-ha-3d-home-custom` 保持独立，本地检出位于 `C:\Nas_Gitea\jmglink-ha-3d-home-installation`。
@@ -33,6 +61,12 @@ v22 回复协议：`start` 复用 `message` 的请求指纹、锁与去重缓存
 失效摆放恢复由 `domain/missing-device-placement.js` 和 `app/missing-device-placements.jsx` 提供。仅 HA 已连接且实体 ID 不在当前实体表时标记失效；2D 编辑器和共享 3D 场景绘制独立黄色警告，设备侧栏通过现有 `F` 更新入口执行删除、替换，沿用撤销和保存流程。替换更新实体、设备、模板和模型引用，保留空间数据；候选排除当前层其他已摆放物理设备，同设备实体优先。原名称优先使用摆放快照，再通过只返回名称的 `/api/ha/entity-names` 读取历史名称；新摆放与替换会保存 `name`，Schema 保留该字段。侧栏使用紧凑三列与可搜索弹出选择器，3D 警告使用半透明背景。相关回归见 `tests/missing-device-placement.test.mjs`。
 
 本文面向参与源码维护、功能开发、测试和发布的开发者。安装与日常使用请阅读 [README.md](README.md)，版本变化请阅读 [RELEASE_NOTES.md](RELEASE_NOTES.md)，运维接手流程请阅读 [服务交接文档](docs/HA3DHome服务交接文档.md)。
+
+## 楼层与面板滚动（未发布）
+
+PublishedSidebar 的 hidden 独立于内容 collapsed 状态，SidebarVisibilityToggle 与右侧菜单、语音按钮同置 home-action-bar；完整外壳通过原生 hidden 隐藏，保留已挂载的控件和页签。HomeView 持有整栏可见状态，localStorage 键为 ha3d.sidebar.hidden，跨楼层切换不重置；画布 inset 和 has-floor-selector 跟随可见状态，悬浮按钮 aria-expanded/aria-controls 同步。
+
+主页仅显示当前楼层，楼层侧栏独立。只有一层时不绘制楼层选择器；重置视角保留当前楼层。控制面板画布保持 overflow:auto 与受视口限制的 max-height，不能以 overflow:visible 搭配固定最大高度。画布可聚焦，保留外层步骤滚动及固定页脚。
 
 ## 项目介绍
 

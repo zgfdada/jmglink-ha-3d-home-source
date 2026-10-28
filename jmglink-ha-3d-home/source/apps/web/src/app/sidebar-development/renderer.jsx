@@ -242,6 +242,7 @@ export function SidebarPanel({
   );
 }
 export function PublishedSidebar({
+  hidden = false,
   projectId,
   floors = [],
   floorId,
@@ -281,11 +282,14 @@ export function PublishedSidebar({
     };
   }, [projectId, activeFloorId, refreshKey, onWidthChange]);
   return (
+    <>
     <aside
-      className={`sb-home-container ${floorOptions.length ? "has-floor-rail" : ""} ${collapsed ? "is-collapsed" : ""}`}
+      id="home-sidebar-shell"
+      hidden={hidden}
+      className={`sb-home-container ${floorOptions.length > 1 ? "has-floor-rail" : ""} ${collapsed ? "is-collapsed" : ""}`}
       style={{ "--sb-home-width": `${config.width}px` }}
     >
-      {!!floorOptions.length && <nav className="sb-floor-rail" aria-label="楼层选择"><div className="sb-floor-options">{[...floorOptions].reverse().map(floor => <button key={floor.id} aria-label={`切换楼层 ${floor.label} ${floor.name}`} aria-current={floor.id === activeFloorId ? "true" : undefined} title={floor.name} onClick={() => {if(floor.id !== activeFloorId)onFloorChange?.(floor.id);}}>{floor.label}</button>)}</div></nav>}
+      {floorOptions.length > 1 && <nav className="sb-floor-rail" aria-label="楼层选择"><div className="sb-floor-options">{[...floorOptions].reverse().map(floor => <button key={floor.id} aria-label={`切换楼层 ${floor.label} ${floor.name}`} aria-current={floor.id === activeFloorId ? "true" : undefined} title={floor.name} onClick={() => {if(floor.id !== activeFloorId)onFloorChange?.(floor.id);}}>{floor.label}</button>)}</div></nav>}
       {error && (
         <p role="status" className="sb-load-error">
           {error}
@@ -296,5 +300,22 @@ export function PublishedSidebar({
       </div>
       {!collapsed && <a className="sb-skill-download" href="agent-skills/ha3d-sidebar-widget-design.zip" download>下载侧边栏控件设计 Skill</a>}
     </aside>
+
+    </>
+  );
+}
+
+export function SidebarVisibilityToggle({hidden,onToggleVisibility}) {
+  return (    <button
+      type="button"
+      className="home-sidebar-toggle"
+      aria-label={hidden ? "显示侧边栏和楼层选择" : "收起整个侧边栏和楼层选择"}
+      title={hidden ? "显示侧边栏" : "收起整个侧边栏"}
+      aria-expanded={!hidden}
+      aria-controls="home-sidebar-shell"
+      onClick={onToggleVisibility}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>{hidden ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
+    </button>
   );
 }

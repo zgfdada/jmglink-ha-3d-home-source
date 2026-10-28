@@ -1,6 +1,6 @@
 import InstanceTransfer from "./instance-transfer.jsx";
 import { resolveDaylight } from "../../../../packages/schema/src/daylight.js";
-import { PublishedSidebar } from "./sidebar-development/renderer.jsx";
+import { PublishedSidebar, SidebarVisibilityToggle } from "./sidebar-development/renderer.jsx";
 /**
  * Recovered application module from official 0.1.5 Vite artifact: HomeView-BFS1nsev.js
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.
@@ -2638,6 +2638,8 @@ function Qn({
   const [transferOpen, setTransferOpen] = l.useState(false);
   const [sidebarWidth, setSidebarWidth] = l.useState(380);
   const [sidebarCollapsed, setSidebarCollapsed] = l.useState(false);
+  const [sidebarHidden, setSidebarHidden] = l.useState(() => {try{return localStorage.getItem("ha3d.sidebar.hidden") === "1";}catch{return false;}});
+  const toggleSidebarVisibility = () => setSidebarHidden(previous => {const next = !previous;try{localStorage.setItem("ha3d.sidebar.hidden",next ? "1" : "0");}catch{}return next;});
   const [manualLight, setManualLight] = l.useState(null);
   const [lightSettingsOpen, setLightSettingsOpen] = l.useState(false);
   const v = Se((n) => n.selectedEntityId),
@@ -2882,7 +2884,7 @@ function Qn({
     }, [V, Ie]),
     $s = l.useMemo(() => {
       if (Q <= 760)
-        return { top: sidebarCollapsed ? 12 : 260, right: 24, bottom: E ? 238 : 100, left: 24 };
+        return { top: sidebarHidden || sidebarCollapsed ? 12 : 260, right: 24, bottom: E ? 238 : 100, left: 24 };
       if (We) {
         const n = (_, H, X) => Math.round(Math.min(Math.max(_, H), X)),
           m = n(Q * 0.34, 320, 390);
@@ -2890,13 +2892,13 @@ function Qn({
           top: n(Me * 0.08, 52, 68),
           right: le || (E && A) ? m : n(Q * 0.11, 92, 132),
           bottom: n(Me * 0.09, 56, 72),
-          left: sidebarCollapsed ? 100 : Math.min(sidebarWidth, 330) + 116,
+          left: sidebarHidden ? 24 : sidebarCollapsed ? 100 : Math.min(sidebarWidth, 330) + 116,
         };
       }
       return Q <= 960
-        ? { top: 86, right: E ? 342 : 84, bottom: 58, left: sidebarCollapsed ? 100 : Math.min(sidebarWidth, 330) + 116 }
-        : { top: 62, right: le || (E && A) ? 430 : 132, bottom: 74, left: sidebarCollapsed ? 100 : sidebarWidth + 124 };
-    }, [A, E, We, le, Me, Q, sidebarWidth, sidebarCollapsed]),
+        ? { top: 86, right: E ? 342 : 84, bottom: 58, left: sidebarHidden ? 24 : sidebarCollapsed ? 100 : Math.min(sidebarWidth, 330) + 116 }
+        : { top: 62, right: le || (E && A) ? 430 : 132, bottom: 74, left: sidebarHidden ? 24 : sidebarCollapsed ? 100 : sidebarWidth + 124 };
+    }, [A, E, We, le, Me, Q, sidebarWidth, sidebarCollapsed, sidebarHidden]),
     Ms = ia(i) && !(i != null && i.connected),
     Xe =
       a === "loading"
@@ -2961,7 +2963,7 @@ function Qn({
       [j],
     ),
     _s = () => {
-      (x("all"), ke(void 0), cs((n) => n + 1));
+      (ke(void 0), cs((n) => n + 1));
     },
     zs = l.useCallback(
       (n, m) => {
@@ -2991,7 +2993,7 @@ function Qn({
       [k, Q],
     );
   return e.jsxs("section", {
-    className: `home-workspace ${t.floors.length ? "has-floor-selector" : ""} theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
+    className: `home-workspace ${t.floors.length > 1 && !sidebarHidden ? "has-floor-selector" : ""} theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
     children: [
       e.jsxs("div", {
         className: "home-scene",
@@ -3002,7 +3004,7 @@ function Qn({
             project: xe,
             entities: ps,
             floorId: Oe == null ? void 0 : Oe.id,
-            showAllFloors: $ === "all",
+            showAllFloors: false,
             showLabels: !1,
             theme: C,
             daylight: lightLevel,
@@ -3026,7 +3028,7 @@ function Qn({
             onRoomSecuritySelect: As,
             onEntitySelect: Fs,
           })}),
-          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, key: $, floors: t.floors, floorId: $, onFloorChange: (id) => {x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
+          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, hidden: sidebarHidden, key: $, floors: t.floors, floorId: $, onFloorChange: (id) => {x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
           !A &&
             e.jsxs("div", {
               className: "scene-data-empty",
@@ -3067,7 +3069,7 @@ function Qn({
             }),
           A && e.jsx(En, { users: Ns }),
           mt && e.jsx(On, { controls: ye, entityCount: _e, onChange: ds }),
-          e.jsxs("div", {className: "home-action-bar", children: [(ee || lightSettingsOpen) && e.jsx("div", {className:"home-tools-backdrop", onPointerDown:event=>event.stopPropagation(), onClick:()=>{I(false);setLightSettingsOpen(false);}}), e.jsxs("div", {
+          e.jsxs("div", {className: "home-action-bar", children: [e.jsx(SidebarVisibilityToggle, {hidden: sidebarHidden, onToggleVisibility: toggleSidebarVisibility}), (ee || lightSettingsOpen) && e.jsx("div", {className:"home-tools-backdrop", onPointerDown:event=>event.stopPropagation(), onClick:()=>{I(false);setLightSettingsOpen(false);}}), e.jsxs("div", {
             className: `home-tools ${ee ? "tools-open" : ""}`,
             "aria-label": "页面工具",
             children: [

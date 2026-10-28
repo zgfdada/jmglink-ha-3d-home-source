@@ -1,0 +1,234 @@
+.washer-showcase {
+  display: grid;
+  grid-template-columns: 0.82fr 1fr 1.05fr;
+  gap: 25px;
+  align-items: start;
+}
+.deck .washer-story h3 {
+  font-size: 29px;
+  margin-bottom: 20px;
+}
+.washer-story .device-chain article {
+  padding: 18px 20px;
+}
+.washer-story .device-chain h4 {
+  font-size: 25px;
+}
+.washer-story .device-chain p {
+  font-size: 22px;
+  line-height: 1.7;
+}
+.washer-story .detail-note {
+  font-size: 19px !important;
+  margin-top: 21px !important;
+}
+.washer-model-card,
+.washer-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.washer-model-card .board-title,
+.washer-panel .board-title {
+  padding: 18px;
+  font-size: 16px;
+}
+.washer-model-card .board-title > span:last-child,
+.washer-panel .board-title > span:last-child {
+  font-size: 16px;
+}
+#washer-model-host {
+  height: 430px;
+  position: relative;
+  background: var(--bg);
+}
+#washer-model-host canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+#washer-model-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 23px;
+  padding: 25px;
+  color: var(--muted);
+}
+#washer-model-fallback[hidden] {
+  display: none;
+}
+.washer-model-status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+  color: var(--accent);
+  min-height: 48px;
+}
+.washer-model-status i {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--accent);
+}
+.washer-model-hint {
+  text-align: center;
+  font-size: 17px;
+  color: var(--muted);
+  margin: 4px 0 18px;
+}
+.washer-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 25px 24px 20px;
+  gap: 15px;
+}
+.deck .washer-panel-heading h3 {
+  font-size: 29px;
+  margin: 0;
+}
+.washer-panel-heading > span {
+  color: var(--accent);
+  font-size: 22px;
+}
+.washer-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 0 24px 20px;
+}
+.washer-metrics > div {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 16px;
+  border-radius: 8px;
+}
+.washer-metrics span {
+  font-size: 18px;
+  color: var(--muted);
+  display: block;
+}
+.washer-metrics strong {
+  font-size: 30px;
+  font-weight: 500;
+  display: block;
+  margin-top: 8px;
+}
+.washer-program-field {
+  display: grid;
+  gap: 10px;
+  font-size: 20px;
+  color: var(--muted);
+  margin: 0 24px 20px;
+}
+.washer-program-field select {
+  font: 22px var(--font);
+  padding: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  min-height: 48px;
+}
+.washer-actions {
+  display: flex;
+  gap: 12px;
+  margin: 0 24px;
+}
+.washer-actions button {
+  flex: 1;
+  font-size: 21px;
+  min-height: 52px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 5px;
+  padding: 10px;
+}
+.washer-actions #washer-toggle {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.washer-phase-heading {
+  font-size: 18px;
+  color: var(--muted);
+  margin: 24px 24px 12px;
+}
+.washer-phases {
+  display: flex;
+  gap: 8px;
+  margin: 0 24px;
+}
+.washer-phases button {
+  flex: 1;
+  font-size: 18px;
+  min-height: 43px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 7px;
+}
+.washer-phases button[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--glow);
+}
+#washer-runtime-detail {
+  font-size: 19px;
+  color: var(--muted);
+  margin: 18px 24px;
+  line-height: 1.7;
+  min-height: 54px;
+}
+.washer-capability-note {
+  border-top: 1px solid var(--line);
+  font-size: 17px;
+  padding: 17px 24px;
+  color: var(--muted);
+}
+.washer-story .device-chain article {
+  padding: 13px 18px;
+}
+.washer-story .device-chain p {
+  font-size: 21px;
+  line-height: 1.55;
+}
+.washer-story .detail-note {
+  font-size: 18px !important;
+  margin-top: 16px !important;
+}
+.washer-panel-heading {
+  margin: 18px 24px 14px;
+}
+.washer-metrics > div {
+  padding: 12px 15px;
+}
+.washer-metrics {
+  margin-bottom: 14px;
+}
+.washer-program-field {
+  margin-bottom: 14px;
+}
+.washer-phase-heading {
+  margin: 16px 24px 10px;
+}
+.washer-actions button {
+  min-height: 46px;
+  padding: 7px;
+}
+.washer-capability-note {
+  padding: 13px 18px;
+  font-size: 16px;
+}
+#washer-runtime-detail {
+  min-height: 42px;
+  margin: 14px 24px;
+  font-size: 18px;
+}

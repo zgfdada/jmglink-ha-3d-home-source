@@ -1,0 +1,22 @@
+services:
+  ha3d-home:
+    image: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom:latest
+    restart: unless-stopped
+    entrypoint: ["node", "/app/apps/server/src/main.js"]
+    ports:
+      - "8101:8099"
+    environment:
+      HA3D_MODE: standalone
+      PORT: 8099
+      HA3D_DATA_DIR: /data
+      HA3D_ASSET_DIR: /assets
+      NODE_OPTIONS: --max-old-space-size=384
+    volumes:
+      - ./ha3d-data:/data
+      - ./ha3d-assets:/assets
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8099/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3

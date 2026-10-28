@@ -661,7 +661,7 @@
 .home-action-bar{position:fixed;inset-inline-end:max(20px,env(safe-area-inset-right));inset-block-end:max(20px,env(safe-area-inset-bottom));z-index:80;display:flex;align-items:flex-end;gap:12px;pointer-events:none}
 .home-action-bar .home-tools{position:relative;flex:0 0 auto;pointer-events:auto}
 .home-action-bar .voice-assistant-wrap{position:relative;inset:auto;right:auto;bottom:auto;width:44px;flex:0 0 44px;margin:0;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end}
-.home-action-bar .home-tools-toggle,.home-action-bar .voice-fab{box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;flex:0 0 44px;margin:0;padding:0;border:1px solid #d7e6ff70;border-radius:50%;color:#f6f9ff;background:#21344bc9;box-shadow:0 3px 12px #0003;cursor:pointer;pointer-events:auto}
+.home-action-bar .home-sidebar-toggle,.home-action-bar .home-tools-toggle,.home-action-bar .voice-fab{box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;flex:0 0 44px;margin:0;padding:0;border:1px solid #d7e6ff70;border-radius:50%;color:#f6f9ff;background:#21344bc9;box-shadow:0 3px 12px #0003;cursor:pointer;pointer-events:auto}
 .home-tools-menu{position:absolute;inset-inline-end:0;inset-block-end:calc(100% + 12px);display:flex;flex-direction:column;gap:6px;box-sizing:border-box;width:max-content;min-width:170px;max-width:calc(100vw - 40px);max-height:calc(100dvh - 100px);overflow:auto;padding:8px;border:1px solid #d8e7ff50;border-radius:18px;color:#f4f8ff;background:#17263de8;backdrop-filter:blur(22px);box-shadow:0 12px 36px #0004}
 .home-tools-item{box-sizing:border-box;display:flex;align-items:center;gap:10px;flex:0 0 auto;width:100%;min-height:42px;margin:0;padding:10px 12px;border:1px solid #d9e8ff20;border-radius:12px;color:inherit;background:#ffffff08;text-align:start;font:600 13px system-ui;cursor:pointer;pointer-events:auto;white-space:nowrap}
 .home-tools-item:hover,.home-tools-item:focus-visible{background:#ffffff20;outline:2px solid #a9caff80;outline-offset:-2px}.home-tools-item svg{flex:0 0 auto}.home-tools-item span{flex:1}.home-tools-item b{order:3;font-size:10px;padding:3px 5px;border-radius:8px;background:#70b6d7;color:#102738}
@@ -706,7 +706,7 @@
 .sb-home-panel .sb-panel{color:var(--sb-card-text)}
 .home-workspace{--control-bg:#3e5c73bf;--control-text:#f4f8ff;--control-border:#eef6ff66}
 .home-workspace.theme-night{--control-bg:#e1e4e8c9;--control-text:#172b42;--control-border:#ffffff85}
-.home-action-bar .home-tools-toggle,.home-action-bar .voice-fab,.home-tools-menu,.home-light-settings{background:var(--control-bg)!important;color:var(--control-text)!important;border-color:var(--control-border)!important;backdrop-filter:blur(20px)}
+.home-action-bar .home-sidebar-toggle,.home-action-bar .home-tools-toggle,.home-action-bar .voice-fab,.home-tools-menu,.home-light-settings{background:var(--control-bg)!important;color:var(--control-text)!important;border-color:var(--control-border)!important;backdrop-filter:blur(20px)}
 .home-tools-menu button,.home-light-settings button{color:inherit;background:#ffffff14;border-color:var(--control-border)}
 .home-light-settings p{color:inherit;opacity:.8}.home-light-settings .auto-light{background:#529fe0;color:#fff}
 .sb-floating-detail{background:#e2e5e9f0;color:#172b42}
@@ -982,3 +982,11 @@
 .sb-delete-backdrop{position:fixed;inset:0;z-index:1600;display:grid;place-items:center;background:#14263a66;backdrop-filter:blur(3px);pointer-events:auto}.sb-delete-dialog{box-sizing:border-box;width:min(440px,calc(100vw - 32px));background:white;color:#24364d;padding:24px;border-radius:16px;box-shadow:0 20px 80px #0004;border:1px solid #dce6f1}.sb-delete-dialog h2{font:600 18px/1.5 system-ui;margin:0 0 12px}.sb-delete-dialog p{font:14px/1.7 system-ui;color:#62738a}.sb-delete-dialog>div{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.sb-delete-dialog button{padding:9px 14px;border:1px solid #d1ddeb;border-radius:8px;background:white;color:#24364d;cursor:pointer}.sb-delete-dialog .sb-danger-button{background:#dc3545;color:white;border-color:#dc3545}
 .sb-add-widget-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;border-radius:8px;background:#f3f6fa;font-size:12px}.sb-add-widget-row>span{flex:1}.sb-add-widget-row>button{width:28px;height:28px;padding:0;border:0;border-radius:50%;font-size:18px;background:#e9f0f8;color:#315d87}.sb-add-widget-row>button:hover{background:#d9eaff;color:#1677ed}
 .sb-page-redesign .sb-layout-canvas{min-height:0;overflow:auto}.sb-page-redesign .sb-layout-canvas .sb-panel{height:100%;min-height:480px;max-height:none;box-sizing:border-box;align-self:stretch}.sb-page-redesign .sb-layout-canvas .sb-panel-content{min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain}.sb-page-redesign .sb-layout-canvas .sb-widget-stack{min-height:min-content}
+
+/* Hide the complete shell, including the separate floor rail, while preserving widget state. */
+.sb-home-container[hidden]{display:none!important}
+
+/* All three floating controls share one fixed row, baseline, size and safe-area spacing. */
+.home-action-bar{inset-inline-start:max(20px,env(safe-area-inset-left))}
+.home-action-bar .home-sidebar-toggle{margin-inline-end:auto;touch-action:manipulation}
+.home-action-bar .home-sidebar-toggle:focus-visible{outline:2px solid currentColor;outline-offset:3px}

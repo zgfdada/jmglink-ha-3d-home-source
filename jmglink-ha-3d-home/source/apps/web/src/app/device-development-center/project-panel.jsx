@@ -603,6 +603,9 @@ export default function ProjectPanel({
           </header>
           <div
             className="ddc-panel-canvas"
+            tabIndex={0}
+            role="region"
+            aria-label="控制面板设计画布，可滚动查看全部控件"
             onDragOver={(event) => event.preventDefault()}
             onDrop={dropOnCanvas}
           >

@@ -1,0 +1,7 @@
+{
+  "name": "顶开式波轮洗衣机",
+  "source": "本项目已有的本地洗衣机 GLB 样板模型",
+  "sha256": "24a3be39220cc601d035949d4ef04f3c75de2d9984986500dbe2c2d839903768",
+  "runtimeReuse": "apps/web/src/domain/washer-runtime.js；与 UploadedDeviceModel 相同的 Pulsator_Disc、Pulsator_Blade 与 Digital_Display 节点逻辑",
+  "data": "synthetic only; no credentials or live entity bindings"
+}
