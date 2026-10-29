@@ -1,3 +1,4 @@
+import {partMotionIssues} from "../../../../packages/schema/src/part-motion.js";
 import { normalizeLibraryPackage, CONTROL_PACKAGE_FORMAT } from "../../../../packages/schema/src/control-library.js";
 import {
   copyFile,
@@ -965,6 +966,8 @@ export class DevicePlatformStore {
       modelTemplateId,
       appearance,
     });
+    const motionIssues=partMotionIssues(normalized.appearance?.partMotionRules,normalized.capabilities);
+    if(motionIssues.length)throw new Error(motionIssues.join("；"));
     const animation = normalized.appearance?.animation;
     for (const id of [
       animation?.statusCapabilityId,
@@ -1049,6 +1052,7 @@ export class DevicePlatformStore {
         : {};
     const allowedEntityIds = new Set([
       ...(binding?.selectedEntityIds ?? []),
+      ...(binding?.extraEntityIds ?? []),
       ...Object.values(binding?.capabilityBindings ?? {}).flat(),
     ]);
     for (const [id, mapping] of Object.entries(rawMappings)) {
@@ -1117,19 +1121,21 @@ export class DevicePlatformStore {
     const selectedEntityIds = [
       ...new Set(selectedEntities.map((item) => item.entityId)),
     ];
-    const selectedIdSet = new Set(selectedEntityIds);
+    const extraEntityIds = (previous?.extraEntityIds ?? []).filter(id => !selectedEntityIds.includes(id));
+    const selectedIdSet = new Set([...selectedEntityIds, ...extraEntityIds]);
     const binding = completeBindingReferences(
       normalizeDeviceBinding({
         ...previous,
         deviceId,
         deviceTemplateId: projectId,
         selectedEntityIds,
-        entityRegistryRefs: selectedEntities
+        extraEntityIds,
+        entityRegistryRefs: [...selectedEntities
           .filter((item) => item.registryId)
           .map((item) => ({
             registryId: item.registryId,
             entityId: item.entityId,
-          })),
+          })), ...(previous?.entityRegistryRefs ?? []).filter(ref => extraEntityIds.includes(ref.entityId))],
         capabilityBindings: Object.fromEntries(
           Object.entries(previous?.capabilityBindings ?? {}).map(
             ([key, ids]) => [key, ids.filter((id) => selectedIdSet.has(id))],
@@ -1168,6 +1174,28 @@ export class DevicePlatformStore {
     return { binding: structuredClone(binding), removedDeviceIds };
   }
 
+  async saveExtraEntities(projectId, deviceId, entities, expectedIds) {
+    const previous = this.bindings.find(item => item.deviceTemplateId === projectId);
+    if (!previous) throw new Error("请先绑定当前设备，再选择额外实体");
+    if (previous.deviceId !== deviceId) throw new Error("主设备绑定已变化，请刷新后重试");
+    const currentIds = previous.extraEntityIds ?? [];
+    if (expectedIds && JSON.stringify([...expectedIds].sort()) !== JSON.stringify([...currentIds].sort()))
+      throw new Error("额外实体选择已被更新，请刷新后重试");
+    const extraEntityIds = [...new Set(entities.map(entity => entity.entityId))];
+    const removed = new Set(currentIds.filter(id => !extraEntityIds.includes(id)));
+    const refs = new Map((previous.entityRegistryRefs ?? []).filter(ref => !removed.has(ref.entityId)).map(ref => [ref.entityId, ref]));
+    for (const entity of entities) if (entity.registryId) refs.set(entity.entityId, {entityId:entity.entityId,registryId:entity.registryId});
+    const next = normalizeDeviceBinding({
+      ...previous, extraEntityIds, entityRegistryRefs:[...refs.values()],
+      capabilityBindings:Object.fromEntries(Object.entries(previous.capabilityBindings ?? {}).map(([id, ids]) => [id,ids.filter(entityId => !removed.has(entityId))])),
+      capabilityMappings:Object.fromEntries(Object.entries(previous.capabilityMappings ?? {}).filter(([,mapping]) => !removed.has(mapping.entityId))),
+    });
+    const oldBindings = this.bindings;
+    this.bindings = oldBindings.map(item => item === previous ? next : item);
+    try { await this.persistAll(); } catch(error) { this.bindings=oldBindings; throw error; }
+    return {binding:structuredClone(next)};
+  }
+
   async reconcileEntityRegistry(registryEntries) {
     const currentById = new Map(
       (registryEntries ?? [])
@@ -1191,6 +1219,7 @@ export class DevicePlatformStore {
       return normalizeDeviceBinding({
         ...binding,
         selectedEntityIds: remap(binding.selectedEntityIds),
+        extraEntityIds: remap(binding.extraEntityIds),
         entityRegistryRefs: refs,
         capabilityBindings: Object.fromEntries(
           Object.entries(binding.capabilityBindings ?? {}).map(([key, ids]) => [

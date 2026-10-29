@@ -1,0 +1,229 @@
+.part-motion-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.part-motion-tabs button,
+.part-motion-editor button {
+  cursor: pointer;
+}
+.part-motion-tabs .selected,
+.part-motion-editor .selected {
+  background: #eaf1ff;
+  color: #245bd0;
+  border-color: #6c9bff;
+}
+.part-motion-editor {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(320px, 1.6fr) minmax(
+      270px,
+      1fr
+    );
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+  color: #22324d;
+}
+.part-motion-editor section,
+.part-motion-settings {
+  background: #fff;
+  border: 1px solid #dce5f1;
+  border-radius: 14px;
+  padding: 14px;
+  min-width: 0;
+}
+.part-motion-editor h2 {
+  font-size: 16px;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.part-motion-editor h3 {
+  font-size: 14px;
+  margin: 18px 0 10px;
+}
+.part-motion-editor small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #77859b;
+}
+.part-motion-editor p {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.part-motion-editor input:not([type="checkbox"]),
+.part-motion-editor select {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #d4dfed;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+}
+.part-motion-editor input[type="checkbox"] {
+  accent-color: #397bff;
+}
+.part-motion-editor label {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 12px;
+  margin: 9px 0;
+}
+.part-motion-editor label > span {
+  width: 100%;
+}
+.part-motion-editor button,
+.part-motion-tabs button {
+  min-height: 36px;
+  padding: 7px 10px;
+  background: #f7faff;
+  color: inherit;
+  border: 1px solid #d5e0ef;
+  border-radius: 8px;
+}
+.part-motion-editor button.primary {
+  background: #327aff;
+  color: white;
+}
+.part-motion-editor button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.part-motion-tree {
+  max-height: 360px;
+  overflow: auto;
+  margin: 10px 0;
+}
+.part-motion-tree > div {
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  min-height: 32px;
+}
+.part-motion-tree button {
+  background: transparent;
+  border: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.part-motion-rules {
+  display: grid;
+  gap: 8px;
+}
+.part-motion-rule-row { display: flex; gap: 6px; align-items: stretch; min-width: 0; }
+.part-motion-rule-row > button:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.part-motion-rules .part-motion-rule-delete { flex: none; width: auto; color: #b64e49; padding: 8px; }
+.part-motion-rules button {
+  text-align: left;
+}
+.part-motion-rules small {
+  display: block;
+  margin-top: 5px;
+}
+.part-motion-left,
+.part-motion-center {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.part-motion-viewport header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.part-motion-viewport .ddc-model-preview {
+  height: 460px;
+}
+.part-motion-viewport .ddc-model-canvas {
+  height: 100%;
+}
+.part-motion-settings {
+  max-height: calc(100dvh - 330px);
+  min-height: 400px;
+  overflow: auto;
+  position: sticky;
+  top: 0;
+}
+.part-motion-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0;
+}
+.part-motion-row > * {
+  flex: 1;
+  min-width: 0;
+}
+.part-motion-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 12px;
+}
+.part-motion-samples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.part-motion-issues {
+  color: #a3322c;
+  background: #fff0ef;
+  border-radius: 9px;
+  padding: 8px;
+}
+.part-motion-issues p {
+  margin: 4px;
+}
+.part-motion-path {
+  max-height: 280px;
+  overflow: auto;
+}
+.part-motion-path .part-motion-row input {
+  width: 25%;
+}
+@media (max-width: 1350px) {
+  .part-motion-editor {
+    grid-template-columns: 210px minmax(300px, 1fr);
+  }
+  .part-motion-settings {
+    grid-column: 1/-1;
+    position: static;
+    max-height: none;
+  }
+  .part-motion-viewport .ddc-model-preview {
+    height: 390px;
+  }
+}
+@media (max-width: 760px) {
+  .part-motion-editor {
+    display: flex;
+    flex-direction: column;
+  }
+  .part-motion-editor > * {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .part-motion-tree {
+    max-height: 200px;
+  }
+  .part-motion-viewport .ddc-model-preview {
+    height: 320px;
+  }
+  .part-motion-samples {
+    grid-template-columns: 1fr;
+  }
+}

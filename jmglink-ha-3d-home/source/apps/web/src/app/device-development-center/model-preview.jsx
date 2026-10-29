@@ -1,3 +1,4 @@
+import {createPartMotionEngine,modelPartNodes} from "../../domain/part-motion-engine.js";
 import { a as React } from "../../vendor/react.js";
 import * as THREE from "three";
 import {createCameraModel} from "../../domain/camera-model.js";
@@ -35,7 +36,10 @@ export default function ModelPreview({
   animated = false,
   command,
   onPalette,
+  motionRules, motionValues, motionPlaying=true, selectedPart, onParts, onSelectPart, pathPicking=false, onPathPoint,
 }) {
+  const motionRef = React.useRef({});
+  motionRef.current={rules:motionRules??[],values:motionValues??{},playing:motionPlaying,selectedPart,onParts,onSelectPart,pathPicking,onPathPoint};
   const container = React.useRef(null);
   const controlsApi = React.useRef(null);
   const [visible, setVisible] = React.useState(!compact);
@@ -98,6 +102,12 @@ export default function ModelPreview({
     scene.add(light);
     const root = new THREE.Group();
     let runtimeGlow = null;
+    let motionEngine=null,motionRoot=null,motionSignature="",selectedBox=null,lastSelection=null,elapsed=0,lastFrame=performance.now();
+    const readyMotion=object=>{lastSelection=null;motionRoot=object;motionEngine=createPartMotionEngine(object,motionRef.current.rules);motionSignature=JSON.stringify(motionRef.current.rules);motionRef.current.onParts?.(motionEngine.parts);};
+    const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let pointerStart=null;
+    const down=event=>{pointerStart=[event.clientX,event.clientY];};
+    const pick=event=>{if(!motionRoot||!pointerStart||Math.hypot(event.clientX-pointerStart[0],event.clientY-pointerStart[1])>5)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObject(motionRoot,true).find(h=>h.object.isMesh&&!h.object.userData.partMotionOverlay&&!h.object.parent?.userData.partMotionOverlay);if(!hit)return;const nodes=modelPartNodes(motionRoot);const path=[...nodes].find(([,n])=>n===hit.object)?.[0];if(motionRef.current.pathPicking){const target=nodes.get(motionRef.current.selectedPart);if(target)motionRef.current.onPathPoint?.(target.worldToLocal(hit.point.clone()).toArray().map(v=>Math.round(v*10000)/10000));}else if(path)motionRef.current.onSelectPart?.(path);};
+    renderer.domElement.addEventListener("pointerdown",down);renderer.domElement.addEventListener("pointerup",pick);
     scene.add(root);
     const fit = () => {
       const bounds = new THREE.Box3().setFromObject(root);
@@ -201,6 +211,7 @@ export default function ModelPreview({
         });
       }
       root.scale.setScalar(model.scale ?? 1);
+      readyMotion(root);
       fit();
       if (animated) runtimeGlow = createRuntimeModelGlow(root);
     } else if (source.url) {
@@ -242,6 +253,7 @@ export default function ModelPreview({
             -center.z * scale.z,
           );
           root.add(gltf.scene);
+          readyMotion(gltf.scene);
           fit();
           if (animated) runtimeGlow = createRuntimeModelGlow(root);
         },
@@ -268,7 +280,12 @@ export default function ModelPreview({
     resize();
     const animate = () => {
       frame = requestAnimationFrame(animate);
-      updateRuntimeModelGlow(runtimeGlow, performance.now() / 1000);
+      const now=performance.now(),dt=Math.min((now-lastFrame)/1000,.1);lastFrame=now;const motion=motionRef.current;if(motion.playing)elapsed+=dt;
+      if(motionEngine&&motionSignature!==JSON.stringify(motion.rules)){motionEngine.dispose();motionEngine=createPartMotionEngine(motionRoot,motion.rules);motionSignature=JSON.stringify(motion.rules);}
+      motionEngine?.update(motion.values,elapsed,motion.playing?dt:0);
+      if(motion.selectedPart!==lastSelection){selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();const part=motionRoot&&modelPartNodes(motionRoot).get(motion.selectedPart);selectedBox=part?new THREE.BoxHelper(part,0x397bff):null;if(selectedBox)scene.add(selectedBox);lastSelection=motion.selectedPart;}
+      selectedBox?.update();
+      updateRuntimeModelGlow(runtimeGlow, now / 1000);
       controls.update();
       renderer.render(scene, camera);
     };
@@ -279,6 +296,8 @@ export default function ModelPreview({
       resizeObserver.disconnect();
       controls.dispose();
       controlsApi.current = null;
+      renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointerup",pick);
+      motionEngine?.dispose();selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();
       disposeRuntimeModelGlow(runtimeGlow);
       disposeObject(scene);
       renderer.dispose();

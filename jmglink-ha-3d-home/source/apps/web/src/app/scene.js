@@ -1,3 +1,6 @@
+import { disableSceneEffectPicking, configureDeviceModelPicking, ignoreSceneEffectRaycast } from "../domain/scene-picking.js";
+import {createPartMotionEngine} from "../domain/part-motion-engine.js";
+import {motionCapabilityValues} from "../../../../packages/schema/src/part-motion.js";
 import CameraModel from '../components/camera-model.jsx';
 import CameraControlPanel from '../components/camera-controls.jsx';
 import {CAMERA_MODELS,cameraModelDefinition} from '../../../../packages/schema/src/camera-models.js';
@@ -3034,6 +3037,7 @@ function Gt({ children: e }) {
   return (
     L.useLayoutEffect(() => {
       var r;
+      configureDeviceModelPicking(s.current);
       (r = s.current) == null ||
         r.traverse((o) => {
           o instanceof Js && ((o.castShadow = !1), (o.receiveShadow = !1));
@@ -4576,6 +4580,7 @@ function ie({
       ? t.jsxs("mesh", {
           position: a,
           renderOrder: 10,
+          raycast: ignoreSceneEffectRaycast,
           children: [
             t.jsx("planeGeometry", { args: [1, 1, 1, 1] }),
             t.jsx("shaderMaterial", {
@@ -4857,6 +4862,11 @@ function ei({ color: e, temperature: s }) {
     }),
   });
 }
+function SceneEffectGroup({ children, ...props }) {
+  const root = L.useRef(null);
+  L.useLayoutEffect(() => disableSceneEffectPicking(root.current));
+  return t.jsx("group", { ...props, ref: root, children });
+}
 function Xe({
   color: e,
   level: s,
@@ -4865,7 +4875,7 @@ function Xe({
   scale: n = [1, 1, 1],
 }) {
   const i = e;
-  return t.jsxs("group", {
+  return t.jsxs(SceneEffectGroup, {
     position: r,
     children: [
       t.jsxs("mesh", {
@@ -4904,7 +4914,7 @@ function Xe({
 function Kt({ color: e, level: s, radius: r, position: o, elongated: n = !1 }) {
   const i = e,
     a = n ? [1.65, 1, 1] : [1, 1, 1];
-  return t.jsx("group", {
+  return t.jsx(SceneEffectGroup, {
     position: o,
     rotation: [-Math.PI / 2, 0, 0],
     scale: a,
@@ -4929,7 +4939,7 @@ function je({ color: e, brightness: s, variant: r }) {
     n = Cs(e),
     i = n;
   if (r === "floor")
-    return t.jsxs("group", {
+    return t.jsxs(SceneEffectGroup, {
       children: [
         t.jsx("pointLight", {
           color: i,
@@ -4954,7 +4964,7 @@ function je({ color: e, brightness: s, variant: r }) {
       ],
     });
   if (r === "strip")
-    return t.jsxs("group", {
+    return t.jsxs(SceneEffectGroup, {
       children: [
         t.jsx("pointLight", {
           color: i,
@@ -4987,7 +4997,7 @@ function je({ color: e, brightness: s, variant: r }) {
       ],
     });
   if (r === "wall")
-    return t.jsxs("group", {
+    return t.jsxs(SceneEffectGroup, {
       children: [
         t.jsx("pointLight", {
           color: i,
@@ -5030,7 +5040,7 @@ function je({ color: e, brightness: s, variant: r }) {
         ? [1, 0.18, 1]
         : [1, r === "chandelier" ? 0.5 : 0.34, 1],
     h = r === "downlight" ? 0.011 + o * 0.038 : 0.018 + o * 0.058;
-  return t.jsxs("group", {
+  return t.jsxs(SceneEffectGroup, {
     children: [
       t.jsx("pointLight", {
         color: i,
@@ -5679,14 +5689,22 @@ function useRuntimeModelGlow(target, active, version) {
     };
   }, [target, active, version, invalidate]);
 }
-function UploadedDeviceModel({ config: e, runtime, unavailable = false, running = false }) {
+function UploadedDeviceModel({ config: e, runtime, unavailable = false, running = false, motionEntity }) {
   const [s, r] = L.useState();
+  const { invalidate } = tt();
+  const partEngine=L.useRef(null);
+  const availabilityRef=L.useRef(unavailable);availabilityRef.current=unavailable;
+  const motionValues=motionCapabilityValues(motionEntity);
+  const motionRulesKey=JSON.stringify(e.partMotionRules??[]);
+  L.useEffect(()=>{if(!s||!e.partMotionRules?.length)return;applyModelAvailability(s,false);partEngine.current=createPartMotionEngine(s,e.partMotionRules);invalidate();return()=>{partEngine.current?.dispose();partEngine.current=null;applyModelAvailability(s,availabilityRef.current);invalidate();};},[s,motionRulesKey,invalidate]);
+  L.useEffect(()=>invalidate(),[JSON.stringify(motionValues),unavailable,motionEntity?.deviceMotionAvailable,invalidate]);
+  L.useLayoutEffect(() => configureDeviceModelPicking(s), [s]);
   const pulsator = L.useRef(null);
   const indicator = L.useRef(null);
-  const { invalidate } = tt();
-  useRuntimeModelGlow(s, running && !unavailable);
+  useRuntimeModelGlow(s, running && !unavailable && !e.partMotionRules?.length);
   re(({ clock }, delta) => {
-    if (runtime?.running && pulsator.current) {
+    if(partEngine.current?.update(motionValues,clock.elapsedTime,delta,{available:!unavailable&&motionEntity?.deviceMotionAvailable!==false}))invalidate();
+    if (runtime?.running && pulsator.current && !e.partMotionRules?.length) {
       pulsator.current.rotation.y += Math.min(delta, 0.1) * 3.2;
       if (indicator.current) {
         indicator.current.emissiveIntensity =
@@ -5702,9 +5720,9 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
     }
   }, [runtime?.running, invalidate]);
   L.useLayoutEffect(() => {
-    applyModelAvailability(s, unavailable);
+    if(!e.partMotionRules?.length)applyModelAvailability(s, unavailable);
     invalidate();
-  }, [s, unavailable, invalidate]);
+  }, [s, unavailable, motionRulesKey, invalidate]);
   L.useEffect(() => {
     let o = !0,
       n;
@@ -5739,7 +5757,7 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
         n.position.set(-h.x, -u.min.y, -h.z);
         pulsator.current = null;
         indicator.current = null;
-        if (e.runtimeEffect?.type === "top-load-washer") {
+        if (e.runtimeEffect?.type === "top-load-washer" && !e.partMotionRules?.length) {
           const disc = n.getObjectByName("Pulsator_Disc");
           if (disc) {
             n.updateMatrixWorld(true);
@@ -6039,9 +6057,9 @@ function ProceduralDeviceModel({ config: e, unavailable = false, running = false
     ],
   });
 }
-function ConfiguredDeviceModel({ config: e, runtime, unavailable, running }) {
+function ConfiguredDeviceModel({ config: e, runtime, unavailable, running, motionEntity }) {
   return e.source?.type === "upload"
-    ? t.jsx(UploadedDeviceModel, { config: e, runtime, unavailable, running })
+    ? t.jsx(UploadedDeviceModel, { config: e, runtime, unavailable, running, motionEntity })
     : t.jsx(ProceduralDeviceModel, { config: e, unavailable, running });
 }
 function ti({ span: e, height: s, depth: r, children: o }) {
@@ -7447,6 +7465,7 @@ function si({
                 t.jsxs("mesh", {
                   position: [0, 0, 0.118],
                   renderOrder: 9,
+                  raycast: ignoreSceneEffectRaycast,
                   children: [
                     t.jsx("ringGeometry", { args: [0.112, 0.222, 58] }),
                     t.jsx("meshBasicMaterial", {
@@ -7879,6 +7898,7 @@ function si({
         ),
         p &&
           t.jsxs("mesh", {
+            raycast: ignoreSceneEffectRaycast,
             position: [0, 0.118, 0],
             rotation: [-Math.PI / 2, 0, 0],
             children: [
@@ -8189,31 +8209,6 @@ function $t(e) {
                             ? { radius: 0.32, y: 0.08 }
                             : { radius: 0.34, y: 0 };
 }
-function zs({ modelId: e, target: s }) {
-  return e === "light.strip"
-    ? t.jsxs("mesh", {
-        position: [0, -0.02, 0],
-        children: [
-          t.jsx("boxGeometry", { args: [1.04, 0.36, 0.36] }),
-          t.jsx("meshBasicMaterial", {
-            transparent: !0,
-            opacity: 0,
-            depthWrite: !1,
-          }),
-        ],
-      })
-    : t.jsxs("mesh", {
-        position: [0, s.y, 0],
-        children: [
-          t.jsx("sphereGeometry", { args: [s.radius, 16, 8] }),
-          t.jsx("meshBasicMaterial", {
-            transparent: !0,
-            opacity: 0,
-            depthWrite: !1,
-          }),
-        ],
-      });
-}
 function oi(e, s, r) {
   const o = $t(e),
     n = Math.max(r * 2.22, 0.54),
@@ -8316,7 +8311,7 @@ function Ts({ color: e, modelId: s, placement: r, radius: o }) {
   const n = $(e, "#ffffff", 0.58),
     i = $(e, "#f8fdff", 0.34),
     { centerY: a, width: c, height: l, depth: f, corner: u } = oi(s, r, o);
-  return t.jsxs("group", {
+  return t.jsxs(SceneEffectGroup, {
     position: [0, a, 0],
     renderOrder: 8,
     children: [
@@ -8469,7 +8464,6 @@ const ii = L.memo(function ({
       W = Es(C),
       ee = R ? [1, 1, 1] : s.scale ? s.scale : Ns(C, o),
       K = R ? [0, 0, 0] : s.rotation,
-      X = $t(C),
       te = m && o && b,
       Q = Sn(s, r, i, _),
       configuredModel = r?.deviceModel?.source ? r.deviceModel : s.customModel,
@@ -8512,7 +8506,6 @@ const ii = L.memo(function ({
         document.body.style.cursor = "auto";
       },
       children: [
-        t.jsx(zs, { modelId: C, target: X }),
         F &&
           !O &&
           !C.startsWith("cover.") &&
@@ -8525,6 +8518,7 @@ const ii = L.memo(function ({
           children: configuredModel?.source
             ? t.jsx(ConfiguredDeviceModel, {
                 config: configuredModel,
+                motionEntity: r,
                 unavailable: m,
                 running: washerRuntime?.running ?? false,
                 runtime: washerRuntime
@@ -8613,7 +8607,7 @@ const ii = L.memo(function ({
           }),
         b &&
           !B &&
-          C !== "light.ceiling_panel" &&
+          !C.startsWith("light.") &&
           !m &&
           t.jsx(Ts, {
             color: Q,
@@ -8678,7 +8672,6 @@ const ii = L.memo(function ({
         document.body.style.cursor = "auto";
       },
       children: [
-        t.jsx(zs, { modelId: y, target: $t(y) }),
         t.jsx(Gt, {
           children: t.jsx($s, {
             modelId: y,
@@ -8704,7 +8697,7 @@ const ii = L.memo(function ({
             ],
           }),
         h &&
-          y !== "light.ceiling_panel" &&
+          !y.startsWith("light.") &&
           !m &&
           t.jsx(Ts, { color: w.color, modelId: y, placement: x, radius: O }),
       ],

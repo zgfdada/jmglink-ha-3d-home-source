@@ -135,6 +135,7 @@ export function aggregateDeviceObjects({
 }) {
   const devicesById = new Map(devices.map((device) => [device.id, device]));
   const entitiesByDevice = new Map();
+  const entitiesById = new Map(entities.map(entity => [entity.entityId,entity]));
   for (const entity of entities) {
     const deviceId = entity.deviceId || `entity:${entity.entityId}`;
     if (!entitiesByDevice.has(deviceId)) entitiesByDevice.set(deviceId, []);
@@ -157,6 +158,11 @@ export function aggregateDeviceObjects({
     .map((device) => {
       const deviceEntities = entitiesByDevice.get(device.id) ?? [];
       const binding = bindingByDevice.get(device.id);
+      const physicalIds = new Set(deviceEntities.map(entity => entity.entityId));
+      const extraEntities = (binding?.extraEntityIds ?? []).filter(id => !physicalIds.has(id)).map(entityId => entitiesById.get(entityId) ?? {
+        entityId, domain:entityId.split(".")[0], name:entityId, state:"unavailable", attributes:{}, historical:true,
+      });
+      const capabilityEntityIds = new Set([...physicalIds,...extraEntities.map(entity => entity.entityId)]);
       const automatic = matchDeviceTemplate(device, deviceEntities, templates);
       const template =
         templateById.get(binding?.deviceTemplateId) ??
@@ -169,9 +175,7 @@ export function aggregateDeviceObjects({
                 .map(([id, ids]) => [
                   id,
                   ids.filter((entityId) =>
-                    deviceEntities.some(
-                      (entity) => entity.entityId === entityId,
-                    ),
+                    capabilityEntityIds.has(entityId),
                   ),
                 ])
                 .filter(([, ids]) => ids.length),
@@ -185,6 +189,8 @@ export function aggregateDeviceObjects({
         ...device,
         entityIds: deviceEntities.map((entity) => entity.entityId),
         entities: deviceEntities,
+        extraEntityIds: extraEntities.map(entity => entity.entityId),
+        extraEntities,
         deviceTemplateId: template?.id,
         deviceTemplateName: template?.name,
         statusDisplay: template?.runtimeDisplay ?? template?.statusDisplay,

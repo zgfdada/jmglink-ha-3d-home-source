@@ -1,4 +1,5 @@
 import { enumValueLabel } from "../../../../../packages/schema/src/device-value-labels.js";
+import { deviceCapabilityEntities } from "../../../../../packages/schema/src/associated-entities.js";
 
 export const MAPPED_CAPABILITY_STATUSES = [
   "bound",
@@ -124,7 +125,7 @@ export function inferredDataType(entity, attribute = "state") {
 export function mappingStatus(capability, mapping, device, haStatus) {
   if (!mapping?.entityId) return { id: "empty", label: "未绑定" };
   if (haStatus?.connected === false) return { id: "offline", label: "HA 离线" };
-  const entity = device?.entities?.find(
+  const entity = deviceCapabilityEntities(device).find(
     (item) => item.entityId === mapping.entityId,
   );
   if (!entity) return { id: "missing", label: "映射失效" };
@@ -168,8 +169,8 @@ export function selectedDeviceEntities(device, binding) {
   const selectedIds = Array.isArray(binding?.selectedEntityIds)
     ? binding.selectedEntityIds
     : Object.values(binding?.capabilityBindings ?? {}).flat();
-  const allowedIds = new Set(selectedIds);
-  return (device?.entities ?? []).filter((entity) =>
+  const allowedIds = new Set([...selectedIds,...(binding?.extraEntityIds ?? [])]);
+  return deviceCapabilityEntities(device).filter((entity) =>
     allowedIds.has(entity.entityId),
   );
 }

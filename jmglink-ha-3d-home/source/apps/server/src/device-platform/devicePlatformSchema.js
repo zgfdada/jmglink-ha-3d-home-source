@@ -1,3 +1,5 @@
+import {normalizePartLabels} from "../../../../packages/schema/src/model-part-labels.js";
+import {normalizePartMotionRules} from "../../../../packages/schema/src/part-motion.js";
 import { normalizeControlValues } from "../../../../packages/schema/src/control-library.js";
 import {
   normalizeLibraryControl,
@@ -305,6 +307,8 @@ export function normalizeDeviceTemplate(value, { builtin = false } = {}) {
             metalnessOverride: appearance.metalnessOverride === true,
             roughness: finite(appearance.roughness, 0.62, 0, 1),
             roughnessOverride: appearance.roughnessOverride === true,
+            partLabels:normalizePartLabels(appearance.partLabels),
+            partMotionRules: normalizePartMotionRules(appearance.partMotionRules),
             animation: {
               statusCapabilityId: text(animation.statusCapabilityId),
               remainingCapabilityId: text(animation.remainingCapabilityId),
@@ -555,6 +559,7 @@ export function normalizeDeviceBinding(value) {
     capabilityMappings,
     mappingMode: source.mappingMode === "explicit" ? "explicit" : undefined,
     selectedEntityIds,
+    extraEntityIds: [...new Set(stringList(source.extraEntityIds).filter(id => ENTITY_ID_PATTERN.test(id) && !selectedEntityIds.includes(id)))],
     entityRegistryRefs,
     modelTemplateId: text(source.modelTemplateId) || undefined,
     controlPanelTemplateId: text(source.controlPanelTemplateId) || undefined,

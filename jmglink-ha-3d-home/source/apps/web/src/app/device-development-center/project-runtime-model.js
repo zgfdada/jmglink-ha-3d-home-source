@@ -1,3 +1,5 @@
+import {partMotionIssues} from "../../../../../packages/schema/src/part-motion.js";
+import { deviceCapabilityEntities } from "../../../../../packages/schema/src/associated-entities.js";
 import {
   deviceValueLabel,
   enumValueLabel,
@@ -65,7 +67,7 @@ export function runtimeDisplayIssues(config, capabilities, binding, device) {
   const entityId =
     mapping?.entityId ??
     binding?.capabilityBindings?.[status?.capabilityId]?.[0];
-  const entity = device?.entities?.find((item) => item.entityId === entityId);
+  const entity = deviceCapabilityEntities(device).find((item) => item.entityId === entityId);
   const choices = stateChoices(status, entity);
   if (status?.kind === "enum" && status.enumValues?.length)
     for (const value of [
@@ -120,6 +122,7 @@ export function appearanceIssues(project, model, capabilities) {
   if (!project?.appearance) return ["尚未配置 3D 外观"];
   const issues = [];
   if (!model) issues.push("3D 模型文件或资源不可用，请重新选择模型");
+  issues.push(...partMotionIssues(project.appearance.partMotionRules,capabilities));
   const animation = project.appearance.animation ?? {};
   for (const id of [
     animation.statusCapabilityId,

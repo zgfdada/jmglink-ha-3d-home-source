@@ -2,6 +2,16 @@
 
 本文面向参与源码维护、功能开发、测试和发布的开发者。安装与日常使用请阅读 [README.md](README.md)，版本变化请阅读 [RELEASE_NOTES.md](RELEASE_NOTES.md)，运维接手流程请阅读 [服务交接文档](docs/HA3DHome服务交接文档.md)。
 
+## 3D 设备点击范围
+
+额外实体以 binding.extraEntityIds 保存，与主设备 selectedEntityIds 分开；`extra-entity-selection.jsx` 在基础信息内同页筛选与显式保存。`PUT projects/:id/extra-entities` 验证主设备身份、实体存在和选择版本，不重新绑定主设备；移除关联时解除对应能力映射。聚合结果保留 physical entityIds/entities，额外值通过 extraEntities/extraEntityIds 供能力编辑器、校验和主页动效读取，不修改实体 deviceId。注册表改名同步更新额外选择与映射；设备包继续不携带实例绑定。`extra-entities.test.mjs` 覆盖选择→能力映射→同一显隐动效引擎及磁盘重开；`scripts/verify-extra-entities.mjs` 提供无真实 HA 的界面验收。
+
+`domain/surface-scan.js` 提供局部轴向的通用模型表面扫光 Shader，part-motion.js 的 scan 规则可选择整组或单部件。与路径 flow 分开，按目标局部包围范围归一化扫描，叠层共享几何且只释放自有材质；不改原模型材质、不参与点击。主页和模型预览均经 part-motion-engine 驱动，支持反向、宽度、强度、过渡、数值映射与离线退出。表面扫光作为普通声明式规则配置，能力与真实状态值由用户指定，不提供固定车辆预设按钮。参考视频不作为代码或模型资产打包。
+
+内置设备与自定义设备统一使用可见网格的真实形状拾取，移除额外的透明命中球／盒；不按包围盒扩大范围。configureDeviceModelPicking 保留 Three.js 原生拾取方法，逐次检查祖先显隐和材质可见性，适配部件动效位移与显隐；多材质模型按命中面的材质过滤。内置模型挂载及上传模型异步加载完成时分别配置，重复执行不叠加包装。
+
+光束、气流、光晕、地面光斑、辅助选中罩及部件流光通过独立装饰标记和空 raycast 排除拾取；保留渲染且允许点击穿过。灯具选中状态通过灯体高亮和标签表达。scene-picking.test.mjs 覆盖模型本体、附近空白、装饰穿透、部件位移／显隐／透明度和自定义模型光晕／流光。
+
 ## 摄像头模型与监控
 
 packages/schema/src/camera-models.js 为四类内置摄像头的共享描述，后端注册 builtin.camera.* 程序化模型，scene 的摆放选择与默认外形使用同一描述。domain/camera-model.js 统一生成 Three.js 几何，供主页 CameraModel 和模型库 ModelPreview 共用；尺寸以实际包围盒归一化，镜头数与尺寸有回归测试，卸载释放几何与材质。旧 camera.wall、camera.doorbell 和已有摆放 ID 保留。
@@ -646,3 +656,7 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 发布范围：本地教程和愿景素材保留在开发机器，但从当前 Git 快照、镜像及安装库中排除。builtin-control-selection.js 固定 8101 的 12 项定义；legacyBuiltinControls 仅为旧面板兼容解析，不出现在新库清单。安装导出必须包含版本一致的 App CHANGELOG.md，并通过发布校验。
 
 版本 .33 的精简清单：开关双态按钮、整行按钮、下拉选择、平铺网格、刻度滑轨、步进调节、大字数值、线性进度、分段进度、环形进度、引用文本、虚线分割线。旧内置定义仅供兼容解析，库启动时过滤多余 builtin ID；不删除自定义 ID。
+
+## 部件动效（未发布）
+
+共享 part-motion.js 只接受声明式规则，校验路径、数值、条件、能力引用及重复目标；model-part-labels.js 将显示中文名与模型节点身份分离。ProjectAppearance 保存 appearance.partMotionRules / partLabels，API 校验能力引用，设备包和放置模型快照保留字段。capabilityDependencies / capabilityValidation 纳入规则依赖。part-motion-engine.js 为预览和 UploadedDeviceModel 共用，按层级路径解析节点，按优先级覆盖通道，克隆实例材质并在 dispose 恢复。状态来自 deviceCapabilityBindings + capabilityMappings.attribute，更新不发送服务指令；未知/离线恢复原状，旧洗衣机动画在无通用规则时保留。ModelPreview 提供部件树、射线选中、包围盒和局部路径拾取，配置变化不重建 WebGL context；未保存规则通过步骤 flush 和标签保护。回归见 tests/part-motion.test.mjs，含 API 写盘重开、导出、同名部件、轴心、映射、材质隔离、流光生命周期及中文别名。

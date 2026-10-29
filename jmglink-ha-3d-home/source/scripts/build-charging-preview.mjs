@@ -1,0 +1,10 @@
+import { build } from "esbuild";
+import { readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+const source = new URL("../tests/fixtures/charging-preview.js", import.meta.url);
+const result = await build({entryPoints:[fileURLToPath(source)],bundle:true,format:"iife",minify:true,write:false});
+const template = await readFile(new URL("../tests/fixtures/charging-preview.html",import.meta.url),"utf8");
+const output=process.argv[2];
+if(!output)throw Error("请传入预览 HTML 输出路径");
+await writeFile(output,template.replace("/*CHARGING_DEMO*/",()=>result.outputFiles[0].text.replace(/<\/script/gi,"<\\/script")),"utf8");
+console.log(output);

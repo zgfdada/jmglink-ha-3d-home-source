@@ -1,6 +1,7 @@
 import { a as React } from "../../vendor/react.js";
 import ModelPreview from "./model-preview.jsx";
 import ProjectCapabilities from "./project-capabilities.jsx";
+import ExtraEntitySelection from "./extra-entity-selection.jsx";
 import ProjectRuntime from "./project-runtime.jsx";
 import ProjectAppearance from "./project-appearance.jsx";
 import ProjectPanel from "./project-panel.jsx";
@@ -147,6 +148,9 @@ export default function ProjectDetail({
   const [scanning, setScanning] = React.useState(false);
   const [heroCollapsed, setHeroCollapsed] = React.useState(false);
   const [bindingBusy, setBindingBusy] = React.useState(false);
+  const [entityBindingTab,setEntityBindingTab] = React.useState("own");
+  const extraEntityGuardRef = React.useRef(null);
+  const registerExtraEntityGuard = React.useCallback(callback=>{extraEntityGuardRef.current=callback;},[]);
   const [advanced, setAdvanced] = React.useState(false);
   const [haStatus, setHaStatus] = React.useState(null);
   const [n4Validation, setN4Validation] = React.useState(null);
@@ -386,10 +390,11 @@ export default function ProjectDetail({
     }, 850);
     return () => window.clearTimeout(timer);
   }, [revision]);
+  const flushBasic = () => extraEntityGuardRef.current?.() === false ? false : saveSnapshot(draft,revisionRef.current);
   React.useEffect(() => {
     registerFlush?.(() =>
       activeStep === "basic"
-        ? saveSnapshot(draft, revisionRef.current)
+        ? flushBasic()
         : activeStep === "capabilities"
           ? n4FlushRef.current?.()
           : activeStep === "runtime"
@@ -405,7 +410,7 @@ export default function ProjectDetail({
 
   const flushActive = () =>
     activeStep === "basic"
-      ? saveSnapshot(draft, revisionRef.current)
+      ? flushBasic()
       : activeStep === "capabilities"
         ? n4FlushRef.current?.()
         : activeStep === "runtime"
@@ -482,6 +487,7 @@ export default function ProjectDetail({
     );
   };
   const bindSelected = async () => {
+    if(extraEntityGuardRef.current?.()===false)return;
     if (!selectedDevice || !selectedEntityIds.length) {
       notify("请选择 HA 设备及至少一个实体。", "error");
       return;
@@ -563,7 +569,7 @@ export default function ProjectDetail({
             <span>最后同步　{formatTime(lastEntityUpdate || lastSavedAt)}</span>
             <span>
               关联实体　
-              {recordedIds.length} 个
+              {recordedIds.length + (binding?.extraEntityIds?.length ?? 0)} 个{binding?.extraEntityIds?.length ? `（额外 ${binding.extraEntityIds.length} 个）` : ""}
             </span>
           </div>
         </div>
@@ -924,7 +930,11 @@ export default function ProjectDetail({
                 </small>
               </div>
             </div>
-            <div className="ddc-project-binding-grid">
+            <div className="ddc-entity-binding-tabs"><button className={entityBindingTab==="own"?"active":""} onClick={()=>setEntityBindingTab("own")}>设备自身实体（{recordedIds.length}）</button><button className={entityBindingTab==="extra"?"active":""} onClick={()=>setEntityBindingTab("extra")}>额外关联实体（{binding?.extraEntityIds?.length ?? 0}）</button></div>
+            <div hidden={entityBindingTab!=="extra"}>
+              <ExtraEntitySelection projectId={projectId} binding={binding} devices={availableDevices} onBeforeSave={()=>saveSnapshot(draft,revisionRef.current)} reload={reload} notify={notify} registerGuard={registerExtraEntityGuard}/>
+            </div>
+            <div className="ddc-project-binding-grid" style={entityBindingTab!=="own"?{display:"none"}:undefined}>
               <div className="ddc-project-candidates">
                 <h3>匹配到的设备（{candidates.length} 个）</h3>
                 <div className="ddc-project-candidate-head">

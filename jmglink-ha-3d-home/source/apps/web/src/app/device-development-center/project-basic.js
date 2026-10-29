@@ -124,6 +124,8 @@ export function entityTypeLabel(domain) {
   return (
     {
       binary_sensor: "二值传感器",
+      device_tracker: "定位跟踪器",
+      person: "人员",
       sensor: "传感器",
       switch: "开关",
       light: "灯光",

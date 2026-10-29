@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { disableSceneEffectPicking } from "./scene-picking.js";
 
 const GLOW_COLOR = 0x58b8ff;
 
@@ -50,6 +51,7 @@ export function createRuntimeModelGlow(root) {
       shell.scale.setScalar(scale);
       shell.renderOrder = 9;
       shell.userData.runtimeGlow = true;
+      disableSceneEffectPicking(shell);
       part.add(shell);
       shells.push(shell);
     }
@@ -68,6 +70,7 @@ export function createRuntimeModelGlow(root) {
     const edge = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     edge.scale.setScalar(1.006);
     edge.renderOrder = 10;
+    disableSceneEffectPicking(edge);
     part.add(edge);
     edges.push(edge);
   }
@@ -90,6 +93,7 @@ export function createRuntimeModelGlow(root) {
   halo.scale.set(Math.max(size.x, size.z, 0.2) * 1.75, Math.max(size.y, 0.2) * 1.75, 1);
   halo.renderOrder = 8;
   halo.userData.runtimeGlow = true;
+  disableSceneEffectPicking(halo);
   root.add(halo);
   const light = new THREE.PointLight(GLOW_COLOR, 0.2, Math.max(0.8, size.length() * 1.8));
   light.position.copy(center);

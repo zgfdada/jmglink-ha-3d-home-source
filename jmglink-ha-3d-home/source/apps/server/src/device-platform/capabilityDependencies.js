@@ -17,6 +17,7 @@ export function capabilityDependencies(project, models, panels, capabilityId) {
     add("3D 外观", "动画运行状态");
   if (project.appearance?.animation?.remainingCapabilityId === capabilityId)
     add("3D 外观", "动画剩余时间");
+  for(const rule of project.appearance?.partMotionRules??[])if(rule.capabilityId===capabilityId)add("3D 外观",`部件动效：${rule.name}`);
   for (const model of models ?? []) {
     if (
       model.id !== project.modelTemplateId &&

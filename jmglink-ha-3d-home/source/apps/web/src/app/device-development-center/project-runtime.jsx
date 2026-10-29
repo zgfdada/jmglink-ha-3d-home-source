@@ -1,4 +1,5 @@
 import ProjectStepLayout from "./project-step-layout.jsx";
+import { withAssociatedEntities } from "../../../../../packages/schema/src/associated-entities.js";
 import { a as React } from "../../vendor/react.js";
 import {
   resolveWasherRuntime,
@@ -107,7 +108,7 @@ export default function ProjectRuntime({
   const binding = platform.bindings.find(
     (item) => item.deviceTemplateId === projectId,
   );
-  const device = devices.find((item) => item.id === binding?.deviceId);
+  const device = withAssociatedEntities(devices.find((item) => item.id === binding?.deviceId));
   const [config, setConfig] = React.useState(() =>
     structuredClone(project?.runtimeDisplay ?? EMPTY_RUNTIME_DISPLAY),
   );

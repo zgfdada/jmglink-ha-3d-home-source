@@ -1,3 +1,5 @@
+import { withAssociatedEntities } from "../../../../packages/schema/src/associated-entities.js";
+import {partMotionIssues} from "../../../../packages/schema/src/part-motion.js";
 function mappingFor(binding, capabilityId) {
   return (
     binding?.capabilityMappings?.[capabilityId] ??
@@ -37,6 +39,7 @@ export function validateProjectCapabilities(
   models = [],
   panels = [],
 ) {
+  device = withAssociatedEntities(device);
   const issues = [];
   const capabilityIds = new Set(
     (project?.capabilities ?? []).map((item) => item.capabilityId),
@@ -97,6 +100,7 @@ export function validateProjectCapabilities(
   }
   const appearance = project?.appearance;
   if (appearance) {
+    for(const reason of partMotionIssues(appearance.partMotionRules,project.capabilities))issues.push({page:"3D 外观",severity:"error",reason});
     if (
       !project.modelTemplateId ||
       !models.some((item) => item.id === project.modelTemplateId)

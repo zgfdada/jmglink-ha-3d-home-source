@@ -1,3 +1,5 @@
+import {normalizePartLabels} from "./model-part-labels.js";
+import {normalizePartMotionRules} from "./part-motion.js";
 import {normalizeCameraSettings} from './camera-settings.js';
 import { normalizeVanityMirrorCabinet } from "./vanity-mirror-cabinet.js";
 
@@ -82,6 +84,8 @@ function normalizeCustomDeviceModel(value) {
         id: optionalText(value.id),
         name: optionalText(value.name),
         enabled: value.enabled !== false,
+        partMotionRules:normalizePartMotionRules(value.partMotionRules),
+        partLabels:normalizePartLabels(value.partLabels),
         source,
         dimensions: { width: finite(dimensions.width, 0.6, 0.05, 20), depth: finite(dimensions.depth, 0.65, 0.05, 20), height: finite(dimensions.height, 0.85, 0.05, 20) },
         scale: finite(value.scale, 1, 0.01, 100),

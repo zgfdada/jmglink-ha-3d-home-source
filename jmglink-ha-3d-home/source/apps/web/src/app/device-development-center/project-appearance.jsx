@@ -1,3 +1,4 @@
+import PartMotionEditor from "./part-motion-editor.jsx";
 import ProjectStepLayout from "./project-step-layout.jsx";
 import { a as React } from "../../vendor/react.js";
 import ModelPreview from "./model-preview.jsx";
@@ -103,6 +104,9 @@ export default function ProjectAppearance({
   const [futureSize, setFutureSize] = React.useState(0);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [previewRunning, setPreviewRunning] = React.useState(false);
+  const motionGuardRef=React.useRef(null);
+  const registerMotionGuard=React.useCallback(guard=>{motionGuardRef.current=guard;},[]);
+  const [appearanceTab,setAppearanceTab]=React.useState("model");
   const [animationCustom, setAnimationCustom] = React.useState("");
   const [previewKey, setPreviewKey] = React.useState(0);
   const [previewCommand, setPreviewCommand] = React.useState(null);
@@ -226,7 +230,7 @@ export default function ProjectAppearance({
     return () => window.clearTimeout(timer);
   }, [revision]);
   React.useEffect(() => {
-    registerFlush?.(() => save());
+    registerFlush?.(() => motionGuardRef.current?.()===false?Promise.resolve(false):save());
     return () => registerFlush?.(null);
   }, [registerFlush]);
   const choose = (nextModel) => {
@@ -235,6 +239,8 @@ export default function ProjectAppearance({
       appearance: {
         ...initialAppearance(nextModel),
         animation: draftRef.current.appearance.animation,
+        partMotionRules: [],
+        partLabels: {},
       },
     });
     setPickerOpen(false);
@@ -255,6 +261,8 @@ export default function ProjectAppearance({
     patch("animation", { ...animation, [key]: value });
   return (
     <ProjectStepLayout className="ddc-step-page">
+      <div className="part-motion-tabs" role="tablist" aria-label="3D 外观配置"><button role="tab" aria-selected={appearanceTab==="model"} className={appearanceTab==="model"?"selected":""} onClick={()=>{if(motionGuardRef.current?.()!==false)setAppearanceTab("model");}}>模型与材质</button><button role="tab" aria-selected={appearanceTab==="motion"} className={appearanceTab==="motion"?"selected":""} onClick={()=>setAppearanceTab("motion")}>部件动效</button></div>
+      {appearanceTab==="motion"?<PartMotionEditor model={mergedModel} rules={draft.appearance.partMotionRules??[]} capabilities={capabilities} registerDraftGuard={registerMotionGuard} partLabels={draft.appearance.partLabels??{}} onLabelsChange={labels=>patch("partLabels",labels)} onChange={rules=>patch("partMotionRules",rules)}/>:(
       <div className="ddc-step-grid ddc-step-appearance-grid">
         <div className="ddc-step-stack">
           <section className="ddc-step-card">
@@ -697,6 +705,7 @@ export default function ProjectAppearance({
           </section>
         </div>
       </div>
+      )}
       {issues.length > 0 && (
         <div className="ddc-step-issues" role="status">
           <b>配置需要检查</b>

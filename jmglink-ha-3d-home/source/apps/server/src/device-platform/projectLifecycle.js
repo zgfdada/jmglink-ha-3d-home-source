@@ -1,6 +1,7 @@
 import { validateProjectCapabilities } from "./capabilityValidation.js";
 import { createHash } from "node:crypto";
 import { capabilityValueOptions } from "../../../../packages/schema/src/device-value-labels.js";
+import { bindingEntityIds } from "../../../../packages/schema/src/associated-entities.js";
 
 export function projectConfigurationSignature(project, model, panel) {
   const stable = JSON.stringify({ project, model, panel }, (key, value) =>
@@ -20,7 +21,7 @@ export function projectContext(platform, ha, id) {
   const device = ha.getDevices().find((item) => item.id === binding?.deviceId);
   const entities = ha
     .getEntities()
-    .filter((item) => binding?.selectedEntityIds?.includes(item.entityId));
+    .filter((item) => bindingEntityIds(binding).includes(item.entityId));
   const model = platform
     .getModelTemplates()
     .find((item) => item.id === project.modelTemplateId);

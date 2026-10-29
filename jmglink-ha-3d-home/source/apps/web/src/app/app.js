@@ -1602,6 +1602,7 @@ function ht() {
       Object.entries(source).map(([entityId, entity]) => {
         const device = deviceById.get(entity.deviceId);
         const deviceEntities = (device?.entityIds ?? [])
+          .concat(device?.extraEntityIds ?? [])
           .map((id) => source[id])
           .filter(Boolean);
         return [
@@ -1610,6 +1611,8 @@ function ht() {
             ...entity,
             deviceDisplayName: resolveDeviceDisplayName(entity, deviceById),
             deviceCapabilityBindings: device?.capabilityBindings,
+            deviceCapabilityMappings: device?.capabilityMappings,
+            deviceMotionAvailable: a?.connected === true,
             deviceStatusDisplay: device?.statusDisplay,
             deviceCapabilityNames: device?.capabilityNames,
             deviceEntities,
