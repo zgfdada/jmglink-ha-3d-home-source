@@ -289,7 +289,7 @@ jobs:
           grep -q 'Platform:[[:space:]]*linux/arm64' <<< "$inspection"
           grep -q 'Platform:[[:space:]]*linux/amd64' <<< "$inspection"
 
-      - name: 验证正式 AMD64 运行镜像与 Ingress 请求协议
+      - name: 验证正式 AMD64 运行镜像、ARM64 镜像与 Ingress 请求协议
         shell: bash
         run: |
           set -euo pipefail
@@ -299,6 +299,9 @@ jobs:
             < jmglink-ha-3d-home/source/tests/fixtures/voice-api-image-smoke.mjs
           docker run --rm --interactive --platform linux/amd64 --network none \
             --read-only --tmpfs /tmp --entrypoint node "${{ needs.prepare.outputs.amd_tag }}" \
+            --input-type=module < jmglink-ha-3d-home/source/tests/fixtures/release-http-smoke.mjs
+          docker run --rm --interactive --pull=always --platform linux/arm64 --network none \
+            --read-only --tmpfs /tmp --entrypoint node "${{ needs.prepare.outputs.arm_tag }}" \
             --input-type=module < jmglink-ha-3d-home/source/tests/fixtures/release-http-smoke.mjs
 
       - name: 更新并验证 latest 镜像

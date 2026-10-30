@@ -1,6 +1,7 @@
 ARG BUILD_FROM=node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
 
-FROM ${BUILD_FROM} AS build
+# Tests and JS assets are architecture-independent; avoid QEMU in the build stage.
+FROM --platform=$BUILDPLATFORM ${BUILD_FROM} AS build
 
 WORKDIR /
 RUN rm -rf /app && mkdir -p /app
@@ -23,6 +24,7 @@ COPY source/tests ./tests
 COPY source/scripts ./scripts
 
 RUN test "$HA3D_RELEASE_BUILD" = "1" && npm test && npm run build && node scripts/package-release.mjs && npm prune --omit=dev
+RUN node -e 'const p=require("./package-lock.json").packages; if(Object.values(p).some(x=>!x.dev&&(x.cpu||x.os)))throw Error("Runtime dependency requires a target-platform install")' && test -z "$(find node_modules -type f -name '*.node' -print -quit)"
 
 # Runtime must never inherit the CI image's old application layers.
 FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS runtime
@@ -30,7 +32,7 @@ FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a55
 WORKDIR /
 RUN rm -rf /app && mkdir -p /app
 
-ARG BUILD_VERSION=0.1.5-custom.36
+ARG BUILD_VERSION=0.1.5-custom.37
 ARG BUILD_ARCH
 
 LABEL \

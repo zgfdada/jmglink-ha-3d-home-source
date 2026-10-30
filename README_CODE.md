@@ -686,3 +686,7 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 ## 部件动效（未发布）
 
 共享 part-motion.js 只接受声明式规则，校验路径、数值、条件、能力引用及重复目标；model-part-labels.js 将显示中文名与模型节点身份分离。ProjectAppearance 保存 appearance.partMotionRules / partLabels，API 校验能力引用，设备包和放置模型快照保留字段。capabilityDependencies / capabilityValidation 纳入规则依赖。part-motion-engine.js 为预览和 UploadedDeviceModel 共用，按层级路径解析节点，按优先级覆盖通道，克隆实例材质并在 dispose 恢复。状态来自 deviceCapabilityBindings + capabilityMappings.attribute，更新不发送服务指令；未知/离线恢复原状，旧洗衣机动画在无通用规则时保留。ModelPreview 提供部件树、射线选中、包围盒和局部路径拾取，配置变化不重建 WebGL context；未保存规则通过步骤 flush 和标签保护。回归见 tests/part-motion.test.mjs，含 API 写盘重开、导出、同名部件、轴心、映射、材质隔离、流光生命周期及中文别名。
+
+## 多架构发布构建
+
+Docker 构建阶段使用 BUILDPLATFORM 原生执行通用 JS 测试、Vite 打包和产物整理；运行阶段保留目标架构 Node 镜像。生产锁文件的 cpu／os 限定依赖及 .node 扩展会阻止发布，未来引入原生依赖时必须增加目标平台安装。正式发布分别验收 AMD64／ARM64 运行镜像。测试 VM 的 2 秒保护期限用于避免高负载或模拟调度误报，不改变浏览器 Worker 的实际运行期限。

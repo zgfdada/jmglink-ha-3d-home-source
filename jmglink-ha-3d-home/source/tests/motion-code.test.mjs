@@ -30,7 +30,7 @@ test("all nine resources expose executable logic and worker rejects bad syntax a
   vm.runInContext(motionWorkerSource(), context);
   const send = (data) => {
     context.input = data;
-    vm.runInContext("self.onmessage({data:input})", context, { timeout: 50 });
+    vm.runInContext("self.onmessage({data:input})", context, { timeout: 2000 });
     return messages.at(-1);
   };
   for (const resource of builtinMotionResources()) {
@@ -142,7 +142,7 @@ test("code drives real model transforms, shared programs keep separate instance 
         this.context.input = structuredClone(data);
         try {
           vm.runInContext("self.onmessage({data:input})", this.context, {
-            timeout: 50,
+            timeout: 2000,
           });
         } catch {
           this.onerror?.();
