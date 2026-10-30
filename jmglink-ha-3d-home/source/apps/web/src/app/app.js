@@ -1658,6 +1658,7 @@ function ht() {
               onOpenDeviceDevelopmentCenter: () => setNextCenterOpen(!0),
               onOpenSidebarDevelopmentCenter: (floorId) => setSidebarCenterOpen(floorId || true),
               sceneResumeKey: homeSceneResumeKey,
+              sceneSuspended: nextCenterOpen || Boolean(sidebarCenterOpen),
             }),
           sidebarCenterOpen && r.jsx(SidebarDevelopmentCenter, {project: s, initialFloorId: typeof sidebarCenterOpen === "string" ? sidebarCenterOpen : undefined, entities: _, onClose: () => {setSidebarCenterOpen(false);setHomeSceneResumeKey(key => key + 1);}}),
           nextCenterOpen &&

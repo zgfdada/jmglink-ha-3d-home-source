@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { disableSceneEffectPicking } from "./scene-picking.js";
 import { createSurfaceScan } from "./surface-scan.js";
 import { motionMatch } from "../../../../packages/schema/src/part-motion.js";
+import { acquireMotionProgram } from "./motion-code-runtime.js";
 
 export function modelPartIndex(root) {
   const nodes = [];
@@ -42,6 +43,21 @@ const channel = (r) =>
         : r.effect.type;
 const clamp = (n) => Math.max(0, Math.min(1, n));
 export function createPartMotionEngine(root, rules = []) {
+  const codePrograms = new Map();
+  for (const rule of rules)
+    if (rule.effect.program) {
+      const program = acquireMotionProgram(rule.effect.program.code);
+      if (program) codePrograms.set(rule.id, program);
+      else if (typeof window !== "undefined")
+        codePrograms.set(rule.id, {
+          sample: () => null,
+          status: () => ({
+            error: "当前浏览器无法运行 JavaScript 动效",
+            pending: false,
+          }),
+          release() {},
+        });
+    }
   const nodes = modelPartNodes(root),
     baselines = new Map(),
     states = new Map(),
@@ -90,7 +106,7 @@ export function createPartMotionEngine(root, rules = []) {
       if (m.emissive) m.emissiveIntensity = b.materials[i].emissiveIntensity;
     });
   }
-  function makeFlow(key, node, r) {
+  function makeFlow(key, node, r, count = 5) {
     const points = r.effect.path.map((p) => new THREE.Vector3(...p));
     const curve = new THREE.CatmullRomCurve3(points);
     const group = new THREE.Group();
@@ -121,7 +137,7 @@ export function createPartMotionEngine(root, rules = []) {
     trail.material.opacity = 0.22;
     trail.renderOrder = 1000;
     group.add(trail);
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < count; i++)
       group.add(
         new THREE.Mesh(
           new THREE.SphereGeometry(radius * 1.5, 8, 6),
@@ -159,14 +175,17 @@ export function createPartMotionEngine(root, rules = []) {
           raw !== undefined &&
           raw !== null &&
           !["unknown", "unavailable", ""].includes(String(raw));
-      const active = valid && (!r.mapping.enabled||Number.isFinite(Number(raw))) && motionMatch(r, raw);
+      const active =
+        valid &&
+        (!r.mapping.enabled || Number.isFinite(Number(raw))) &&
+        motionMatch(r, raw);
       let s = states.get(r.id);
       if (!s) {
         s = {
           weight: 0,
           value: r.effect.type === "scale" ? 1 : 0,
           phase: 0,
-          flowPhase:0,
+          flowPhase: 0,
           time: 0,
         };
         states.set(r.id, s);
@@ -189,7 +208,8 @@ export function createPartMotionEngine(root, rules = []) {
           : 1;
         const desired = r.effect.from + (r.effect.to - r.effect.from) * ratio;
         s.value += (desired - s.value) * rate;
-        s.flowPhase+=dt*r.effect.speed*.25*(r.mapping.enabled?s.value:1);
+        s.flowPhase +=
+          dt * r.effect.speed * 0.25 * (r.mapping.enabled ? s.value : 1);
         s.phase += ((dt * s.value * Math.PI) / 180) * r.effect.speed;
       }
       if (
@@ -199,6 +219,24 @@ export function createPartMotionEngine(root, rules = []) {
       )
         needsFrame = true;
       if (s.weight <= 0.0001) continue;
+      const program = codePrograms.get(r.id);
+      if (program) {
+        needsFrame = true;
+        const { program: programDefinition, shader, ...params } = r.effect;
+        s.custom = program.sample({
+          time: s.time,
+          delta: dt,
+          value: s.value,
+          phase: s.flowPhase,
+          angle: (s.phase * 180) / Math.PI,
+          weight: s.weight,
+          mapped: r.mapping.enabled,
+          input: typeof raw === "string" ? raw.slice(0, 160) : raw,
+          params,
+        });
+        if (!s.custom || program.status().error) continue;
+        needsFrame = true;
+      }
       for (const path of r.targets) {
         const n = nodes.get(path);
         if (
@@ -213,19 +251,29 @@ export function createPartMotionEngine(root, rules = []) {
     }
     for (const { n, r, s, path } of winners.values()) {
       const b = baselines.get(n),
-        e = r.effect,
+        custom = s.custom ?? {},
+        e = { ...r.effect, ...custom },
+        value = custom.value ?? s.value,
         w = s.weight,
         axis = new THREE.Vector3(
           e.axis === "x" ? 1 : 0,
           e.axis === "y" ? 1 : 0,
           e.axis === "z" ? 1 : 0,
         );
-      if (e.type === "translate") n.position[e.axis] += s.value * w;
+      if (e.type === "translate") {
+        if (custom.offset)
+          n.position.add(new THREE.Vector3(...custom.offset).multiplyScalar(w));
+        else n.position[e.axis] += value * w;
+      }
       if (e.type === "scale")
-        n.scale[e.axis] *= 1 + (Math.max(0.001, s.value) - 1) * w;
+        n.scale[e.axis] *= 1 + (Math.max(0.001, value) - 1) * w;
       if (["rotate", "spin"].includes(e.type)) {
         const angle =
-            e.type === "spin" ? s.phase * w : ((s.value * Math.PI) / 180) * w,
+            custom.angle !== undefined
+              ? ((custom.angle * Math.PI) / 180) * w
+              : e.type === "spin"
+                ? s.phase * w
+                : ((value * Math.PI) / 180) * w,
           q = new THREE.Quaternion().setFromAxisAngle(axis, angle);
         n.quaternion.multiply(q);
         const pivot = new THREE.Vector3(...e.pivot)
@@ -247,10 +295,11 @@ export function createPartMotionEngine(root, rules = []) {
         );
       }
       if (e.type === "visible")
-        n.visible = w < 0.5 ? b.visible : s.value >= 0.5;
+        n.visible = w < 0.5 ? b.visible : (custom.visible ?? value >= 0.5);
       if (["color", "emissive"].includes(e.type)) {
         const wave =
-          e.mode === "breathe"
+          custom.wave ??
+          (e.mode === "breathe"
             ? 0.3 +
               0.7 *
                 (0.5 + 0.5 * Math.sin(s.time * Math.PI * 2 * Math.abs(e.speed)))
@@ -258,7 +307,7 @@ export function createPartMotionEngine(root, rules = []) {
               ? Math.sin(s.time * Math.PI * 2 * Math.abs(e.speed)) > 0
                 ? 1
                 : 0
-              : 1;
+              : 1);
         n.traverse((part) => {
           const baseline = baselines.get(part);
           if (!baseline) return;
@@ -271,32 +320,55 @@ export function createPartMotionEngine(root, rules = []) {
             if (e.type === "color")
               m.color
                 ?.copy(baseline.materials[i].color)
-                .lerp(new THREE.Color(e.color), w*(r.mapping.enabled?clamp(s.value):1));
+                .lerp(
+                  new THREE.Color(e.color),
+                  w * (custom.mix ?? (r.mapping.enabled ? clamp(value) : 1)),
+                );
             else if (m.emissive) {
               m.emissive
                 .copy(baseline.materials[i].emissive)
                 .lerp(new THREE.Color(e.color), w);
               m.emissiveIntensity =
                 baseline.materials[i].emissiveIntensity * (1 - w) +
-                (r.mapping.enabled?Math.max(0,s.value):e.intensity) * wave * w;
+                (custom.intensity ??
+                  (r.mapping.enabled ? Math.max(0, value) : e.intensity)) *
+                  wave *
+                  w;
             }
           });
         });
       }
       if (e.type === "scan" && s.valid) {
         const key = r.id + ":" + path;
-        const scan = scans.get(key) ?? createSurfaceScan(n);
+        const scan = scans.get(key) ?? createSurfaceScan(n, e.shader);
         scans.set(key, scan);
-        scanJobs.push(() => scan.update(e, s.flowPhase, w));
+        scanJobs.push(() => scan.update(e, custom.phase ?? s.flowPhase, w));
       }
       if (e.type === "flow") {
         const key = r.id + ":" + path;
-        const f = flows.get(key) ?? makeFlow(key, n, r);
+        const count = custom.progress?.length ?? 5;
+        let f = flows.get(key);
+        if (f && f.group.children.length !== count + 1) {
+          f.group.removeFromParent();
+          f.group.traverse((mesh) => {
+            mesh.geometry?.dispose();
+            mesh.material?.dispose();
+          });
+          flows.delete(key);
+          f = null;
+        }
+        f ??= makeFlow(key, n, r, count);
         f.group.visible = true;
         f.group.children.forEach((mesh, i) => {
-          mesh.material.opacity = (i === 0 ? 0.22 : 0.95) * w;
+          mesh.material.opacity =
+            (i === 0
+              ? (custom.trailOpacity ?? 0.22)
+              : (custom.opacity ?? 0.95)) * w;
+          mesh.material.color.set(e.color);
           if (i > 0) {
-            const p = (((s.flowPhase + (i - 1) / 5) % 1) + 1) % 1;
+            const p =
+              custom.progress?.[i - 1] ??
+              ((((custom.phase ?? s.flowPhase) + (i - 1) / count) % 1) + 1) % 1;
             mesh.position.copy(f.curve.getPoint(p));
           }
         });
@@ -334,6 +406,7 @@ export function createPartMotionEngine(root, rules = []) {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    for (const program of codePrograms.values()) program.release();
     for (const scan of scans.values()) scan.dispose();
     scans.clear();
     for (const { group } of flows.values()) {
@@ -355,5 +428,16 @@ export function createPartMotionEngine(root, rules = []) {
     }
     flows.clear();
   }
-  return { update, dispose, parts: modelPartIndex(root) };
+  return {
+    update,
+    dispose,
+    parts: modelPartIndex(root),
+    codeStatus() {
+      const states = [...codePrograms.values()].map((p) => p.status());
+      return {
+        pending: states.some((s) => s.pending),
+        errors: states.map((s) => s.error).filter(Boolean),
+      };
+    },
+  };
 }

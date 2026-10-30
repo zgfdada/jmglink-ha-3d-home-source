@@ -1,4 +1,5 @@
 import {CameraViewer} from '../components/camera-controls.jsx';
+import '../styles/mobile-development-menu.css';
 import {CameraLiveView} from './scene.js';
 import InstanceTransfer from "./instance-transfer.jsx";
 import { resolveDaylight } from "../../../../packages/schema/src/daylight.js";
@@ -2634,6 +2635,7 @@ function Qn({
   onOpenSidebarDevelopmentCenter,
   voiceAssistant,
   sceneResumeKey,
+  sceneSuspended = false,
 }) {
   var $t;
   const [developmentMenuOpen, setDevelopmentMenuOpen] = l.useState(false);
@@ -3004,7 +3006,7 @@ function Qn({
         className: "home-scene",
         style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[139,187,211,193,210,200]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},
         children: [
-          e.jsx("div", {className: "sb-scene-viewport", children: e.jsx(Qs, {
+          e.jsx("div", {className: "sb-scene-viewport", children: !sceneSuspended && e.jsx(Qs, {
             key: sceneResumeKey,
             project: xe,
             entities: ps,
@@ -3118,7 +3120,7 @@ function Qn({
                       e.jsx("span", { children: Re.label }),
                     ],
                   }),
-                  e.jsx("button", {className:"home-tools-item",role:"menuitem","aria-expanded":developmentMenuOpen,onClick:()=>setDevelopmentMenuOpen(v=>!v),children:developmentMenuOpen?"开发与编辑 ▴":"开发与编辑 ▾"}),
+                  e.jsx("button", {className:"home-tools-item home-development-entry",role:"menuitem","aria-expanded":developmentMenuOpen,onClick:()=>setDevelopmentMenuOpen(v=>!v),children:developmentMenuOpen?"开发与编辑 ▴":"开发与编辑 ▾"}),
                   developmentMenuOpen && e.jsxs("div", {className:"home-development-submenu",children:[
                     e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);c?.();},children:"房间布局编辑"}),
                     e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);nextCenterOpen?.();},children:"设备开发中心"}),

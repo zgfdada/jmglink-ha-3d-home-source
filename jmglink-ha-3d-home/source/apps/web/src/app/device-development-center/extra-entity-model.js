@@ -5,6 +5,7 @@ export function extraEntityOptions(devices = [], binding) {
   for (const device of devices) {
     if (device.id === binding?.deviceId) continue;
     for (const entity of device.entities ?? []) {
+      if (entity.entityOnly) continue;
       if (!own.has(entity.entityId)) byId.set(entity.entityId, {...entity, sourceDeviceName:device.name ?? "无设备归属", sourceDeviceId:device.id});
     }
   }

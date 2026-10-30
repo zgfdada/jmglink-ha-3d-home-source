@@ -1,3 +1,5 @@
+import {entityOnlyDevice} from "../../../../packages/schema/src/entity-only-device.js";
+
 function haystack(values) {
   return values.filter(Boolean).join(" ").toLocaleLowerCase();
 }
@@ -134,6 +136,10 @@ export function aggregateDeviceObjects({
   bindings,
 }) {
   const devicesById = new Map(devices.map((device) => [device.id, device]));
+  for (const binding of bindings) {
+    const device = entityOnlyDevice(binding, templates.find(project => project.id === binding.deviceTemplateId));
+    if (device) devicesById.set(device.id, device);
+  }
   const entitiesByDevice = new Map();
   const entitiesById = new Map(entities.map(entity => [entity.entityId,entity]));
   for (const entity of entities) {
@@ -226,7 +232,7 @@ export function aggregateDeviceObjects({
           deviceEntities.some((entity) => entity.source === "development"),
       };
     })
-    .filter((device) => device.entityIds.length)
+    .filter((device) => device.entityIds.length || device.entityOnly)
     .sort((first, second) =>
       first.name.localeCompare(second.name, "zh-Hans-CN"),
     );

@@ -1,4 +1,5 @@
 import { registerInstanceBackup } from "./routes/instanceBackup.js";
+import {registerMotionWorkerRoute} from './routes/motionWorker.js';
 import {MotionLibraryStore,registerMotionLibraryRoutes} from './motion-library/MotionLibraryStore.js';
 import { registerSidebarServices } from "./sidebar/SidebarServices.js";
 import { resolveSidebarEntities } from "../../../packages/schema/src/sidebar-bindings.js";
@@ -42,6 +43,7 @@ const app = Fastify({
   bodyLimit: 22 * 1024 * 1024,
 });
 await registerClientErrorRoutes(app);
+await registerMotionWorkerRoute(app);
 await registerSkillPackageRoutes(app);
 const gateway = new ClientGateway();
 const supervisorTokenRaw = process.env.SUPERVISOR_TOKEN;
@@ -111,7 +113,7 @@ registerSidebarServices(app,ha,sidebarStore,projectStore);
 function refreshBoundEntityFilter() {
   try {
     const project = projectStore.getProject();
-    const boundIds = collectLiveEntityIds(project, ha.getEntities());
+    const boundIds = collectLiveEntityIds(project, ha.getEntities(), devicePlatformStore.getBindings());
     const sidebar = sidebarStore.get(project.id);
     for (const config of [sidebar.draft, sidebar.published]) {
       for (const widget of config.widgets) for (const id of resolveSidebarEntities(widget, {}, ha.getEntities()).ids) boundIds.add(id);
@@ -129,6 +131,12 @@ const unsubscribeProjectSaved = projectStore.onProjectSaved(() =>
   refreshBoundEntityFilter(),
 );
 refreshBoundEntityFilter();
+app.addHook("onResponse", async (request, reply) => {
+  if (!["GET", "HEAD", "OPTIONS"].includes(request.method) &&
+      request.url.startsWith("/api/device-platform/") && reply.statusCode < 400) {
+    refreshBoundEntityFilter();
+  }
+});
 app.setErrorHandler((error, request, reply) => {
   request.log.error({ err: error }, "Request failed");
   if (error.validation) {

@@ -1,3 +1,5 @@
+import DoorSensorBinding from "../components/door-sensor-binding.jsx";
+import {isDoorSensorOpen} from "../domain/door-sensor.js";
 /**
  * Recovered application module from official 0.1.5 Vite artifact: FloorplanEditor-CWRaEIlm.js
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.
@@ -1663,13 +1665,8 @@ function ad(s) {
   const i = Hr(s);
   return !!(i && Wc.has(i));
 }
-function rd(s) {
-  if (!s) return !1;
-  const i = s.state.toLowerCase();
-  return ["unavailable", "unknown", "offline"].includes(i)
-    ? !1
-    : ["on", "open", "opening", "detected", "unsafe", "unlocked"].includes(i);
-}
+const rd = isDoorSensorOpen;
+
 function od(s) {
   return Bc.has(s.domain)
     ? s.domain === "light"
@@ -3173,21 +3170,6 @@ function vd({
           counts.set(entity.deviceId, (counts.get(entity.deviceId) ?? 0) + 1);
       return counts;
     }, [i]),
-    go = x.useMemo(
-      () =>
-        Object.values(i)
-          .filter((e) => e.domain === "binary_sensor")
-          .sort((e, n) => {
-            const a = (r) =>
-              /door|window|opening|门|窗|磁/i.test(
-                `${r.entityId} ${r.name} ${r.attributes.device_class ?? ""}`,
-              )
-                ? 0
-                : 1;
-            return a(e) - a(n) || e.name.localeCompare(n.name, "zh-Hans");
-          }),
-      [i],
-    ),
     Wi = deviceLibrary.unplaced.length - deviceLibrary.available.length,
     $n = x.useMemo(() => {
       const e = new Map();
@@ -9412,73 +9394,18 @@ function vd({
                                 }),
                               ],
                             }),
-                            t.jsxs("div", {
-                              className:
-                                "property-section door-sensor-property",
-                              children: [
-                                t.jsx("h3", { children: "门磁绑定" }),
-                                t.jsxs("label", {
-                                  children: [
-                                    t.jsx("span", { children: "传感器" }),
-                                    t.jsxs(ns, {
-                                      value: K.entityId ?? "",
-                                      onChange: (e) =>
-                                        F((n) => ({
-                                          ...n,
-                                          openings: n.openings.map((a) =>
-                                            a.id === K.id
-                                              ? {
-                                                  ...a,
-                                                  entityId:
-                                                    e.target.value || void 0,
-                                                  hasLeaf: e.target.value
-                                                    ? !0
-                                                    : a.hasLeaf,
-                                                }
-                                              : a,
-                                          ),
-                                        })),
-                                      children: [
-                                        t.jsx("option", {
-                                          value: "",
-                                          children: "不绑定",
-                                        }),
-                                        go.map((e) =>
-                                          t.jsxs(
-                                            "option",
-                                            {
-                                              value: e.entityId,
-                                              children: [
-                                                e.name,
-                                                " · ",
-                                                e.entityId,
-                                                " · ",
-                                                ls(e),
-                                              ],
-                                            },
-                                            e.entityId,
-                                          ),
-                                        ),
-                                      ],
-                                    }),
-                                  ],
-                                }),
-                                Bi
-                                  ? t.jsxs("p", {
-                                      className: "field-hint",
-                                      children: [
-                                        "当前状态：",
-                                        ls(Bi),
-                                        "。开启/打开时门扇展开，关闭时门扇闭合。",
-                                      ],
-                                    })
-                                  : t.jsx("p", {
-                                      className: "field-hint",
-                                      children:
-                                        "可绑定 binary_sensor 门磁/窗磁，让 2D 与 3D 门扇跟随开关状态显示。",
-                                    }),
-                              ],
-                            }),
+                            t.jsx(DoorSensorBinding, {
+                              opening: K,
+                              entities: i,
+                              stateLabel: ls,
+                              onChange: (entityId) => F((n) => ({
+                                ...n,
+                                openings: n.openings.map((a) => a.id === K.id ? {
+                                  ...a, entityId: entityId || void 0,
+                                  hasLeaf: entityId ? true : a.hasLeaf,
+                                } : a),
+                              })),
+                            }, K.id),
                           ],
                         })
                       : t.jsxs("div", {

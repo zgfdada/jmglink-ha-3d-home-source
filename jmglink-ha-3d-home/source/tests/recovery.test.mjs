@@ -2708,6 +2708,25 @@ test("placed devices stream their status and remaining-time sibling entities", (
   assert.deepEqual([...collectLiveEntityIds({ floors: [] }, entities)], []);
 });
 
+test("placed entity-only models stream external entities without claiming their device", () => {
+  const project = {floors:[{devices:[{entityId:"sensor.project_car",deviceId:"project:car"}],rooms:[]}]};
+  const entities = [
+    {entityId:"sensor.project_car",deviceId:"project:car"},
+    {entityId:"device_tracker.car"},
+    {entityId:"sensor.charge",deviceId:"other"},
+    {entityId:"sensor.unrelated",deviceId:"other"},
+  ];
+  const binding = {deviceId:"project:car",extraEntityIds:["device_tracker.car"],
+    capabilityBindings:{charge:["sensor.charge"]},capabilityMappings:{position:{entityId:"sensor.position"}}};
+  assert.deepEqual([...collectLiveEntityIds(project,entities,[binding])].sort(),
+    ["device_tracker.car","sensor.charge","sensor.position","sensor.project_car"]);
+  assert.deepEqual([...collectLiveEntityIds({floors:[]},entities,[binding])],[]);
+  const modified={...binding,extraEntityIds:["device_tracker.replacement"]};
+  const refreshed=collectLiveEntityIds(project,entities,[modified]);
+  assert.equal(refreshed.has("device_tracker.replacement"),true);
+  assert.equal(refreshed.has("device_tracker.car"),false);
+});
+
 test("default washer status follows HA remaining-time updates", () => {
   const start = new Date(2026, 8, 30, 13, 48).getTime();
   const runtime = {

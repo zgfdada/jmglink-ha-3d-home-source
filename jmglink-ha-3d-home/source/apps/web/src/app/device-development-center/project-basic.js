@@ -47,6 +47,7 @@ export function rankProjectCandidates(devices, rules, boundDeviceId) {
     0,
   );
   return (devices ?? [])
+    .filter(device => !device.entityOnly)
     .map((device) => {
       const matched = matchesDeviceTemplateRules(device, rules);
       const bound = device.id === boundDeviceId;
@@ -86,7 +87,7 @@ export function resolveProjectConnection(binding, devices, haStatus) {
   if (
     !haStatus?.connected ||
     device.historical ||
-    !(device.entities ?? []).some(
+    ![...(device.entities ?? []),...(device.extraEntities ?? [])].some(
       (entity) => !["unavailable", "unknown"].includes(entity.state),
     )
   )
@@ -103,6 +104,7 @@ export function defaultSelectedEntityIds(device, binding) {
 
 export function recordedEntityIds(binding) {
   if (!binding) return [];
+  if (binding.entityOnly) return [];
   if (
     Array.isArray(binding.selectedEntityIds) &&
     binding.selectedEntityIds.length

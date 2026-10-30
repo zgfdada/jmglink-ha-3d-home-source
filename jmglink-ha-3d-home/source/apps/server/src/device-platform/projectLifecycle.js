@@ -2,6 +2,7 @@ import { validateProjectCapabilities } from "./capabilityValidation.js";
 import { createHash } from "node:crypto";
 import { capabilityValueOptions } from "../../../../packages/schema/src/device-value-labels.js";
 import { bindingEntityIds } from "../../../../packages/schema/src/associated-entities.js";
+import {entityOnlyDevice} from "../../../../packages/schema/src/entity-only-device.js";
 
 export function projectConfigurationSignature(project, model, panel) {
   const stable = JSON.stringify({ project, model, panel }, (key, value) =>
@@ -18,7 +19,7 @@ export function projectContext(platform, ha, id) {
   const binding = platform
     .getBindings()
     .find((item) => item.deviceTemplateId === id);
-  const device = ha.getDevices().find((item) => item.id === binding?.deviceId);
+  const device = entityOnlyDevice(binding, project) ?? ha.getDevices().find((item) => item.id === binding?.deviceId);
   const entities = ha
     .getEntities()
     .filter((item) => bindingEntityIds(binding).includes(item.entityId));
@@ -52,7 +53,9 @@ export async function inspectProject(platform, ha, id) {
     !project.model?.trim()
   )
     add("基础信息", "warning", "建议补全设备名称、分类、厂商和型号");
-  if (!binding) add("HA 设备", "error", "未绑定有效 HA 设备");
+  if (!binding) add("HA 设备", "error", "请绑定 HA 设备或选择额外实体");
+  else if (binding.entityOnly && !binding.extraEntityIds?.length)
+    add("HA 设备", "error", "请至少选择一个额外实体");
   else if (!device)
     add(
       "HA 设备",

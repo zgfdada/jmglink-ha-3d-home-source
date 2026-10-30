@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import {entityOnlyEntities} from "../../../../packages/schema/src/entity-only-device.js";
 import { WebSocket } from "ws";
 import { homeAssistantBaseUrlFromRestUrl } from "../config/runtime.js";
 import { translatedEntityLabels } from "./entityTranslations.js";
@@ -250,7 +251,8 @@ export class HomeAssistantClient extends EventEmitter {
     const entities = this.websocketReady
       ? [...this.entities.values()]
       : (this.historyStore?.getEntities() ?? [...this.entities.values()]);
-    return entities.map((entity) => {
+    const projectEntities = entityOnlyEntities([...bindings.values()], [...templates.values()], entities);
+    return [...entities,...projectEntities].map((entity) => {
       const binding = entity.deviceId
         ? bindings.get(entity.deviceId)
         : undefined;

@@ -13,7 +13,7 @@ const bundle = await build({
     minify: false,
     rollupOptions: {
       input: fileURLToPath(
-        new URL("../tests/fixtures/browser-recovery.jsx", import.meta.url),
+        new URL(process.argv.includes('--webgl')?"../tests/fixtures/webgl-recovery.jsx":"../tests/fixtures/browser-recovery.jsx", import.meta.url),
       ),
     },
   },

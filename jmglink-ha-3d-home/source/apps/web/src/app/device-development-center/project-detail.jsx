@@ -192,9 +192,9 @@ export default function ProjectDetail({
   );
   const selectedSet = new Set(selectedEntityIds);
   const recordedIds = recordedEntityIds(binding);
-  const recordedNames = recordedIds.map(
+  const recordedNames = [...recordedIds,...(binding?.extraEntityIds ?? [])].map(
     (id) =>
-      boundDevice?.entities?.find((entity) => entity.entityId === id)?.name ||
+      [...(boundDevice?.entities ?? []),...(boundDevice?.extraEntities ?? [])].find((entity) => entity.entityId === id)?.name ||
       id,
   );
   const entityListRef = React.useRef(null);
@@ -919,7 +919,7 @@ export default function ProjectDetail({
                 className="ddc-project-recorded-entities"
                 title={recordedNames.join("、")}
               >
-                <strong>已绑定实体（{recordedIds.length}）</strong>
+                <strong>已绑定实体（{recordedNames.length}）</strong>
                 <small>
                   {recordedNames.length
                     ? recordedNames.slice(0, 4).join("、") +

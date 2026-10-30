@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { disableSceneEffectPicking } from "./scene-picking.js";
 
-const vertexShader = `
+export const scanVertexShader = `
 #include <common>
 #include <morphtarget_pars_vertex>
 #include <skinning_pars_vertex>
@@ -27,7 +27,7 @@ void main() {
   vWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
   gl_Position = projectionMatrix * viewMatrix * world;
 }`;
-const fragmentShader = `
+export const scanFragmentShader = `
 uniform vec3 uColor;
 uniform vec3 uAxis;
 uniform vec2 uRange;
@@ -54,7 +54,7 @@ void main() {
 
 // Surface overlays share geometry with the model, while owning only their
 // shader materials. They follow animated parts and never expand the hit area.
-export function createSurfaceScan(target) {
+export function createSurfaceScan(target,shader={}) {
   target.updateWorldMatrix(true, true);
   const inverse = target.matrixWorld.clone().invert();
   const bounds = new THREE.Box3();
@@ -77,7 +77,7 @@ export function createSurfaceScan(target) {
   };
   const overlays = surfaces.map((part) => {
     const material = new THREE.ShaderMaterial({
-      uniforms, vertexShader, fragmentShader, transparent: true,
+      uniforms, vertexShader:shader.vertex??scanVertexShader, fragmentShader:shader.fragment??scanFragmentShader, transparent: true,
       blending: THREE.NormalBlending, depthTest: true, depthWrite: false,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
     });

@@ -12,6 +12,7 @@ import {
   boundPanelStates,
 } from "../../domain/device-panel.js";
 import ProjectStepLayout from "./project-step-layout.jsx";
+import {withAssociatedEntities} from '../../../../../packages/schema/src/associated-entities.js';
 import { a as React } from "../../vendor/react.js";
 import {
   PANEL_COMPONENTS,
@@ -100,7 +101,7 @@ export default function ProjectPanel({
   const binding = platform.bindings.find(
     (item) => item.deviceTemplateId === projectId,
   );
-  const device = devices.find((item) => item.id === binding?.deviceId);
+  const device = withAssociatedEntities(devices.find((item) => item.id === binding?.deviceId));
   const capabilities = (project?.capabilities ?? []).map((capability) => {
     const entityId =
       binding?.capabilityMappings?.[capability.capabilityId]?.entityId ??

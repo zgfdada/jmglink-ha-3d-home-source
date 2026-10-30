@@ -1,6 +1,9 @@
+import {isDoorSensorOpen} from "../domain/door-sensor.js";
+import RecoverableSceneCanvas from '../components/recoverable-scene-canvas.jsx';
 import { disableSceneEffectPicking, configureDeviceModelPicking, ignoreSceneEffectRaycast } from "../domain/scene-picking.js";
 import {createPartMotionEngine} from "../domain/part-motion-engine.js";
 import {motionCapabilityValues} from "../../../../packages/schema/src/part-motion.js";
+import {deviceCapabilityEntities} from '../../../../packages/schema/src/associated-entities.js';
 import CameraModel from '../components/camera-model.jsx';
 import CameraControlPanel from '../components/camera-controls.jsx';
 import {CAMERA_MODELS,cameraModelDefinition} from '../../../../packages/schema/src/camera-models.js';
@@ -3071,12 +3074,8 @@ function Gs(e, s) {
   }
   return r;
 }
-function Mn(e) {
-  const s = he(e);
-  return Ke(e)
-    ? !1
-    : ["on", "open", "opening", "detected", "unsafe", "unlocked"].includes(s);
-}
+const Mn = isDoorSensorOpen;
+
 function kn(e, s, r, o = "glass") {
   const n = at(s, r, o).floorPalette;
   if (r === "lighting") return n[0];
@@ -4122,19 +4121,13 @@ function Hn({
                 metalness: 0.012,
                 clearcoat: o ? 0.2 : 0,
                 clearcoatRoughness: 0.56,
-                transparent: o,
-                opacity: o ? Math.min(0.58, h.wallOpacity + 0.16) : 1,
+                transparent: false,
+                opacity: 1,
+                depthWrite: true,
                 emissive: o ? _ : "#000000",
                 emissiveIntensity: o ? (E && e.entityId ? 0.07 : 0.035) : 0,
               }),
-              o &&
-                e.entityId &&
-                t.jsx(Y, {
-                  color: E ? "#d9fff2" : w,
-                  threshold: 18,
-                  opacity: E ? 0.18 : 0.08,
-                  transparent: !0,
-                }),
+
             ],
           }),
           t.jsxs("mesh", {
@@ -11624,8 +11617,9 @@ function _a({
     te = !!(u && _ && _.kind !== "clear" && _.intensity > 0),
     Q = d || te ? "always" : "demand";
   return t.jsxs(
-    er,
+    RecoverableSceneCanvas,
     {
+      Canvas: er,
       camera: { position: [8.4, 9.6, 10.2], fov: 36, near: 0.1, far: 150 },
       shadows: R.shadows,
       frameloop: Q,
@@ -12866,7 +12860,10 @@ function CustomDeviceControls({ busy, compact, entity, run }) {
   const panel=data.platform.controlPanels.find(p=>p.id===entity.deviceControlPanelId);
   const project=data.platform.deviceTemplates.find(p=>p.id===data.device.deviceTemplateId);
   const binding=data.platform.bindings.find(b=>b.deviceId===entity.deviceId);
-  const states=boundPanelStates(project,binding,data.device.entities || []);
+  const capabilityEntities=deviceCapabilityEntities(data.device);
+  const liveEntities=new Map((entity.deviceEntities ?? []).map(item=>[item.entityId,item]));
+  const panelEntities=capabilityEntities.map(item=>liveEntities.get(item.entityId) ?? item);
+  const states=boundPanelStates(project,binding,panelEntities);
   const act=async(id,value,control)=>{
     const state=states[id];
     if(!state?.entityId || state.access === "read") return;
@@ -12874,7 +12871,7 @@ function CustomDeviceControls({ busy, compact, entity, run }) {
     if(control.type === "select") payload={type:"select_option",entityId:state.entityId,option:String(value)};
     else if(["number","slider"].includes(control.type)) payload={type:"set_value",entityId:state.entityId,value:Number(value)};
     else if(control.type === "toggle") payload={type:value ? "turn_on" : "turn_off",entityId:state.entityId};
-    else {const target=(data.device.entities || []).find(e=>e.entityId===state.entityId);payload={type:["switch","input_boolean"].includes(target?.domain) ? target.state === "on" ? "turn_off" : "turn_on" : "press",entityId:state.entityId};}
+    else {const target=panelEntities.find(e=>e.entityId===state.entityId);payload={type:["switch","input_boolean"].includes(target?.domain) ? target.state === "on" ? "turn_off" : "turn_on" : "press",entityId:state.entityId};}
     try {await run(payload);setTick(v=>v+1);} catch(e){setError(e.message);}
   };
   return t.jsxs(t.Fragment,{children:[error && t.jsx("p",{className:"control-error",children:error}),panel ? t.jsx(DevicePanel,{panel,states,interactive:!busy,onAction:act}) : t.jsx("p",{className:"control-hint",children:"绑定的控制面板不存在"})]});

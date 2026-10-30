@@ -15,6 +15,9 @@ import {extraEntityOptions,filterExtraEntities} from "../apps/web/src/app/device
 import {normalizePartMotionRules,motionCapabilityValues} from "../packages/schema/src/part-motion.js";
 import {createPartMotionEngine} from "../apps/web/src/domain/part-motion-engine.js";
 import {deviceCapabilityEntities} from "../packages/schema/src/associated-entities.js";
+import {HomeAssistantClient} from "../apps/server/src/ha/HomeAssistantClient.js";
+import {inspectProject} from "../apps/server/src/device-platform/projectLifecycle.js";
+import {recordedEntityIds,resolveProjectConnection} from "../apps/web/src/app/device-development-center/project-basic.js";
 
 const devices=[{id:"car",name:"车辆"},{id:"tracker",name:"车辆定位集成"}];
 const entities=[
@@ -22,6 +25,52 @@ const entities=[
   {entityId:"device_tracker.car_location",name:"车辆位置",deviceId:"tracker",registryId:"tracker-reg",domain:"device_tracker",state:"home",attributes:{}},
   {entityId:"sensor.car_distance",name:"距家距离",registryId:"distance-reg",domain:"sensor",state:"80",attributes:{unit_of_measurement:"m"}},
 ];
+
+test("无主设备的项目可独立保存额外实体、映射、摆放及动效，重开后保持身份",async()=>{
+  const dir=await mkdtemp(path.join(os.tmpdir(),"extra-only-"));const app=Fastify();
+  try {
+    const store=await DevicePlatformStore.create(path.join(dir,"data"),path.join(dir,"assets"));
+    const cap={capabilityId:"location",name:"车辆位置",kind:"status",dataType:"string",allowedDomains:["device_tracker"]};
+    await store.upsertDeviceTemplate({id:"custom.only-car",name:"仅额外实体车辆",capabilities:[cap]});
+    const ha=new HomeAssistantClient({mode:"standalone",ha:{restUrl:"http://ha.invalid/api"}},undefined,store);
+    ha.websocketReady=true;ha.entities=new Map(entities.map(e=>[e.entityId,{...e}]));ha.devices=new Map(devices.map(d=>[d.id,d]));
+    await registerDevicePlatformRoutes(app,store,ha);
+    const url="/api/device-platform/projects/custom.only-car/extra-entities";
+    let response=await app.inject({method:"PUT",url,payload:{extraEntityIds:[entities[1].entityId],expectedExtraEntityIds:[]}});
+    assert.equal(response.statusCode,200,response.body);
+    let binding=response.json().binding;
+    assert.equal(binding.entityOnly,true);assert.deepEqual(binding.selectedEntityIds,[]);
+    const stale=await app.inject({method:"PUT",url,payload:{extraEntityIds:[],expectedExtraEntityIds:[]}});
+    assert.equal(stale.statusCode,400);
+    response=await app.inject({method:"PUT",url:"/api/device-platform/projects/custom.only-car/capabilities",payload:{capabilities:[cap],mappings:{location:{entityId:entities[1].entityId,attribute:"state"}}}});
+    assert.equal(response.statusCode,200,response.body);
+    binding=response.json().binding;
+    const aggregate=()=>aggregateDeviceObjects({devices:ha.getDevices(),entities:ha.getEntities(),templates:store.getDeviceTemplates(),bindings:store.getBindings()});
+    const car=aggregate().find(d=>d.id===binding.deviceId);
+    assert.equal(car.entityOnly,true);assert.equal(car.entities[0].entityOnly,true);
+    assert.equal(car.entities[0].deviceTemplateId,"custom.only-car");
+    assert.equal(car.extraEntities[0].deviceId,"tracker");
+    assert.deepEqual(recordedEntityIds(binding),[]);
+    assert.deepEqual(selectedDeviceEntities(car,binding).map(e=>e.entityId),[entities[1].entityId]);
+    assert.equal(resolveProjectConnection(binding,aggregate(),{connected:true}).id,"online");
+    const report=await inspectProject(store,ha,"custom.only-car");
+    assert.ok(!report.checks.some(check=>check.page==="HA 设备"));
+    assert.ok(!report.checks.some(check=>check.reason==="映射实体已不存在"));
+    const root=new THREE.Group();const mesh=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial());root.add(mesh);
+    const engine=createPartMotionEngine(root,normalizePartMotionRules([{id:"away",targets:["root"],capabilityId:"location",condition:{operator:"neq",value:"home"},effect:{type:"visible",to:0},transitionMs:0}]));
+    const values=()=>motionCapabilityValues({deviceEntities:deviceCapabilityEntities(aggregate().find(d=>d.id===binding.deviceId)),deviceCapabilityMappings:binding.capabilityMappings});
+    engine.update(values());assert.equal(root.visible,true);
+    ha.entities.get(entities[1].entityId).state="not_home";engine.update(values());assert.equal(root.visible,false);
+    engine.dispose();mesh.geometry.dispose();mesh.material.dispose();
+    const reopened=await DevicePlatformStore.create(path.join(dir,"data"),path.join(dir,"assets"));
+    assert.equal(reopened.getBindings()[0].deviceId,binding.deviceId);assert.equal(reopened.getBindings()[0].entityOnly,true);
+    // Later attaching a real main device keeps extra selections and mappings.
+    const rebound=await store.rebindProject("custom.only-car","car",[entities[0]]);
+    assert.equal(rebound.binding.entityOnly,false);assert.deepEqual(rebound.binding.extraEntityIds,[entities[1].entityId]);
+    assert.equal(rebound.binding.capabilityMappings.location.entityId,entities[1].entityId);
+    ha.websocketReady=false;
+  } finally {await app.close();await rm(dir,{recursive:true,force:true});}
+});
 
 test("额外实体经选择 API、能力映射、聚合及主页同一动效引擎驱动显隐，保留原归属",async()=>{
   const dir=await mkdtemp(path.join(os.tmpdir(),"extra-entities-"));const app=Fastify();

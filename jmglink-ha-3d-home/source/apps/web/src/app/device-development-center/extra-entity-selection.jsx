@@ -30,12 +30,12 @@ export default function ExtraEntitySelection({projectId,binding,devices,onBefore
   const affected=Object.entries(binding?.capabilityMappings ?? {}).filter(([,mapping])=>removed.has(mapping.entityId)).length;
   const toggle=id=>{setSelected(current=>current.includes(id)?current.filter(item=>item!==id):[...current,id]);setMessage("");};
   const save=async()=>{
-    if(!binding || !dirty || busy)return;
+    if(!dirty || busy)return;
     setBusy(true);setMessage("");
     try{
       if(await onBeforeSave?.()===false)return;
       const response=await fetch(`./api/device-platform/projects/${encodeURIComponent(projectId)}/extra-entities`,{
-        method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:binding.deviceId,extraEntityIds:selected,expectedExtraEntityIds:baseline}),
+        method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:binding?.deviceId,extraEntityIds:selected,expectedExtraEntityIds:baseline}),
       });
       const result=await response.json();if(!response.ok)throw Error(result.error ?? "保存额外实体失败");
       const ids=result.binding.extraEntityIds ?? [];
@@ -43,7 +43,6 @@ export default function ExtraEntitySelection({projectId,binding,devices,onBefore
       await reload();setMessage("额外实体已保存，可在能力与属性映射中配置能力，再供部件动效使用。");notify("额外实体选择已保存。","success");
     }catch(error){setMessage(error.message);notify(error.message,"error");}finally{setBusy(false);}
   };
-  if(!binding)return <p className="ddc-project-no-results">请先在设备自身实体中绑定主设备，再选择额外实体。</p>;
   return <div className="ddc-extra-entities">
     <header><strong>额外实体选择</strong><small>已选 {selected.length} 个 · 当前显示 {Math.min(limit,filtered.length)} / {filtered.length} 个</small></header>
     <div className="ddc-extra-search"><span aria-hidden="true">⌕</span><input aria-label="搜索额外实体" placeholder="搜索实体名称、实体 ID 或来源设备…" value={search} onChange={event=>setSearch(event.target.value)}/><button disabled={!search || busy} onClick={()=>setSearch("")}>清空</button></div>
@@ -53,7 +52,7 @@ export default function ExtraEntitySelection({projectId,binding,devices,onBefore
       {!filtered.length&&<p className="ddc-project-no-results">没有匹配的实体，请调整搜索内容或筛选条件。</p>}
     </div>
     {filtered.length>limit&&<button className="ddc-extra-more" onClick={()=>setLimit(value=>value+100)}>继续显示更多实体（剩余 {filtered.length-limit} 个）</button>}
-    <p className="ddc-extra-hint">这里只选择数据源实体。保存后，在原有能力与属性映射中配置能力，再在 3D 外观的部件动效中使用。</p>
+    <p className="ddc-extra-hint">可以不绑定主设备，仅选择额外实体。保存后，在原有能力与属性映射中配置能力，再在 3D 外观的部件动效中使用。</p>
     {affected>0&&<p className="ddc-extra-warning">本次取消的实体被 {affected} 项能力引用，保存后这些能力需重新绑定。</p>}
     <footer><span role="status">{message || (dirty?"有未保存的实体选择":"实体选择已保存")}</span><button disabled={!dirty || busy} onClick={()=>{setSelected(baseline);setMessage("");}}>取消更改</button><button className="primary" disabled={!dirty || busy} onClick={save}>{busy?"正在保存…":"保存额外实体"}</button></footer>
   </div>;

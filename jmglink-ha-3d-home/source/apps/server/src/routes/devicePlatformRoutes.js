@@ -424,7 +424,7 @@ export async function registerDevicePlatformRoutes(app, platform, ha) {
   );
 
   app.put("/api/device-platform/projects/:id/extra-entities", {
-    schema: {params:idParams,body:{type:"object",required:["deviceId","extraEntityIds"],additionalProperties:false,properties:{
+    schema: {params:idParams,body:{type:"object",required:["extraEntityIds"],additionalProperties:false,properties:{
       deviceId:{type:"string",minLength:1},
       extraEntityIds:{type:"array",maxItems:1000,uniqueItems:true,items:{type:"string",pattern:"^[a-z_]+\\.[a-zA-Z0-9_]+$"}},
       expectedExtraEntityIds:{type:"array",maxItems:1000,uniqueItems:true,items:{type:"string"}},
@@ -432,16 +432,16 @@ export async function registerDevicePlatformRoutes(app, platform, ha) {
   }, async (request,reply) => {
     try {
       const binding=platform.getBindings().find(item=>item.deviceTemplateId===request.params.id);
-      if(!binding) throw new Error("请先绑定当前设备，再选择额外实体");
-      if(binding.deviceId!==request.body.deviceId) throw new Error("主设备绑定已变化，请刷新后重试");
+      if(binding?.deviceId!==request.body.deviceId) throw new Error("主设备绑定已变化，请刷新后重试");
       const available=ha.getEntities();
       const byId=new Map(available.map(entity=>[entity.entityId,entity]));
-      const physicalIds=new Set(available.filter(entity=>(entity.deviceId || `entity:${entity.entityId}`)===binding.deviceId).map(entity=>entity.entityId));
-      for(const id of binding.selectedEntityIds ?? []) physicalIds.add(id);
+      const physicalIds=new Set(binding?.entityOnly ? [] : available.filter(entity=>(entity.deviceId || `entity:${entity.entityId}`)===binding?.deviceId).map(entity=>entity.entityId));
+      for(const id of binding?.selectedEntityIds ?? []) physicalIds.add(id);
       const extras=request.body.extraEntityIds.map(entityId=>{
         if(physicalIds.has(entityId)) throw new Error(`实体 ${entityId} 属于当前设备，请在设备自身实体中选择`);
         const entity=byId.get(entityId);
-        if(!entity && !binding.extraEntityIds?.includes(entityId)) throw new Error(`实体 ${entityId} 已不存在，请刷新实体列表`);
+        if(entity?.entityOnly) throw new Error("请选择实际 HA 实体，不能关联项目自身占位实体");
+        if(!entity && !binding?.extraEntityIds?.includes(entityId)) throw new Error(`实体 ${entityId} 已不存在，请刷新实体列表`);
         return {entityId,registryId:entity?.registryId};
       });
       return await platform.saveExtraEntities(request.params.id,request.body.deviceId,extras,request.body.expectedExtraEntityIds);

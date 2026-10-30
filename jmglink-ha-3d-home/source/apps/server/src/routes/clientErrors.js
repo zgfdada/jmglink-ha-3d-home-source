@@ -5,7 +5,7 @@ export function normalizeClientError(raw = {}) {
       ? raw.kind
       : "runtime",
     signature:
-      /^(?:chunk-load|render-loop|hook-order|unknown|react:\d{1,5}|null-access:(?:null|undefined):[a-zA-Z_$][\w$]{0,50})$/.test(
+      /^(?:webgl-context|chunk-load|render-loop|hook-order|unknown|react:\d{1,5}|null-access:(?:null|undefined):[a-zA-Z_$][\w$]{0,50})$/.test(
         raw.signature ?? "",
       )
         ? raw.signature

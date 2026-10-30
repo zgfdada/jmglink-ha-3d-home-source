@@ -1,4 +1,6 @@
 import PartMotionEditor from "./part-motion-editor.jsx";
+import {motionStateCapabilities} from '../../domain/motion-state-options.js';
+import {withAssociatedEntities} from '../../../../../packages/schema/src/associated-entities.js';
 import ProjectStepLayout from "./project-step-layout.jsx";
 import { a as React } from "../../vendor/react.js";
 import ModelPreview from "./model-preview.jsx";
@@ -80,7 +82,7 @@ export default function ProjectAppearance({
   const binding = platform.bindings.find(
     (item) => item.deviceTemplateId === projectId,
   );
-  const device = devices.find((item) => item.id === binding?.deviceId);
+  const device = withAssociatedEntities(devices.find((item) => item.id === binding?.deviceId));
   const models = platform.modelTemplates.filter(
     (item) => item.enabled !== false && item.source,
   );
@@ -117,7 +119,7 @@ export default function ProjectAppearance({
   const queueRef = React.useRef(Promise.resolve(true));
   const [saveState, setSaveState] = React.useState("saved");
   const model = models.find((item) => item.id === draft.modelTemplateId);
-  const capabilities = project?.capabilities ?? [];
+  const capabilities = motionStateCapabilities(project?.capabilities ?? [],binding,device);
   const animation = draft.appearance.animation ?? {};
   const statusCapability = capabilities.find(
     (item) => item.capabilityId === animation.statusCapabilityId,

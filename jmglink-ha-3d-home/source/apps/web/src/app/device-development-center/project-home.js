@@ -95,11 +95,12 @@ export function buildCustomDeviceProjects(platform = {}, devices = []) {
         ...new Set(
           projectBindings.flatMap((binding) => [
             ...(binding.selectedEntityIds ?? []),
+            ...(binding.extraEntityIds ?? []),
             ...Object.values(binding.capabilityBindings ?? {}).flat(),
           ]),
         ),
       ];
-      const entities = boundDevices.flatMap((device) => device.entities ?? []);
+      const entities = boundDevices.flatMap((device) => [...(device.entities ?? []),...(device.extraEntities ?? [])]);
       const modelTemplate =
         models.find((model) => model.id === template.modelTemplateId) ??
         models.find((model) => model.deviceTemplateId === template.id);

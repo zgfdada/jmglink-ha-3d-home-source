@@ -127,7 +127,8 @@ test("closing the device development center rebuilds only the home scene", async
   ]);
   assert.match(app, /sceneResumeKey: homeSceneResumeKey/);
   assert.doesNotMatch(app, /legacyDeviceCenter/);
-  assert.match(home, /e\.jsx\(Qs, \{\s*key: sceneResumeKey/);
+  assert.match(home, /!sceneSuspended && e\.jsx\(Qs, \{\s*key: sceneResumeKey/);
+  assert.match(app, /sceneSuspended: nextCenterOpen \|\| Boolean\(sidebarCenterOpen\)/);
   assert.match(preview, /renderer\.forceContextLoss\(\)/);
   assert.match(preview, /webglPreviewPool\.request/);
 });

@@ -1,4 +1,5 @@
 import {createPartMotionEngine,modelPartNodes} from "../../domain/part-motion-engine.js";
+import {disposePreviewObject} from '../../domain/webgl-recovery.js';
 import {reportClientError} from '../../domain/browser-recovery.js';
 import { a as React } from "../../vendor/react.js";
 import * as THREE from "three";
@@ -22,13 +23,7 @@ import {
 } from "../../domain/webgl-preview-pool.js";
 
 function disposeObject(root) {
-  root.traverse((part) => {
-    part.geometry?.dispose?.();
-    const materials = Array.isArray(part.material)
-      ? part.material
-      : [part.material];
-    materials.forEach((material) => material?.dispose?.());
-  });
+  disposePreviewObject(root);
 }
 
 export default function ModelPreview({
@@ -37,10 +32,10 @@ export default function ModelPreview({
   animated = false,
   command,
   onPalette,
-  motionRules, motionValues, motionPlaying=true, selectedPart, onParts, onSelectPart, pathPicking=false, onPathPoint,
+  motionRules, motionValues, motionPlaying=true, selectedPart, onParts, onSelectPart, pathPicking=false, onPathPoint,onMotionValidation,
 }) {
   const motionRef = React.useRef({});
-  motionRef.current={rules:motionRules??[],values:motionValues??{},playing:motionPlaying,selectedPart,onParts,onSelectPart,pathPicking,onPathPoint};
+  motionRef.current={rules:motionRules??[],values:motionValues??{},playing:motionPlaying,selectedPart,onParts,onSelectPart,pathPicking,onPathPoint,onMotionValidation};
   const container = React.useRef(null);
   const controlsApi = React.useRef(null);
   const [visible, setVisible] = React.useState(!compact);
@@ -88,6 +83,7 @@ export default function ModelPreview({
     if(!host?.isConnected)return;
     let active = true;
     let modelReady=false,captured=false,readyFrames=0;
+    let shaderIssue='',lastCodeStatus='';
     let frame;
     let renderer;
     try {
@@ -97,6 +93,9 @@ export default function ModelPreview({
       return;
     }
     setError("");
+    const contextLost=event=>{event.preventDefault();reportClientError(new Error('WebGL context lost'),'center');failPreview('3D 预览资源已释放，请重新打开预览；动效配置已保留。');};
+    renderer.domElement.addEventListener('webglcontextlost',contextLost);
+    renderer.debug.onShaderError=(gl,program,vertex,fragment)=>{shaderIssue=('动效着色器编译失败：'+(gl.getShaderInfoLog(fragment)||gl.getShaderInfoLog(vertex)||'请检查代码')).slice(0,1200);};
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.replaceChildren(renderer.domElement);
@@ -295,13 +294,14 @@ export default function ModelPreview({
       if(!active)return;
       frame = requestAnimationFrame(animate);
       const now=performance.now(),dt=Math.min((now-lastFrame)/1000,.1);lastFrame=now;const motion=motionRef.current;if(motion.playing)elapsed+=dt;
-      if(motionEngine&&motionSignature!==JSON.stringify(motion.rules)){motionEngine.dispose();motionEngine=createPartMotionEngine(motionRoot,motion.rules);motionSignature=JSON.stringify(motion.rules);}
+      if(motionEngine&&motionSignature!==JSON.stringify(motion.rules)){motionEngine.dispose();motionEngine=createPartMotionEngine(motionRoot,motion.rules);motionSignature=JSON.stringify(motion.rules);shaderIssue='';lastCodeStatus='';}
       motionEngine?.update(motion.values,elapsed,motion.playing?dt:0);
       if(motion.selectedPart!==lastSelection){selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();const part=motionRoot&&modelPartNodes(motionRoot).get(motion.selectedPart);selectedBox=part?new THREE.BoxHelper(part,0x397bff):null;if(selectedBox)scene.add(selectedBox);lastSelection=motion.selectedPart;}
       selectedBox?.update();
       updateRuntimeModelGlow(runtimeGlow, now / 1000);
       controls.update();
       renderer.render(scene, camera);
+      if(motionEngine){const state=motionEngine.codeStatus(),message=shaderIssue||state.errors.join('；');if(message&&lastCodeStatus!==message){motion.onMotionValidation?.({pending:false,error:message});lastCodeStatus=message;}else if(!message&&!state.pending&&lastCodeStatus!=='ok'){motion.onMotionValidation?.({pending:false,error:''});lastCodeStatus='ok';}else if(!lastCodeStatus&&state.pending){motion.onMotionValidation?.({pending:true,error:''});lastCodeStatus='pending';}}
       if(staticThumbnail&&modelReady&&!captured&&++readyFrames>=2){
         captured=true;
         try{setThumbnail({key:modelKey,url:renderer.domElement.toDataURL('image/png')});}
@@ -315,6 +315,7 @@ export default function ModelPreview({
       resizeObserver.disconnect();
       controls.dispose();
       controlsApi.current = null;
+      renderer.domElement.removeEventListener('webglcontextlost',contextLost);
       renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointerup",pick);
       motionEngine?.dispose();selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();
       disposeRuntimeModelGlow(runtimeGlow);

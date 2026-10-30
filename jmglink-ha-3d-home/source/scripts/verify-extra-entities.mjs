@@ -11,6 +11,7 @@ import {registerDevicePlatformRoutes} from "../apps/server/src/routes/devicePlat
 import {normalizeFloorplanProject} from "../packages/schema/src/index.js";
 import {defaultSidebar} from "../packages/schema/src/sidebar.js";
 import {MotionLibraryStore,registerMotionLibraryRoutes} from '../apps/server/src/motion-library/MotionLibraryStore.js';
+import {registerMotionWorkerRoute} from '../apps/server/src/routes/motionWorker.js';
 const directory=process.env.HA3D_VERIFY_DIR?path.resolve(process.env.HA3D_VERIFY_DIR):await fs.mkdtemp(path.join(os.tmpdir(),"ha3d-extra-ui-"));
 const store=await DevicePlatformStore.create(path.join(directory,"data"),path.join(directory,"assets"));
 const geometry=new THREE.BoxGeometry(1.7,0.9,3.7).toNonIndexed();
@@ -27,7 +28,7 @@ geometry.dispose();
 const model=await store.upsertModelTemplate({id:"custom.extra-model",name:"车辆模型（隔离验收）",dimensions:{width:1.7,height:0.9,depth:3.7}}, {name:"car.gltf",dataUrl:"data:model/gltf+json;base64,"+Buffer.from(JSON.stringify(gltf)).toString("base64")});
 await store.upsertDeviceTemplate({id:"custom.extra-car",name:"车辆额外实体验收",capabilities:[{capabilityId:"power",name:"车辆电源",kind:"toggle",dataType:"boolean",allowedDomains:["switch"]},{capabilityId:"location",name:"车辆位置",kind:"status",dataType:"string",allowedDomains:["device_tracker"]}]});
 await store.saveProjectAppearance("custom.extra-car",model.id,{dimensions:{width:1.7,height:0.9,depth:3.7},partMotionRules:[]});
-await store.rebindProject("custom.extra-car","car",[{entityId:"switch.car_power",registryId:"own-reg"}]);
+if (!process.argv.includes("--entity-only")) await store.rebindProject("custom.extra-car","car",[{entityId:"switch.car_power",registryId:"own-reg"}]);
 let location="home",calls=0;
 const getEntities=()=>{const project=store.getDeviceTemplates().find(p=>p.id==="custom.extra-car");return [
   {entityId:"switch.car_power",name:"车辆电源",domain:"switch",deviceId:"car",registryId:"own-reg",state:"off",attributes:{},deviceTemplateId:project.id,deviceModel:{...model,...project.appearance,projectAppearance:true}},
@@ -38,6 +39,7 @@ const getEntities=()=>{const project=store.getDeviceTemplates().find(p=>p.id==="
 const ha={getEntities,getDevices:()=>[{id:"car",name:"车辆"},{id:"tracker",name:"车辆定位集成"},{id:"parking",name:"车库雷达"}],getAreas:()=>[]};
 const project=normalizeFloorplanProject({id:"extra-verify",name:"额外实体能力与动效隔离验收",floors:[{id:"floor-1",name:"一层",height:2.8,walls:[],rooms:[{id:"room",name:"车库",polygon:[[-3,-3],[3,-3],[3,3],[-3,3]]}],devices:[{id:"car-placement",entityId:"switch.car_power",deviceId:"car",deviceTemplateId:"custom.extra-car",modelId:"switch.socket",kind:"switch",position:[0,0,0],rotation:[0,0,0],scale:[1,1,1]}]}]});
 const app=Fastify();await registerDevicePlatformRoutes(app,store,ha);
+await registerMotionWorkerRoute(app);
 store.motionLibrary=await MotionLibraryStore.create(path.join(directory,'data'));await registerMotionLibraryRoutes(app,store.motionLibrary);
 app.get("/api/ha/status",async()=>({connected:true,configured:true,mock:false,mode:"standalone",entityCount:4}));
 app.get("/api/ha/entities",async()=>({entities:getEntities()}));app.get("/api/ha/areas",async()=>({areas:[]}));

@@ -1,4 +1,6 @@
 import {partMotionIssues} from "../../../../packages/schema/src/part-motion.js";
+import {entityOnlyDeviceId} from "../../../../packages/schema/src/entity-only-device.js";
+import {normalizeMotionLogic,normalizeMotionShader} from '../../../../packages/schema/src/motion-code.js';
 import {normalizeMotionLibraryPackage,MOTION_RESOURCE_FORMAT} from '../../../../packages/schema/src/motion-library.js';
 import { normalizeLibraryPackage, CONTROL_PACKAGE_FORMAT } from "../../../../packages/schema/src/control-library.js";
 import {
@@ -45,6 +47,11 @@ const FILES = {
 const CUSTOM_ID_PATTERN = /^custom\.[a-z0-9][a-z0-9._-]{1,120}$/;
 
 function sanitizePortable(value) {
+  if(value&&typeof value==='object'&&!Array.isArray(value)){
+    const keys=Object.keys(value);
+    if(value.version===1&&typeof value.code==='string'&&keys.every(key=>['version','code'].includes(key)))return normalizeMotionLogic(value);
+    if(keys.length&&keys.every(key=>['vertex','fragment'].includes(key))&&keys.every(key=>typeof value[key]==='string'))return normalizeMotionShader(value,'scan');
+  }
   if (Array.isArray(value)) return value.map(sanitizePortable);
   if (value && typeof value === "object")
     return Object.fromEntries(
@@ -1117,7 +1124,7 @@ export class DevicePlatformStore {
     if (occupied) throw new Error("该 HA 设备已绑定到其他设备项目");
     const previous = this.bindings.find(
       (item) =>
-        item.deviceId === deviceId && item.deviceTemplateId === projectId,
+        item.deviceTemplateId === projectId && (item.deviceId === deviceId || item.entityOnly),
     );
     const selectedEntityIds = [
       ...new Set(selectedEntities.map((item) => item.entityId)),
@@ -1128,6 +1135,7 @@ export class DevicePlatformStore {
       normalizeDeviceBinding({
         ...previous,
         deviceId,
+        entityOnly: false,
         deviceTemplateId: projectId,
         selectedEntityIds,
         extraEntityIds,
@@ -1176,23 +1184,27 @@ export class DevicePlatformStore {
   }
 
   async saveExtraEntities(projectId, deviceId, entities, expectedIds) {
+    const project = this.deviceTemplates.find(item => item.id === projectId);
+    if (!project) throw new Error("自定义设备项目不存在");
     const previous = this.bindings.find(item => item.deviceTemplateId === projectId);
-    if (!previous) throw new Error("请先绑定当前设备，再选择额外实体");
-    if (previous.deviceId !== deviceId) throw new Error("主设备绑定已变化，请刷新后重试");
-    const currentIds = previous.extraEntityIds ?? [];
+    if ((previous?.deviceId ?? undefined) !== deviceId) throw new Error("主设备绑定已变化，请刷新后重试");
+    const currentIds = previous?.extraEntityIds ?? [];
     if (expectedIds && JSON.stringify([...expectedIds].sort()) !== JSON.stringify([...currentIds].sort()))
       throw new Error("额外实体选择已被更新，请刷新后重试");
     const extraEntityIds = [...new Set(entities.map(entity => entity.entityId))];
     const removed = new Set(currentIds.filter(id => !extraEntityIds.includes(id)));
-    const refs = new Map((previous.entityRegistryRefs ?? []).filter(ref => !removed.has(ref.entityId)).map(ref => [ref.entityId, ref]));
+    const refs = new Map((previous?.entityRegistryRefs ?? []).filter(ref => !removed.has(ref.entityId)).map(ref => [ref.entityId, ref]));
     for (const entity of entities) if (entity.registryId) refs.set(entity.entityId, {entityId:entity.entityId,registryId:entity.registryId});
     const next = normalizeDeviceBinding({
-      ...previous, extraEntityIds, entityRegistryRefs:[...refs.values()],
-      capabilityBindings:Object.fromEntries(Object.entries(previous.capabilityBindings ?? {}).map(([id, ids]) => [id,ids.filter(entityId => !removed.has(entityId))])),
-      capabilityMappings:Object.fromEntries(Object.entries(previous.capabilityMappings ?? {}).filter(([,mapping]) => !removed.has(mapping.entityId))),
+      ...previous, deviceId:previous?.deviceId ?? entityOnlyDeviceId(projectId),
+      deviceTemplateId:projectId, entityOnly:previous?.entityOnly ?? !previous,
+      modelTemplateId:project.modelTemplateId, controlPanelTemplateId:project.controlPanelTemplateId,
+      extraEntityIds, entityRegistryRefs:[...refs.values()],
+      capabilityBindings:Object.fromEntries(Object.entries(previous?.capabilityBindings ?? {}).map(([id, ids]) => [id,ids.filter(entityId => !removed.has(entityId))])),
+      capabilityMappings:Object.fromEntries(Object.entries(previous?.capabilityMappings ?? {}).filter(([,mapping]) => !removed.has(mapping.entityId))),
     });
     const oldBindings = this.bindings;
-    this.bindings = oldBindings.map(item => item === previous ? next : item);
+    this.bindings = previous ? oldBindings.map(item => item === previous ? next : item) : [...oldBindings,next];
     try { await this.persistAll(); } catch(error) { this.bindings=oldBindings; throw error; }
     return {binding:structuredClone(next)};
   }

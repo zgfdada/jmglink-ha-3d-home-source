@@ -1,3 +1,4 @@
+import {isWebglFailure} from './webgl-recovery.js';
 const KEY = "ha3d.chunk-recovery";
 export function isChunkFailure(error) {
   return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading (?:CSS )?chunk|Unable to preload CSS/i.test(
@@ -31,7 +32,7 @@ export function clientErrorRecord(error, kind = "runtime") {
     /Cannot read properties of (null|undefined) \(reading ['"]([a-zA-Z_$][\w$]{0,50})['"]\)/,
   );
   const react = message.match(/Minified React error #(\d+)/);
-  const signature = isChunkFailure(error)
+  const signature = isWebglFailure(error) ? 'webgl-context' : isChunkFailure(error)
     ? "chunk-load"
     : property
       ? `null-access:${property[1]}:${property[2]}`

@@ -7,8 +7,10 @@ import {
 } from "../../../../../packages/schema/src/motion-library.js";
 import MotionEffectFields from "./motion-effect-fields.jsx";
 import MotionResourcePreview from "./motion-resource-preview.jsx";
+import MotionCodeEditor from "./motion-code-editor.jsx";
 import { motionLibraryApi, useMotionResources } from "./motion-resources.jsx";
 import "../../styles/motion-library.css";
+import "../../styles/motion-code.css";
 
 const symbols = {
   translate: "↗",
@@ -36,8 +38,22 @@ export default function MotionLibrary({
   const [active, setActive] = React.useState(true),
     [playing, setPlaying] = React.useState(true),
     [deleting, setDeleting] = React.useState(false);
-  const dirty = Boolean(draft) && JSON.stringify(draft) !== baseline;
+  const [codeDirty, setCodeDirty] = React.useState(false),
+    [codeReset, setCodeReset] = React.useState(0),
+    [codeValidation, setCodeValidation] = React.useState({
+      key: "",
+      error: "",
+    });
+  const dirty =
+    Boolean(draft) && (JSON.stringify(draft) !== baseline || codeDirty);
+  const codeValidated =
+    Boolean(draft) &&
+    codeValidation.key === JSON.stringify(draft) &&
+    !codeValidation.error;
   const load = (resource) => {
+    setCodeDirty(false);
+    setCodeReset((v) => v + 1);
+    setCodeValidation({ key: "", error: "" });
     setDraft(structuredClone(resource));
     setBaseline(JSON.stringify(resource));
     setMessage("");
@@ -83,6 +99,9 @@ export default function MotionLibrary({
       name: resource ? `${resource.name}（副本）` : "新动效",
       version: 1,
     };
+    setCodeReset((v) => v + 1);
+    setCodeDirty(false);
+    setCodeValidation({ key: "", error: "" });
     setDraft(next);
     setBaseline("");
     setMessage("");
@@ -100,7 +119,8 @@ export default function MotionLibrary({
     issue = error.message;
   }
   const save = async () => {
-    if (!checked || busy || revision === null) return;
+    if (!checked || busy || revision === null || codeDirty || !codeValidated)
+      return;
     setBusy(true);
     setMessage("");
     try {
@@ -216,7 +236,7 @@ export default function MotionLibrary({
           <button onClick={reload}>重新加载</button>
         </p>
       )}
-      <div className="motion-library-layout">
+      <div className="motion-library-layout motion-library-with-code">
         <div className="motion-library-catalog">
           <div className="motion-library-search">
             <input
@@ -296,131 +316,160 @@ export default function MotionLibrary({
               </div>
               <span>{dirty ? "未保存" : "已保存"}</span>
             </header>
-            <MotionResourcePreview
-              resource={draft}
-              active={active}
-              playing={playing}
-            />
-            <div className="motion-library-preview-tools">
-              <button
-                aria-pressed={active}
-                onClick={() => setActive((v) => !v)}
-              >
-                {active ? "条件：满足" : "条件：未满足"}
-              </button>
-              <button onClick={() => setPlaying((v) => !v)}>
-                {playing ? "暂停预览" : "继续预览"}
-              </button>
-              <small>本地模拟</small>
-            </div>
-            <fieldset className="motion-library-form" disabled={busy}>
-              <label>
-                动效名称
-                <input
-                  aria-label="资源动效名称"
-                  maxLength={80}
-                  value={draft.name}
-                  onChange={(e) => change({ name: e.target.value })}
-                />
-              </label>
-              <label>
-                用途说明
-                <textarea
-                  aria-label="资源用途说明"
-                  rows={2}
-                  maxLength={400}
-                  value={draft.description}
-                  onChange={(e) => change({ description: e.target.value })}
-                />
-              </label>
-              <label>
-                基础动效
-                <select
-                  aria-label="资源基础动效"
-                  value={draft.effect.type}
-                  disabled={draft.builtin || busy}
-                  onChange={(e) => {
-                    const resource = builtinMotionResources().find(
-                      (r) => r.effect.type === e.target.value,
-                    );
-                    change({
-                      effect: resource.effect,
-                      category: resource.category,
-                    });
-                  }}
-                >
-                  {Object.entries(MOTION_EFFECTS).map(([id, name]) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <h3>默认参数</h3>
-              <MotionEffectFields
-                value={draft.effect}
-                onChange={(patch) =>
-                  change({ effect: { ...draft.effect, ...patch } })
-                }
+            <div className="motion-code-workbench">
+              <MotionCodeEditor
+                key={codeReset}
+                resource={draft}
+                disabled={busy}
+                onDirty={setCodeDirty}
+                onApply={(effect) => change({ effect })}
               />
-              <label>
-                过渡时间（毫秒）
-                <input
-                  aria-label="资源过渡时间"
-                  type="number"
-                  min={0}
-                  max={10000}
-                  value={draft.transitionMs}
-                  onChange={(e) => change({ transitionMs: e.target.value })}
+              <div className="motion-code-effect">
+                <MotionResourcePreview
+                  resource={draft}
+                  active={active}
+                  playing={playing}
+                  onValidation={setCodeValidation}
                 />
-              </label>
-              <p className="motion-library-note">
-                保存后供新选择的规则使用。已配置规则保留参数快照；触发能力、条件和作用部件在设备项目中设置。
-              </p>
-              {issue && (
-                <p className="motion-library-error" role="alert">
-                  {issue}
-                </p>
-              )}
-              {message && (
-                <p className="motion-library-message" role="status">
-                  {message}
-                </p>
-              )}
-              <footer>
-                <button
-                  className="primary"
-                  onClick={save}
-                  disabled={busy || !dirty || !checked || revision === null}
-                >
-                  {busy ? "正在保存…" : "保存动效"}
-                </button>
-                <button onClick={cancel} disabled={busy || !dirty}>
-                  取消修改
-                </button>
-                <button onClick={() => create(draft)} disabled={busy || dirty}>
-                  复制动效
-                </button>
-                {draft.builtin ? (
-                  <button onClick={reset} disabled={busy || dirty}>
-                    恢复默认
+                <div className="motion-library-preview-tools">
+                  <button
+                    aria-pressed={active}
+                    onClick={() => setActive((v) => !v)}
+                  >
+                    {active ? "条件：满足" : "条件：未满足"}
                   </button>
-                ) : (
-                  draft.id && (
+                  <button onClick={() => setPlaying((v) => !v)}>
+                    {playing ? "暂停预览" : "继续预览"}
+                  </button>
+                  <small>本地模拟</small>
+                </div>
+                <fieldset className="motion-library-form" disabled={busy}>
+                  <label>
+                    动效名称
+                    <input
+                      aria-label="资源动效名称"
+                      maxLength={80}
+                      value={draft.name}
+                      onChange={(e) => change({ name: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    用途说明
+                    <textarea
+                      aria-label="资源用途说明"
+                      rows={2}
+                      maxLength={400}
+                      value={draft.description}
+                      onChange={(e) => change({ description: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    基础动效
+                    <select
+                      aria-label="资源基础动效"
+                      value={draft.effect.type}
+                      disabled={draft.builtin || busy}
+                      onChange={(e) => {
+                        const resource = builtinMotionResources().find(
+                          (r) => r.effect.type === e.target.value,
+                        );
+                        change({
+                          effect: resource.effect,
+                          category: resource.category,
+                        });
+                      }}
+                    >
+                      {Object.entries(MOTION_EFFECTS).map(([id, name]) => (
+                        <option key={id} value={id}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <h3>默认参数</h3>
+                  <MotionEffectFields
+                    value={draft.effect}
+                    onChange={(patch) =>
+                      change({ effect: { ...draft.effect, ...patch } })
+                    }
+                  />
+                  <label>
+                    过渡时间（毫秒）
+                    <input
+                      aria-label="资源过渡时间"
+                      type="number"
+                      min={0}
+                      max={10000}
+                      value={draft.transitionMs}
+                      onChange={(e) => change({ transitionMs: e.target.value })}
+                    />
+                  </label>
+                  <p className="motion-library-note">
+                    保存后供新选择的规则使用。已配置规则保留参数快照；触发能力、条件和作用部件在设备项目中设置。
+                  </p>
+                  {issue && (
+                    <p className="motion-library-error" role="alert">
+                      {issue}
+                    </p>
+                  )}
+                  {message && (
+                    <p className="motion-library-message" role="status">
+                      {message}
+                    </p>
+                  )}
+                  <footer>
                     <button
-                      className="danger"
-                      onClick={remove}
+                      className="primary"
+                      onClick={save}
+                      disabled={
+                        busy ||
+                        !dirty ||
+                        !checked ||
+                        revision === null ||
+                        codeDirty ||
+                        !codeValidated
+                      }
+                    >
+                      {busy ? "正在保存…" : "保存动效"}
+                    </button>
+                    <button onClick={cancel} disabled={busy || !dirty}>
+                      取消修改
+                    </button>
+                    <button
+                      onClick={() => create(draft)}
                       disabled={busy || dirty}
                     >
-                      {deleting ? "确认删除资源" : "删除资源"}
+                      复制动效
                     </button>
-                  )
-                )}
-              </footer>
-              {deleting && (
-                <small>删除资源不会删除已配置的设备规则。再次点击确认。</small>
-              )}
-            </fieldset>
+                    {draft.builtin ? (
+                      <button onClick={reset} disabled={busy || dirty}>
+                        恢复默认
+                      </button>
+                    ) : (
+                      draft.id && (
+                        <button
+                          className="danger"
+                          onClick={remove}
+                          disabled={busy || dirty}
+                        >
+                          {deleting ? "确认删除资源" : "删除资源"}
+                        </button>
+                      )
+                    )}
+                  </footer>
+                  {deleting && (
+                    <small>
+                      删除资源不会删除已配置的设备规则。再次点击确认。
+                    </small>
+                  )}
+                  {codeValidation.error && (
+                    <p className="motion-code-error" role="alert">
+                      {codeValidation.error}
+                    </p>
+                  )}
+                </fieldset>
+              </div>
+            </div>
           </aside>
         )}
       </div>

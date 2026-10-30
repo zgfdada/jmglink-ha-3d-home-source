@@ -9,10 +9,11 @@ export default function MotionResourcePreview({
   resource,
   active = true,
   playing = true,
+  onValidation,
 }) {
   const host = React.useRef(null),
-    state = React.useRef({ resource, active, playing });
-  state.current = { resource, active, playing };
+    state = React.useRef({ resource, active, playing,onValidation });
+  state.current = { resource, active, playing,onValidation };
   const [error, setError] = React.useState("");
   React.useEffect(() => {
     let disposed = false,
@@ -34,6 +35,8 @@ export default function MotionResourcePreview({
       });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+      let shaderError='',lastValidation='';
+      renderer.debug.onShaderError=(gl,program,vertex,fragment)=>{shaderError=('着色器编译失败：'+(gl.getShaderInfoLog(fragment)||gl.getShaderInfoLog(vertex)||gl.getProgramInfoLog(program)||'请检查 GLSL 代码')).slice(0,1500);};
       host.current.appendChild(renderer.domElement);
       const scene = new THREE.Scene(),
         camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
@@ -87,6 +90,7 @@ export default function MotionResourcePreview({
           engine?.dispose();
           engine = null;
           key = signature;
+          shaderError='';lastValidation='';
           try {
             const rule = motionResourceRule({
               ...current.resource,
@@ -104,6 +108,10 @@ export default function MotionResourcePreview({
         }
         controls.update();
         renderer.render(scene, camera);
+        const codeState=engine?.codeStatus();
+        const validation=shaderError||codeState?.errors.join('；')||'';
+        if(validation){if(lastValidation!==validation){setError(validation);current.onValidation?.({key:signature,error:validation});lastValidation=validation;}}
+        else if(engine&&!codeState?.pending&&lastValidation!=='ok'){current.onValidation?.({key:signature,error:''});lastValidation='ok';setError('');}
       };
       frame = requestAnimationFrame(tick);
       return () => {

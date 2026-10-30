@@ -1,4 +1,5 @@
-// Declarative data only. No scripts, expressions, HA services or arbitrary property paths.
+import {normalizeMotionLogic,normalizeMotionShader} from './motion-code.js';
+// Code is stored as data and runs only in the isolated browser worker.
 export const MOTION_EFFECTS = {
   translate: "位移",
   rotate: "角度",
@@ -111,6 +112,8 @@ export function normalizePartMotionRules(value) {
           ? e.mode
           : "steady",
         path,
+        ...(e.program!==undefined?{program:normalizeMotionLogic(e.program)}:{}),
+        ...(e.shader!==undefined?{shader:normalizeMotionShader(e.shader,e.type)}:{}),
       },
       transitionMs: number(r.transitionMs, 300, 0, 10000),
       priority: number(r.priority, 0, 0, 100),

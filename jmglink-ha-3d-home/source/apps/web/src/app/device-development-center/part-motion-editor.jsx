@@ -33,6 +33,8 @@ export default function PartMotionEditor({
   onLabelsChange,
 }) {
   const { resources: motionResources } = useMotionResources();
+  const [codePreviewStatus,setCodePreviewStatus]=React.useState({pending:false,error:''});
+  const receiveMotionValidation=React.useCallback(status=>setCodePreviewStatus(current=>current.pending===status.pending&&current.error===status.error?current:status),[]);
   const [parts, setParts] = React.useState([]),
     [selected, setSelected] = React.useState(""),
     [draft, setDraft] = React.useState(null),
@@ -170,6 +172,7 @@ export default function PartMotionEditor({
     issues = [error.message];
   }
   const preview = () => {
+    if(codePreviewStatus.error||codePreviewStatus.pending){setMessage(codePreviewStatus.error||'动效代码正在编译，请稍候再校验。');return;}
     if (issues.length) {
       setMessage(issues.join("；"));
       return;
@@ -183,7 +186,7 @@ export default function PartMotionEditor({
     setMessage("规则校验通过，正在模拟预览；不会控制真实设备。");
   };
   const save = () => {
-    if (!validated || issues.length) return;
+    if (!validated || issues.length ||codePreviewStatus.error||codePreviewStatus.pending) return;
     onChange(
       checked.map((r) =>
         r.id === draft.id
@@ -349,6 +352,7 @@ export default function PartMotionEditor({
             motionRules={checked}
             motionValues={sampleValues}
             motionPlaying={playing}
+            onMotionValidation={receiveMotionValidation}
             pathPicking={picking}
             onPathPoint={(point) => {
               if (
@@ -518,7 +522,7 @@ export default function PartMotionEditor({
                     .filter((v) => v.status !== "missing")
                     .map((v) => (
                       <option key={v.value} value={v.value}>
-                        {v.label || v.value}
+                        {v.label && v.label!==v.value ? `${v.label}（${v.value}）` : v.value}
                       </option>
                     ))}
                 </select>
@@ -534,6 +538,7 @@ export default function PartMotionEditor({
                 />
               )}
             </div>
+            <p className="field-hint">条件匹配 HA 原始状态值，中文仅作显示说明。{activeCap?.currentState!=null?` 当前：${activeCap.currentStateLabel}（${activeCap.currentState}）`:''}</p>
             {draft.condition.operator === "between" &&
               input("区间上限", draft.condition.max, (max) =>
                 change({ condition: { ...draft.condition, max } }),
@@ -650,7 +655,7 @@ export default function PartMotionEditor({
               </button>
               <button
                 className="primary"
-                disabled={!validated || issues.length > 0}
+                disabled={!validated || issues.length > 0 ||Boolean(codePreviewStatus.error)||codePreviewStatus.pending}
                 onClick={save}
               >
                 保存规则

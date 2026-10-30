@@ -3,6 +3,7 @@ import {
   normalizePartMotionRules,
   partMotionIssues,
 } from "./part-motion.js";
+import {builtinMotionCode} from './motion-code.js';
 
 export const MOTION_RESOURCE_FORMAT = "ha3d-motion-library";
 export const MOTION_CATEGORIES = {
@@ -77,7 +78,7 @@ export function normalizeMotionResource(raw) {
       targets: ["root"],
       capabilityId: "demo",
       condition: { operator: "eq", value: "on" },
-      effect: raw.effect,
+      effect: {...raw.effect,program:raw.effect?.program??builtinMotionCode(raw.effect?.type)},
       transitionMs: raw.transitionMs,
     },
   ])[0];

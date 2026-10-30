@@ -2,9 +2,21 @@
 
 本文面向参与源码维护、功能开发、测试和发布的开发者。安装与日常使用请阅读 [README.md](README.md)，版本变化请阅读 [RELEASE_NOTES.md](RELEASE_NOTES.md)，运维接手流程请阅读 [服务交接文档](docs/HA3DHome服务交接文档.md)。
 
+## 门磁绑定
+
+`door-sensor-binding.jsx` 采用单个输入框加内嵌下拉按钮的 combobox；结果 listbox 在面板内展开并限高滚动，名称与实体 ID 分行换行，避免原生弹出菜单越界截字。支持方向键、Enter、Escape、失焦关闭，搜索无结果不清除当前绑定；切换门时重置搜索。候选来自完整 HA 实体表，接受 sensor／binary_sensor，不复用设备库辅助实体过滤。`domain/door-sensor.js` 提供候选筛选与共享物理开合判断，2D 编辑器和 3D 场景共用。中文门状态支持带童锁／反锁括号说明的枚举，但“已开锁”和“解除门虚掩”不表示物理开门；保留历史英文门磁状态兼容。绑定不调用 HA 控制服务。3D 门扇使用不透明且写入深度的实体材质，移除绑定后额外添加的 Edges 线框，避免透墙悬空描边；门磁状态仍驱动开合，窗户玻璃不受影响。`door-sensor.test.mjs` 覆盖搜索、类型兼容和状态；`scripts/verify-door-sensor.mjs` 提供纯内存隔离页面验收，不写用户数据。
+
 ## 动效资源库
 
+实时状态过滤由 `ha/boundEntityFilter.js` 收集当前户型已放置／房间绑定实体、同设备实体及对应平台绑定中的 selectedEntityIds、extraEntityIds、capabilityBindings 和 capabilityMappings。额外实体保留原归属，不扩大到额外实体所属设备的全部实体。设备平台写入成功后重算过滤范围；HA 状态事件仍使用服务端 150ms、前端 120ms 合批推送，不依赖面板轮询。面板用 `deviceEntities` 的实时值覆盖平台快照，预览使用关联实体全集。`motion-state-options.js` 展示中文状态及原始值，规则保存并匹配原始值，例如 `not_home`。
+
+动效代码存于 `effect.program = {version:1,code}`，扫光支持 `effect.shader.vertex/fragment`；`motion-code.js` 提供默认代码和返回值校验。`motionWorker.js` 返回带禁止网络／子 Worker CSP 的独立运行器脚本；`motion-code-runtime.js` 按源码共享 Worker、按实例隔离闭包与结果，30Hz 采样、初始化／执行超时、最多 16 种并行代码，销毁时取消任务并释放引用。主线程只处理已校验的数字、颜色和向量，不执行用户 JavaScript。`part-motion-engine` 把结果接入真实变换、流光及扫光，旧规则无 program 时保持原算法。代码字段和着色源码作为类型化对象参与 portable 导出，不因其中的说明链接被误删；敏感实例字段过滤规则继续保留。`motion-code-editor.jsx` 负责代码缓冲、编译更新、未应用保护及取消后防止异步回写；库内预览和部件规则预览都反馈运行／GPU 编译错误，失败阻止保存。`motion-code.test.mjs` 覆盖九类代码、实例状态隔离、真实变换、shader、CSP 以及磁盘与设备包保存。
+
+`mobile-development-menu.css` 隐藏手机宽度及手机横屏尺寸下的开发入口和整个子菜单；桌面保留，其他主页工具不受影响。
+
 ## 前端白屏恢复与日志
+
+主场景 Canvas 使用 `RecoverableSceneCanvas` 局部错误边界，识别 WebGL 创建失败与上下文丢失，最多自动延迟重试两次（等待 R3F 异步释放），随后保留局部重试入口；普通渲染异常仍交给原边界。开发中心打开时通过 `sceneSuspended` 释放后台主页 Canvas，保留主页状态与编辑器，关闭后重建场景。`disposePreviewObject` 去重释放预览拥有的纹理、几何和材质；预览上下文丢失不会扩散到整页。脱敏日志分类新增 `webgl-context`。`verify-browser-recovery.mjs --webgl` 提供纯内存真实 Canvas 创建失败注入验收，验证局部恢复与规则输入保留。
 
 `entry.js` 先安装 browser-recovery 再异步加载应用；index.html 自带可见启动占位及脚本失败恢复入口。ApplicationBoundary 覆盖根界面，设备开发中心另有独立错误边界与 Suspense，延迟加载不再隐藏主页。旧版动态模块失效时通过 sessionStorage 限制一分钟内至多自动刷新一次；普通渲染错误、离线或存储不可用时保留恢复界面，不反复刷新。`webUi.js` 对缺失静态资源返回真实 404，对 HTML 设置 no-store；SPA 路由继续回退首页。`POST /api/client-errors` 只记录标准错误摘要、类型和相对源码位置，前后端都不接受原始报错文本、完整 URL、状态或凭据。浏览器故障注入使用 `scripts/verify-browser-recovery.mjs`，内容完全在内存中构建，不连接 HA。`browser-recovery.test.mjs` 覆盖刷新限制、404、缓存与日志字段过滤。
 
@@ -13,6 +25,8 @@
 `packages/schema/src/motion-library.js` 为内置动效资源、分类、参数快照与包校验的共享定义；`MotionLibraryStore` 原子保存 `dataDir/motion-library.json`，串行变更并校验 revision，内置资源支持覆盖与恢复默认，自定义资源可增删改。`motion-effect-fields.jsx` 供资源库和规则编辑器共用；`motion-resource-preview.jsx` 使用相同 `createPartMotionEngine`，共享 WebGL context 池并释放资源。规则保存 `motionResourceId` 和完整 effect 快照，主页不依赖库条目存在，不因默认值变化而改变既有配置。完整实例／设备平台备份携带 motionLibrary，旧备份缺少此字段时保留当前库；单设备包仍直接携带可运行的规则快照。新增渲染类型需同步扩展基础类型、默认资源、参数表单及引擎，而复用现有类型的参数资源可直接在界面新增。`motion-library.test.mjs` 覆盖九类引擎、CRUD、并发冲突、恢复默认、磁盘重开、备份及快照兼容。
 
 ## 额外实体与部件动效
+
+无主设备时首次保存额外实体生成 `entityOnly` 项目绑定，使用稳定的 `project:<projectId>` 身份。`entity-only-device.js` 提供只在本应用中存在的设备与模型摆放锚点，不写 HA 注册表，不把外部实体改归项目；聚合、能力校验、联调和发布识别此绑定，数据源全部移除后阻止发布。后续绑定真实主设备保留仍有效的额外来源与映射。并发保存仍验证绑定身份和已选集合；`scripts/verify-extra-entities.mjs --entity-only` 可运行无主设备的隔离页面验收。
 
 额外实体以 binding.extraEntityIds 保存，与主设备 selectedEntityIds 分开；`extra-entity-selection.jsx` 在基础信息内同页筛选与显式保存。`PUT projects/:id/extra-entities` 验证主设备身份、实体存在和选择版本，不重新绑定主设备；移除关联时解除对应能力映射。聚合结果保留 physical entityIds/entities，额外值通过 extraEntities/extraEntityIds 供能力编辑器、校验和主页动效读取，不修改实体 deviceId。注册表改名同步更新额外选择与映射；设备包继续不携带实例绑定。`extra-entities.test.mjs` 覆盖选择→能力映射→同一显隐动效引擎及磁盘重开；`scripts/verify-extra-entities.mjs` 提供无真实 HA 的界面验收。
 

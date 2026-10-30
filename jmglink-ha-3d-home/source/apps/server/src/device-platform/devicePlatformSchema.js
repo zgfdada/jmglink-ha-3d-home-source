@@ -554,6 +554,7 @@ export function normalizeDeviceBinding(value) {
     .filter((item) => item.registryId && ENTITY_ID_PATTERN.test(item.entityId));
   return {
     deviceId,
+    entityOnly: source.entityOnly === true,
     deviceTemplateId: text(source.deviceTemplateId) || undefined,
     capabilityBindings,
     capabilityMappings,

@@ -1,0 +1,15 @@
+.door-sensor-property{min-width:0}
+.door-sensor-property .door-sensor-combobox{display:flex;align-items:stretch;width:100%;min-width:0;border:1px solid #d9e3f1;border-radius:13px;background:#fff;overflow:hidden}
+.door-sensor-property .door-sensor-combobox:focus-within{border-color:#77a4ff;box-shadow:0 0 0 3px #528bff18}
+.door-sensor-property .door-sensor-combobox input{flex:1;width:0;min-width:0;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent;padding:12px 13px;font:inherit;color:inherit;outline:0}
+.door-sensor-property .door-sensor-combobox button{flex:0 0 38px;display:grid;place-items:center;width:38px;min-width:0;padding:0;border:0;border-radius:0;background:transparent;color:#708399;box-shadow:none}
+.door-sensor-property .door-sensor-dropdown{width:100%;min-width:0;margin-top:7px;border:1px solid #d9e3f1;border-radius:12px;background:#fff;overflow:hidden}
+.door-sensor-property .door-sensor-options{max-height:250px;overflow-y:auto;overscroll-behavior:contain;padding:5px;scrollbar-gutter:stable}
+.door-sensor-property .door-sensor-options button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;min-width:0;padding:10px;text-align:left;white-space:normal;border:0;border-radius:8px;background:transparent;box-shadow:none;color:#263b52;line-height:1.45}
+.door-sensor-property .door-sensor-options button[data-active=true]{background:#edf3ff}
+.door-sensor-property .door-sensor-options button[aria-selected=true]{color:#2862d5}
+.door-sensor-property .door-sensor-options strong,.door-sensor-property .door-sensor-id{display:block;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.door-sensor-property .door-sensor-options strong{font-size:12px;font-weight:600}
+.door-sensor-property .door-sensor-id{font-size:10px;color:#7b8da1;font-family:ui-monospace,monospace}
+.door-sensor-property .door-sensor-state{font-size:10px;color:#5c7d76}
+.door-sensor-property .door-sensor-result{margin:0;padding:8px 12px;background:#f7faff;color:#7c8da2;font-size:11px;border-top:1px solid #edf1f7}
