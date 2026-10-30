@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeSidebar } from "../../../../packages/schema/src/sidebar.js";
 import { validateFloorplanProject } from "@ha3d/schema";
+import {normalizeMotionLibraryPackage} from '../../../../packages/schema/src/motion-library.js';
 
 const bad = (message) => Object.assign(Error(message), { statusCode: 400 });
 export function validateInstanceBackup(value) {
@@ -28,6 +29,7 @@ export function validateInstanceBackup(value) {
     !value.devicePlatform.controlLibrary
   )
     throw bad("缺少完整设备平台或控件库");
+  if(value.devicePlatform.motionLibrary){try{normalizeMotionLibraryPackage(value.devicePlatform.motionLibrary);}catch(error){throw bad(error.message);}}
   if (
     !value.sidebars ||
     typeof value.sidebars !== "object" ||
@@ -84,7 +86,7 @@ export function validateInstanceBackup(value) {
   return { ...value, projects, sidebars };
 }
 export async function exportInstance(projects, platform, sidebars) {
-  await Promise.all([sidebars.queue, platform.writeQueue, platform.controlLibrary?.queue]);
+  await Promise.all([sidebars.queue, platform.writeQueue, platform.controlLibrary?.queue,platform.motionLibrary?.queue]);
   const devicePlatform = structuredClone(await platform.exportBundle());
   for (const model of devicePlatform.modelTemplates || [])
     if (

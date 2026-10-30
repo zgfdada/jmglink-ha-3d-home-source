@@ -3,6 +3,7 @@
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.
  */
 import { j as r, c as ue } from "../vendor/three.js";
+import ApplicationBoundary from '../components/application-boundary.jsx';
 import { a as n, c as pe, R as fe } from "../vendor/react.js";
 import "../vendor/hls.js";
 import { createPushToTalk } from "../domain/push-to-talk.js";
@@ -1660,7 +1661,7 @@ function ht() {
             }),
           sidebarCenterOpen && r.jsx(SidebarDevelopmentCenter, {project: s, initialFloorId: typeof sidebarCenterOpen === "string" ? sidebarCenterOpen : undefined, entities: _, onClose: () => {setSidebarCenterOpen(false);setHomeSceneResumeKey(key => key + 1);}}),
           nextCenterOpen &&
-            r.jsx(nextDeviceCenter, {
+            r.jsx(ApplicationBoundary, {label:'设备开发中心',onClose:()=>{setNextCenterOpen(false);setHomeSceneResumeKey(key=>key+1);},children:r.jsx(n.Suspense,{fallback:r.jsx('div',{className:'application-center-loading',role:'status',children:'正在加载设备开发中心…'}),children:r.jsx(nextDeviceCenter, {
               open: nextCenterOpen,
               onClose: () => {
                 setNextCenterOpen(!1);
@@ -1668,7 +1669,7 @@ function ht() {
                   setHomeSceneResumeKey((key) => key + 1),
                 );
               },
-            }),
+            })})}),
         ],
       }),
       v &&
@@ -1695,7 +1696,7 @@ function ht() {
   });
 }
 ue.createRoot(document.getElementById("root")).render(
-  r.jsx(fe.StrictMode, { children: r.jsx(ht, {}) }),
+  r.jsx(fe.StrictMode, { children: r.jsx(ApplicationBoundary,{children:r.jsx(ht, {})}) }),
 );
 export {
   Ce as M,

@@ -85,6 +85,7 @@ export function normalizePartMotionRules(value) {
       enabled: r.enabled !== false,
       targets: [...new Set(r.targets)],
       capabilityId: text(r.capabilityId, 80),
+      ...(typeof r.motionResourceId === 'string' && /^(?:builtin|custom)\.motion\.[a-z0-9][a-z0-9._-]{0,100}$/.test(r.motionResourceId) ? {motionResourceId:r.motionResourceId} : {}),
       targetNames: Object.fromEntries(
         r.targets
           .filter((p) => typeof r.targetNames?.[p] === "string")

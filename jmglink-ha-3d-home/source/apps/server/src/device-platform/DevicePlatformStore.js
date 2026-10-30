@@ -1,4 +1,5 @@
 import {partMotionIssues} from "../../../../packages/schema/src/part-motion.js";
+import {normalizeMotionLibraryPackage,MOTION_RESOURCE_FORMAT} from '../../../../packages/schema/src/motion-library.js';
 import { normalizeLibraryPackage, CONTROL_PACKAGE_FORMAT } from "../../../../packages/schema/src/control-library.js";
 import {
   copyFile,
@@ -1406,6 +1407,7 @@ export class DevicePlatformStore {
       modelTemplates: this.modelTemplates,
       controlPanels: this.controlPanels,
       ...(this.controlLibrary ? {controlLibrary: this.controlLibrary.export()} : {}),
+      ...(this.motionLibrary ? {motionLibrary:this.motionLibrary.export()} : {}),
       bindings: this.bindings,
       suppressedBuiltinIds: [...this.suppressedBuiltins].sort(),
       assets,
@@ -1419,6 +1421,7 @@ export class DevicePlatformStore {
     )
       throw new Error("设备平台导入文件格式或版本不受支持");
     const libraryPackage=bundle.controlLibrary ? {format:CONTROL_PACKAGE_FORMAT,schemaVersion:1,controls:normalizeLibraryPackage(bundle.controlLibrary)} : null;
+    const motionPackage=bundle.motionLibrary?{format:MOTION_RESOURCE_FORMAT,schemaVersion:1,resources:normalizeMotionLibraryPackage(bundle.motionLibrary)}:null;
     const devices = (bundle.deviceTemplates ?? []).map((item) => {
       assertCustomId(item.id);
       return normalizeDeviceTemplate(item);
@@ -1505,6 +1508,7 @@ export class DevicePlatformStore {
     this.suppressedBuiltins = suppressedBuiltins;
     await this.persistAll();
     if(libraryPackage && this.controlLibrary) await this.controlLibrary.restore(libraryPackage);
+    if(motionPackage && this.motionLibrary) await this.motionLibrary.restore(motionPackage);
     return this.snapshot();
   }
 

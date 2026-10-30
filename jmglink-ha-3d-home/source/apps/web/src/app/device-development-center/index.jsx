@@ -1,4 +1,5 @@
 import ControlLibrary from "./control-library.jsx";
+import MotionLibrary from './motion-library.jsx';
 import { a as React } from "../../vendor/react.js";
 import "../../styles/device-development-center.css";
 import ModelLibrary from "./model-library.jsx";
@@ -30,6 +31,7 @@ function Icon({ name }) {
   const paths = {
     cube: "M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2L12 3Zm0 0v9m7.5-4.8L12 12l-7.5-4.8",
     project: "M6 3h9l3 3v15H6V3Zm9 0v4h4M9 11h6M9 15h6",
+    motion: 'M3 12h4l3-8 4 16 3-8h4',
     search: "m21 21-4.4-4.4m2.4-5.1A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z",
     upload: "M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v6h14v-6",
     plus: "M12 5v14M5 12h14",
@@ -220,6 +222,8 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
   const [section, setSection] = React.useState("projects");
   const [activeProjectId, setActiveProjectId] = React.useState(null);
   const projectFlushRef = React.useRef(null);
+  const libraryGuardRef=React.useRef(null);
+  const registerLibraryGuard=React.useCallback(callback=>{libraryGuardRef.current=callback;},[]);
   const registerProjectFlush = React.useCallback((callback) => {
     projectFlushRef.current = callback;
   }, []);
@@ -260,6 +264,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
     window.localStorage.setItem(PROJECT_VIEW_KEY, next);
   };
   const changeSection = async (next) => {
+    if(section==='motions'&&libraryGuardRef.current?.()===false)return;
     if (activeProjectId && projectFlushRef.current) {
       const saved = await projectFlushRef.current();
       if (saved === false) return;
@@ -269,6 +274,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
     setActiveProjectId(null);
   };
   const closeCenter = async () => {
+    if(section==='motions'&&libraryGuardRef.current?.()===false)return;
     if (activeProjectId && projectFlushRef.current) {
       const saved = await projectFlushRef.current();
       if (saved === false) return;
@@ -464,10 +470,13 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
           <button className={section === "controls" ? "active" : ""} onClick={() => changeSection("controls")}>
             <Icon name="project"/><span><b>控件资源库</b><small>内置 &amp; 自定义 UI</small></span>
           </button>
+          <button className={section==='motions'?'active':''} onClick={()=>changeSection('motions')}>
+            <Icon name="motion"/><span><b>动效资源库</b><small>内置 &amp; 自定义动效</small></span>
+          </button>
         </aside>
         <main className="ddc-next-main" aria-busy={busy}>
           <Notice notice={notice} onClose={() => setNotice(null)} />
-          {section === "controls" ? <ControlLibrary globalQuery={query} notify={(message,type="success")=>setNotice({message,type})} onChanged={reload}/> : section === "models" ? (
+          {section === 'motions' ? <MotionLibrary globalQuery={query} notify={(message,type='success')=>setNotice({message,type})} registerGuard={registerLibraryGuard}/> : section === "controls" ? <ControlLibrary globalQuery={query} notify={(message,type="success")=>setNotice({message,type})} onChanged={reload}/> : section === "models" ? (
             <ModelLibrary
               platform={platform}
               reload={reload}

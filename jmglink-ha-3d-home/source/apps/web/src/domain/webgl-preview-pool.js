@@ -2,6 +2,15 @@
 export function createWebglPreviewPool(limit = 6) {
   let active = 0;
   const waiting = [];
+  let scheduled = false;
+  const scheduleNext = () => {
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(() => {
+      scheduled = false;
+      grantNext();
+    });
+  };
 
   function grantNext() {
     while (active < limit && waiting.length) {
@@ -9,15 +18,24 @@ export function createWebglPreviewPool(limit = 6) {
       if (ticket.cancelled) continue;
       ticket.granted = true;
       active += 1;
-      ticket.onGranted();
+      try {
+        if (ticket.onGranted() === false) {
+          ticket.cancelled = true;
+          active -= 1;
+        }
+      } catch (error) {
+        ticket.cancelled = true;
+        active -= 1;
+        ticket.onError?.(error);
+      }
     }
   }
 
   return {
-    request(onGranted) {
-      const ticket = { onGranted, granted: false, cancelled: false };
+    request(onGranted, onError) {
+      const ticket = { onGranted, onError, granted: false, cancelled: false };
       waiting.push(ticket);
-      grantNext();
+      if (!scheduled) grantNext();
       return () => {
         if (ticket.cancelled) return;
         ticket.cancelled = true;
@@ -26,7 +44,7 @@ export function createWebglPreviewPool(limit = 6) {
           const index = waiting.indexOf(ticket);
           if (index !== -1) waiting.splice(index, 1);
         }
-        grantNext();
+        scheduleNext();
       };
     },
     status() {

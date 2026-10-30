@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f9f8" />
     <title>HA 3D Home Reconstructed</title>
+    <style>.boot-screen{min-height:100vh;display:grid;place-content:center;gap:14px;text-align:center;font:14px system-ui,sans-serif;color:#315574;background:#f1f5fa}.boot-screen p{color:#8096b0}.boot-screen button{justify-self:center;padding:10px 18px;border:1px solid #a9c7ed;border-radius:9px;color:#3e74bf;background:white;cursor:pointer}.boot-screen button[hidden]{display:none}</style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot-screen" id="boot-loading" role="status"><strong id="boot-title">正在加载 3D Home</strong><p id="boot-message">正在准备界面与设备资源…</p><button id="boot-reload" hidden>重新加载页面</button></div></div>
+    <script>document.getElementById('boot-reload').onclick=function(){location.reload()};window.addEventListener('error',function(event){if(document.getElementById('boot-loading')&&(event.target.tagName==='SCRIPT'||event.target.tagName==='LINK')){document.getElementById('boot-title').textContent='界面资源加载失败';document.getElementById('boot-message').textContent='请重新加载页面，已保存的配置会保留。';document.getElementById('boot-reload').hidden=false;}},true);</script>
     <script type="module" src="/src/entry.js"></script>
   </body>
 </html>

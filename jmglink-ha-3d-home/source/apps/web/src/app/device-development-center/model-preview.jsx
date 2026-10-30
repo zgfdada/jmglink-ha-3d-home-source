@@ -1,4 +1,5 @@
 import {createPartMotionEngine,modelPartNodes} from "../../domain/part-motion-engine.js";
+import {reportClientError} from '../../domain/browser-recovery.js';
 import { a as React } from "../../vendor/react.js";
 import * as THREE from "three";
 import {createCameraModel} from "../../domain/camera-model.js";
@@ -44,9 +45,13 @@ export default function ModelPreview({
   const controlsApi = React.useRef(null);
   const [visible, setVisible] = React.useState(!compact);
   const [error, setError] = React.useState("");
+  const [thumbnail,setThumbnail]=React.useState(null);
+  const [loading,setLoading]=React.useState(true);
   const modelRef = React.useRef(model);
   modelRef.current = model;
   const modelKey = modelPreviewSignature(model);
+  const staticThumbnail=compact&&!animated&&!motionRules?.length;
+  const thumbnailReady=staticThumbnail&&thumbnail?.key===modelKey;
   React.useEffect(() => {
     if (!compact || !container.current) return;
     const observer = new IntersectionObserver(
@@ -60,30 +65,35 @@ export default function ModelPreview({
   }, [compact]);
 
   React.useEffect(() => {
-    if (!visible || !model || !container.current) return;
+    if (!visible || !model || !container.current || thumbnailReady) return;
     let disposed = false;
     let disposeRenderer;
     let releaseSlot = () => {};
+    setLoading(true);
+    const failPreview=message=>{if(disposed)return;setError(message);setLoading(false);queueMicrotask(()=>{disposeRenderer?.();disposeRenderer=undefined;releaseSlot();});};
     releaseSlot = webglPreviewPool.request(() => {
-      if (disposed) return;
+      if (disposed || !container.current?.isConnected) return false;
       disposeRenderer = startPreview(modelRef.current);
       if (!disposeRenderer) queueMicrotask(() => releaseSlot());
-    });
+    },error=>{reportClientError(error,'center');failPreview('模型预览初始化失败，请重新打开预览');});
     return () => {
       disposed = true;
       disposeRenderer?.();
+      disposeRenderer=undefined;
       releaseSlot();
     };
 
     function startPreview(model) {
     const host = container.current;
+    if(!host?.isConnected)return;
     let active = true;
+    let modelReady=false,captured=false,readyFrames=0;
     let frame;
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     } catch {
-      setError("当前环境无法启用 3D 预览");
+      failPreview("当前环境无法启用 3D 预览");
       return;
     }
     setError("");
@@ -213,6 +223,7 @@ export default function ModelPreview({
       root.scale.setScalar(model.scale ?? 1);
       readyMotion(root);
       fit();
+      modelReady=true;setLoading(false);
       if (animated) runtimeGlow = createRuntimeModelGlow(root);
     } else if (source.url) {
       new GLTFLoader().load(
@@ -224,7 +235,7 @@ export default function ModelPreview({
           }
           const box = new THREE.Box3().setFromObject(gltf.scene);
           if (box.isEmpty()) {
-            setError("模型没有可预览的几何体");
+            failPreview("模型没有可预览的几何体");
             disposeObject(gltf.scene);
             return;
           }
@@ -255,20 +266,22 @@ export default function ModelPreview({
           root.add(gltf.scene);
           readyMotion(gltf.scene);
           fit();
+          modelReady=true;setLoading(false);
           if (animated) runtimeGlow = createRuntimeModelGlow(root);
         },
         undefined,
         () => {
-          if (active) setError("模型文件缺失或无法解析，请重新上传");
+          if (active) failPreview("模型文件缺失或无法解析，请重新上传");
         },
       );
-    } else setError("上传 GLB 或自包含 GLTF 后可预览");
+    } else failPreview("上传 GLB 或自包含 GLTF 后可预览");
     root.position.set(
       model.anchor?.x ?? 0,
       (model.anchor?.y ?? 0) + (model.elevation ?? 0),
       model.anchor?.z ?? 0,
     );
     const resize = () => {
+      if(!active)return;
       const width = Math.max(host.clientWidth, 100);
       const height = Math.max(host.clientHeight, 100);
       renderer.setSize(width, height, false);
@@ -279,6 +292,7 @@ export default function ModelPreview({
     resizeObserver.observe(host);
     resize();
     const animate = () => {
+      if(!active)return;
       frame = requestAnimationFrame(animate);
       const now=performance.now(),dt=Math.min((now-lastFrame)/1000,.1);lastFrame=now;const motion=motionRef.current;if(motion.playing)elapsed+=dt;
       if(motionEngine&&motionSignature!==JSON.stringify(motion.rules)){motionEngine.dispose();motionEngine=createPartMotionEngine(motionRoot,motion.rules);motionSignature=JSON.stringify(motion.rules);}
@@ -288,6 +302,11 @@ export default function ModelPreview({
       updateRuntimeModelGlow(runtimeGlow, now / 1000);
       controls.update();
       renderer.render(scene, camera);
+      if(staticThumbnail&&modelReady&&!captured&&++readyFrames>=2){
+        captured=true;
+        try{setThumbnail({key:modelKey,url:renderer.domElement.toDataURL('image/png')});}
+        catch{failPreview('缩略图生成失败，请点击预览查看模型');}
+      }
     };
     animate();
     return () => {
@@ -305,7 +324,7 @@ export default function ModelPreview({
       renderer.domElement.remove();
     };
     }
-  }, [visible, modelKey, compact, animated]);
+  }, [visible, modelKey, compact, animated, staticThumbnail,thumbnailReady]);
   React.useEffect(() => {
     const api = controlsApi.current;
     if (!api || !command) return;
@@ -326,6 +345,8 @@ export default function ModelPreview({
   return (
     <div className={`ddc-model-preview ${compact ? "compact" : ""} ${animated ? "running-glow" : ""}`}>
       <div className="ddc-model-canvas" ref={container} />
+      {thumbnailReady&&<img className="ddc-model-thumbnail" src={thumbnail.url} alt={`${model?.name??'模型'}缩略图`}/>}
+      {loading&&!thumbnailReady&&!error&&<span className="ddc-model-preview-loading" role="status">正在加载模型…</span>}
       {error && <span className="ddc-model-preview-error">{error}</span>}
       {!compact && !error && <small>拖动旋转 · 滚轮缩放 · 右键平移</small>}
     </div>

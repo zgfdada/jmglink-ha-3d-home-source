@@ -10,7 +10,8 @@ import {DevicePlatformStore} from "../apps/server/src/device-platform/DevicePlat
 import {registerDevicePlatformRoutes} from "../apps/server/src/routes/devicePlatformRoutes.js";
 import {normalizeFloorplanProject} from "../packages/schema/src/index.js";
 import {defaultSidebar} from "../packages/schema/src/sidebar.js";
-const directory=await fs.mkdtemp(path.join(os.tmpdir(),"ha3d-extra-ui-"));
+import {MotionLibraryStore,registerMotionLibraryRoutes} from '../apps/server/src/motion-library/MotionLibraryStore.js';
+const directory=process.env.HA3D_VERIFY_DIR?path.resolve(process.env.HA3D_VERIFY_DIR):await fs.mkdtemp(path.join(os.tmpdir(),"ha3d-extra-ui-"));
 const store=await DevicePlatformStore.create(path.join(directory,"data"),path.join(directory,"assets"));
 const geometry=new THREE.BoxGeometry(1.7,0.9,3.7).toNonIndexed();
 const buffers=[],views=[],accessors=[],attributes={};let offset=0;
@@ -37,6 +38,7 @@ const getEntities=()=>{const project=store.getDeviceTemplates().find(p=>p.id==="
 const ha={getEntities,getDevices:()=>[{id:"car",name:"车辆"},{id:"tracker",name:"车辆定位集成"},{id:"parking",name:"车库雷达"}],getAreas:()=>[]};
 const project=normalizeFloorplanProject({id:"extra-verify",name:"额外实体能力与动效隔离验收",floors:[{id:"floor-1",name:"一层",height:2.8,walls:[],rooms:[{id:"room",name:"车库",polygon:[[-3,-3],[3,-3],[3,3],[-3,3]]}],devices:[{id:"car-placement",entityId:"switch.car_power",deviceId:"car",deviceTemplateId:"custom.extra-car",modelId:"switch.socket",kind:"switch",position:[0,0,0],rotation:[0,0,0],scale:[1,1,1]}]}]});
 const app=Fastify();await registerDevicePlatformRoutes(app,store,ha);
+store.motionLibrary=await MotionLibraryStore.create(path.join(directory,'data'));await registerMotionLibraryRoutes(app,store.motionLibrary);
 app.get("/api/ha/status",async()=>({connected:true,configured:true,mock:false,mode:"standalone",entityCount:4}));
 app.get("/api/ha/entities",async()=>({entities:getEntities()}));app.get("/api/ha/areas",async()=>({areas:[]}));
 app.get("/api/projects/current",async()=>({project}));app.get("/api/projects",async()=>({projects:[project]}));app.get("/api/projects/:id",async()=>({project}));

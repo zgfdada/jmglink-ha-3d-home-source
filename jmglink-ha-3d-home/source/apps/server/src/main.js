@@ -1,4 +1,5 @@
 import { registerInstanceBackup } from "./routes/instanceBackup.js";
+import {MotionLibraryStore,registerMotionLibraryRoutes} from './motion-library/MotionLibraryStore.js';
 import { registerSidebarServices } from "./sidebar/SidebarServices.js";
 import { resolveSidebarEntities } from "../../../packages/schema/src/sidebar-bindings.js";
 import { SidebarStore, registerSidebarRoutes } from "./sidebar/SidebarStore.js";
@@ -8,7 +9,8 @@ import { setDefaultResultOrder } from "node:dns";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "@fastify/cors";
-import fastifyStatic from "@fastify/static";
+import {registerWebUi} from './routes/webUi.js';
+import {registerClientErrorRoutes} from './routes/clientErrors.js';
 import Fastify from "fastify";
 import { WebSocketServer } from "ws";
 import { loadEnvFiles } from "./config/envFile.js";
@@ -39,6 +41,7 @@ const app = Fastify({
   logger: { level: process.env.LOG_LEVEL ?? "info" },
   bodyLimit: 22 * 1024 * 1024,
 });
+await registerClientErrorRoutes(app);
 await registerSkillPackageRoutes(app);
 const gateway = new ClientGateway();
 const supervisorTokenRaw = process.env.SUPERVISOR_TOKEN;
@@ -74,6 +77,9 @@ const devicePlatformStore = await DevicePlatformStore.create(
 const controlLibrary = await ControlLibraryStore.create(config.dataDir, devicePlatformStore);
 devicePlatformStore.controlLibrary = controlLibrary;
 await registerControlLibraryRoutes(app, controlLibrary);
+const motionLibrary=await MotionLibraryStore.create(config.dataDir);
+devicePlatformStore.motionLibrary=motionLibrary;
+await registerMotionLibraryRoutes(app,motionLibrary);
 function collectBoundEntityIds(project) {
   const ids = new Set();
   for (const floor of project.floors) {
@@ -156,19 +162,7 @@ app.get("/api/health", async () => ({
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webDist = path.resolve(__dirname, "../../web/dist");
 if (existsSync(webDist)) {
-  await app.register(fastifyStatic, {
-    root: webDist,
-    prefix: "/",
-    maxAge: 0,
-    etag: true,
-    lastModified: true,
-  });
-  app.setNotFoundHandler(async (request, reply) => {
-    if (request.url.startsWith("/api") || request.url.startsWith("/ws")) {
-      return reply.code(404).send({ error: "Not found" });
-    }
-    return reply.sendFile("index.html");
-  });
+  await registerWebUi(app,webDist);
 } else {
   app.log.warn({ webDist }, "Web build not found; serving API only");
 }

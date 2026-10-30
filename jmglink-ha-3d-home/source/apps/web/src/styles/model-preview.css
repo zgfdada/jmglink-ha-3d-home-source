@@ -6,3 +6,4 @@
 .ddc-model-canvas{width:100%;height:100%}
 .ddc-model-preview small{position:absolute;bottom:10px;left:12px;color:#6b7d98;background:#ffffffba;border-radius:5px;padding:3px 7px}
 .ddc-model-preview-error{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:12px;color:#a6513e;background:#f8f1efdc}
+.ddc-model-thumbnail{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}.ddc-model-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:#8199b4;font-size:11px;pointer-events:none}

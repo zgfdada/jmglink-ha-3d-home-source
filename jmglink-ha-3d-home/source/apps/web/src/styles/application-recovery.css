@@ -1,0 +1,78 @@
+.application-recovery-overlay,
+.application-recovery-page {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #eef3f9;
+  color: #203956;
+  font-family: system-ui, sans-serif;
+}
+.application-recovery-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: #14263aca;
+}
+.application-recovery-page {
+  min-height: 100dvh;
+  box-sizing: border-box;
+}
+.application-recovery-card {
+  width: min(100%, 480px);
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #dce7f5;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 16px 60px #102c4b18;
+}
+.application-recovery-card > span {
+  font-size: 30px;
+  color: #4e86e8;
+}
+.application-recovery-card h1 {
+  font-size: 21px;
+  margin: 14px 0;
+}
+.application-recovery-card p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #6a809d;
+}
+.application-recovery-card small {
+  color: #879bb5;
+  font-size: 12px;
+}
+.application-recovery-card > div {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 25px;
+}
+.application-recovery-card button {
+  font: inherit;
+  font-size: 13px;
+  padding: 11px 16px;
+  background: #fff;
+  border: 1px solid #d5e2f3;
+  border-radius: 10px;
+  color: #4f719c;
+  cursor: pointer;
+}
+.application-recovery-card button.primary {
+  background: #4d83f4;
+  border-color: #4d83f4;
+  color: #fff;
+}
+.application-center-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: #172a4899;
+  color: #fff;
+  font:
+    14px system-ui,
+    sans-serif;
+}

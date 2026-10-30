@@ -1029,7 +1029,7 @@
   }
   .ddc-next-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: 76px minmax(0, 1fr) 66px;
+    grid-template-rows: 76px minmax(0, 1fr) calc(66px + env(safe-area-inset-bottom, 0px));
     border: 0;
     border-radius: 0;
   }
@@ -1054,7 +1054,8 @@
   }
   .ddc-next-sidebar {
     grid-row: 3;
-    padding: 6px 10px;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    gap: 4px;
     flex-direction: row;
     justify-content: center;
     border-top: 1px solid #dce9f6;
@@ -1062,12 +1063,23 @@
     background: #fff;
   }
   .ddc-next-sidebar > button {
-    width: min(180px, 47%);
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    max-width: 180px;
     min-height: 52px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 2px;
   }
+  .ddc-next-sidebar > button svg {width:18px;height:18px;flex-shrink:0}
   .ddc-next-sidebar > button span {
-    display: grid;
+    display: block;
+    min-width: 0;
   }
+  .ddc-next-sidebar > button b {font-size:10px;line-height:1.2;white-space:nowrap}
   .ddc-next-sidebar > button small {
     display: none;
   }

@@ -2,11 +2,23 @@
 
 本文面向参与源码维护、功能开发、测试和发布的开发者。安装与日常使用请阅读 [README.md](README.md)，版本变化请阅读 [RELEASE_NOTES.md](RELEASE_NOTES.md)，运维接手流程请阅读 [服务交接文档](docs/HA3DHome服务交接文档.md)。
 
-## 3D 设备点击范围
+## 动效资源库
+
+## 前端白屏恢复与日志
+
+`entry.js` 先安装 browser-recovery 再异步加载应用；index.html 自带可见启动占位及脚本失败恢复入口。ApplicationBoundary 覆盖根界面，设备开发中心另有独立错误边界与 Suspense，延迟加载不再隐藏主页。旧版动态模块失效时通过 sessionStorage 限制一分钟内至多自动刷新一次；普通渲染错误、离线或存储不可用时保留恢复界面，不反复刷新。`webUi.js` 对缺失静态资源返回真实 404，对 HTML 设置 no-store；SPA 路由继续回退首页。`POST /api/client-errors` 只记录标准错误摘要、类型和相对源码位置，前后端都不接受原始报错文本、完整 URL、状态或凭据。浏览器故障注入使用 `scripts/verify-browser-recovery.mjs`，内容完全在内存中构建，不连接 HA。`browser-recovery.test.mjs` 覆盖刷新限制、404、缓存与日志字段过滤。
+
+## 动效资源库
+
+`packages/schema/src/motion-library.js` 为内置动效资源、分类、参数快照与包校验的共享定义；`MotionLibraryStore` 原子保存 `dataDir/motion-library.json`，串行变更并校验 revision，内置资源支持覆盖与恢复默认，自定义资源可增删改。`motion-effect-fields.jsx` 供资源库和规则编辑器共用；`motion-resource-preview.jsx` 使用相同 `createPartMotionEngine`，共享 WebGL context 池并释放资源。规则保存 `motionResourceId` 和完整 effect 快照，主页不依赖库条目存在，不因默认值变化而改变既有配置。完整实例／设备平台备份携带 motionLibrary，旧备份缺少此字段时保留当前库；单设备包仍直接携带可运行的规则快照。新增渲染类型需同步扩展基础类型、默认资源、参数表单及引擎，而复用现有类型的参数资源可直接在界面新增。`motion-library.test.mjs` 覆盖九类引擎、CRUD、并发冲突、恢复默认、磁盘重开、备份及快照兼容。
+
+## 额外实体与部件动效
 
 额外实体以 binding.extraEntityIds 保存，与主设备 selectedEntityIds 分开；`extra-entity-selection.jsx` 在基础信息内同页筛选与显式保存。`PUT projects/:id/extra-entities` 验证主设备身份、实体存在和选择版本，不重新绑定主设备；移除关联时解除对应能力映射。聚合结果保留 physical entityIds/entities，额外值通过 extraEntities/extraEntityIds 供能力编辑器、校验和主页动效读取，不修改实体 deviceId。注册表改名同步更新额外选择与映射；设备包继续不携带实例绑定。`extra-entities.test.mjs` 覆盖选择→能力映射→同一显隐动效引擎及磁盘重开；`scripts/verify-extra-entities.mjs` 提供无真实 HA 的界面验收。
 
 `domain/surface-scan.js` 提供局部轴向的通用模型表面扫光 Shader，part-motion.js 的 scan 规则可选择整组或单部件。与路径 flow 分开，按目标局部包围范围归一化扫描，叠层共享几何且只释放自有材质；不改原模型材质、不参与点击。主页和模型预览均经 part-motion-engine 驱动，支持反向、宽度、强度、过渡、数值映射与离线退出。表面扫光作为普通声明式规则配置，能力与真实状态值由用户指定，不提供固定车辆预设按钮。参考视频不作为代码或模型资产打包。
+
+## 3D 设备点击范围
 
 内置设备与自定义设备统一使用可见网格的真实形状拾取，移除额外的透明命中球／盒；不按包围盒扩大范围。configureDeviceModelPicking 保留 Three.js 原生拾取方法，逐次检查祖先显隐和材质可见性，适配部件动效位移与显隐；多材质模型按命中面的材质过滤。内置模型挂载及上传模型异步加载完成时分别配置，重复执行不叠加包装。
 
@@ -35,7 +47,7 @@ JMGLink HA 3D Home Custom 是一个由 Fastify 后端、React 前端、Three.js 
 
 当前源码基于官方 `0.1.5` 镜像中的 JavaScript 运行产物恢复。恢复工程已经可以安装依赖、运行测试、构建前端并生成 Docker/Add-on 镜像，但无法还原原始变量名、注释、TypeScript 类型和完整组件边界。因此开发时应优先把新逻辑提取到具名模块，逐步减少对大型恢复文件的直接修改。
 
-设备开发中心的模型缩略图共用 `domain/webgl-preview-pool.js`，最多同时占用 6 个 WebGL context。缩略图离开视口、切换数据或卸载时须释放渲染器并显式丢弃 context；关闭开发中心时只重建主页场景画布，不重置主页交互状态。排查“主页模型偶发空白”时先核对 context 数量和 `webglcontextlost`，不要直接改动用户户型数据。
+设备开发中心的模型缩略图共用 `domain/webgl-preview-pool.js`，最多同时占用 6 个 WebGL context。 静态缩略图在模型加载完成并渲染两帧后缓存 PNG 图片，释放 renderer 和队列名额；带动效的缩略图与大图保持实时交互。release 只在微任务中交接，等待当前卸载批次取消失效任务；初始化前检查 DOM 仍连接，失败任务也归还名额。打开预览弹层不卸载缩略图。缩略图离开视口、切换数据或卸载时须释放渲染器并显式丢弃 context；关闭开发中心时只重建主页场景画布，不重置主页交互状态。排查“主页模型偶发空白”时先核对 context 数量和 `webglcontextlost`，不要直接改动用户户型数据。
 
 能力状态将连接状态和实体取值分开判断：`unknown` 为状态未知，`unavailable` 为实体不可用，两者均不解除映射；仅全局连接断开显示 HA 离线。注册表同步读取实体的 `platform/translation_key`，通过 `frontend/get_translations` 获取 `zh-Hans` 的 `entity` 与 `entity_component` 词典，按集成实体、设备类别、实体域默认翻译的顺序生成 `stateLabels`。同连接及相同集成集合缓存 1 小时，失败时短暂缓存并降级，不能阻断设备发现；重新连接会重新获取。只为当前状态和 `options` 生成标签，不依据整份词典增加设备支持的选项；离线历史保留已取得标签。
 

@@ -1,3 +1,9 @@
+import MotionEffectFields from "./motion-effect-fields.jsx";
+import {
+  MotionResourceSelect,
+  useMotionResources,
+} from "./motion-resources.jsx";
+import { motionResourceRule } from "../../../../../packages/schema/src/motion-library.js";
 import {
   modelPartLabel,
   normalizePartLabels,
@@ -26,6 +32,7 @@ export default function PartMotionEditor({
   partLabels = {},
   onLabelsChange,
 }) {
+  const { resources: motionResources } = useMotionResources();
   const [parts, setParts] = React.useState([]),
     [selected, setSelected] = React.useState(""),
     [draft, setDraft] = React.useState(null),
@@ -115,17 +122,16 @@ export default function PartMotionEditor({
       return;
     }
     choose(
-      normalizePartMotionRules([
+      motionResourceRule(
+        motionResources.find((r) => r.id === "builtin.motion.translate"),
         {
           id: `motion-${Date.now()}`,
           name: "新部件动效",
           targets: [target],
           capabilityId: cap?.capabilityId ?? "",
           condition: { operator: "eq", value: stateValue(cap) },
-          effect: { type: "translate", axis: "y", from: 0, to: 0.1 },
-          transitionMs: 300,
         },
-      ])[0],
+      ),
     );
   };
   const selectPart = (path) => {
@@ -137,15 +143,17 @@ export default function PartMotionEditor({
       setMessage("请先保存当前规则，或放弃修改后再删除其他规则。");
       return;
     }
-    const saved = rules.some(r => r.id === rule.id);
-    if (saved) onChange(rules.filter(r => r.id !== rule.id));
+    const saved = rules.some((r) => r.id === rule.id);
+    if (saved) onChange(rules.filter((r) => r.id !== rule.id));
     if (draft?.id === rule.id) {
       setDraft(null);
       setUnsaved(false);
       setValidated(false);
       setPicking(false);
     }
-    setMessage(saved ? "规则已删除，随当前外观自动保存。" : "未保存规则已删除。");
+    setMessage(
+      saved ? "规则已删除，随当前外观自动保存。" : "未保存规则已删除。",
+    );
   };
   let checked = [],
     issues = [];
@@ -294,15 +302,25 @@ export default function PartMotionEditor({
           {!capabilities.length && <p>请先定义至少一项设备能力。</p>}
           <div className="part-motion-rules">
             {rules.map((r) => (
-              <div className="part-motion-rule-row" key={r.id}><button
-                className={draft?.id === r.id ? "selected" : ""}
-                onClick={() => choose(r)}
-              >
-                {r.enabled ? "●" : "○"} {r.name}
-                <small>
-                  {MOTION_EFFECTS[r.effect.type]} · {r.targets.length} 个部件
-                </small>
-              </button><button className="part-motion-rule-delete" aria-label={`删除规则 ${r.name}`} title={`删除规则 ${r.name}`} onClick={() => removeRule(r)}>删除</button></div>
+              <div className="part-motion-rule-row" key={r.id}>
+                <button
+                  className={draft?.id === r.id ? "selected" : ""}
+                  onClick={() => choose(r)}
+                >
+                  {r.enabled ? "●" : "○"} {r.name}
+                  <small>
+                    {MOTION_EFFECTS[r.effect.type]} · {r.targets.length} 个部件
+                  </small>
+                </button>
+                <button
+                  className="part-motion-rule-delete"
+                  aria-label={`删除规则 ${r.name}`}
+                  title={`删除规则 ${r.name}`}
+                  onClick={() => removeRule(r)}
+                >
+                  删除
+                </button>
+              </div>
             ))}
           </div>
         </section>
@@ -551,188 +569,45 @@ export default function PartMotionEditor({
                 )}
               </div>
             )}
-            {draft.mapping.enabled&&!['translate','rotate','spin','scale'].includes(draft.effect.type)&&<div className="part-motion-row">{numeric(draft.effect.type==='emissive'?'起始发光强度':'映射输出起始值',draft.effect.from,from=>effect({from}))}{numeric(draft.effect.type==='emissive'?'目标发光强度':'映射输出目标值',draft.effect.to,to=>effect({to}))}</div>}
-            <h3>3 · 动效</h3>
-            <select
-              aria-label="动效类型"
-              value={draft.effect.type}
-              onChange={(e) =>
-                effect({
-                  type: e.target.value,
-                  ...(e.target.value === "flow" && draft.effect.path.length < 2
-                    ? {
-                        path: [
-                          [0, 0, 0],
-                          [0, 0.2, 0],
-                        ],
-                      }
-                    : {}),
-                })
-              }
-            >
-              {Object.entries(MOTION_EFFECTS).map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            {["translate", "rotate", "spin", "scale"].includes(
-              draft.effect.type,
-            ) && (
-              <>
-                <label>
-                  局部轴
-                  <select
-                    aria-label="动效局部轴"
-                    value={draft.effect.axis}
-                    onChange={(e) => effect({ axis: e.target.value })}
-                  >
-                    {["x", "y", "z"].map((a) => (
-                      <option key={a}>{a}</option>
-                    ))}
-                  </select>
-                </label>
+            {draft.mapping.enabled &&
+              !["translate", "rotate", "spin", "scale"].includes(
+                draft.effect.type,
+              ) && (
                 <div className="part-motion-row">
-                  {numeric("起始值", draft.effect.from, (from) =>
-                    effect({ from }),
+                  {numeric(
+                    draft.effect.type === "emissive"
+                      ? "起始发光强度"
+                      : "映射输出起始值",
+                    draft.effect.from,
+                    (from) => effect({ from }),
                   )}
                   {numeric(
-                    draft.effect.type === "spin"
-                      ? "转速（度/秒）"
-                      : draft.effect.type === "rotate"
-                        ? "目标角度（度）"
-                        : "目标值",
+                    draft.effect.type === "emissive"
+                      ? "目标发光强度"
+                      : "映射输出目标值",
                     draft.effect.to,
                     (to) => effect({ to }),
                   )}
                 </div>
-                {["rotate", "spin"].includes(draft.effect.type) && (
-                  <>
-                    <small>旋转中心：相对部件原点的局部 XYZ 偏移。</small>
-                    <div className="part-motion-row">
-                      {[0, 1, 2].map((i) => (
-                        <React.Fragment key={i}>
-                          {numeric(
-                            `轴心 ${"XYZ"[i]}`,
-                            draft.effect.pivot[i],
-                            (v) =>
-                              effect({
-                                pivot: draft.effect.pivot.map((x, j) =>
-                                  i === j ? v : x,
-                                ),
-                              }),
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-            {draft.effect.type === "visible" && (
-              <label>
-                激活后
-                <select
-                  aria-label="激活后显隐"
-                  value={draft.effect.to}
-                  onChange={(e) => effect({ to: Number(e.target.value) })}
-                >
-                  <option value={1}>显示</option>
-                  <option value={0}>隐藏</option>
-                </select>
-              </label>
-            )}
-            {["color", "emissive", "flow", "scan"].includes(draft.effect.type) &&
-              input(
-                "动效颜色",
-                draft.effect.color,
-                (color) => effect({ color }),
-                { type: "color" },
               )}
-            {draft.effect.type === "emissive" && (
-              <>
-                {numeric(
-                  "发光强度",
-                  draft.effect.intensity,
-                  (intensity) => effect({ intensity }),
-                  { min: 0, max: 20, disabled: draft.mapping.enabled },
-                )}
-                <select
-                  aria-label="发光变化方式"
-                  value={draft.effect.mode}
-                  onChange={(e) => effect({ mode: e.target.value })}
-                >
-                  <option value="steady">常亮</option>
-                  <option value="breathe">呼吸</option>
-                  <option value="blink">闪烁</option>
-                </select>
-              </>
-            )}
-            {["emissive", "spin", "flow", "scan"].includes(draft.effect.type) &&
-              numeric(
-                "速度倍率",
-                draft.effect.speed,
-                (speed) => effect({ speed }),
-                { min: -20, max: 20 },
-              )}
-            {draft.effect.type === "scan" && <>
-              <label>扫光方向<select aria-label="扫光局部轴" value={draft.effect.axis} onChange={e => effect({axis:e.target.value})}>
-                <option value="x">局部 X 轴</option><option value="y">局部 Y 轴</option><option value="z">局部 Z 轴</option>
-              </select></label>
-              {numeric("光带宽度（模型长度比例）", draft.effect.width, width => effect({width}), {min:0.02,max:1,step:0.01})}
-              {numeric("扫光强度", draft.effect.intensity, intensity => effect({intensity}), {min:0,max:20,step:0.1})}
-              <small>沿模型表面循环扫过；负速度反向，速度 2 约为两秒一轮。整体扫光可选部件树根节点，不需要 UV 或逐点绘制路径。</small>
-            </>}
-            {draft.effect.type === "flow" && (
-              <div className="part-motion-path">
-                <p>路径点（所选部件局部坐标）</p>
-                <button onClick={() => setPicking((v) => !v)}>
-                  {picking ? "结束拾取" : "在模型上拾取路径点"}
-                </button>
-                <button onClick={() => effect({ path: [] })}>清空路径</button>
-                {draft.effect.path.map((p, i) => (
-                  <div className="part-motion-row" key={i}>
-                    {p.map((v, j) => (
-                      <input
-                        key={j}
-                        type="number"
-                        step="any"
-                        aria-label={`路径点 ${i + 1} ${"XYZ"[j]}`}
-                        value={v}
-                        onChange={(e) =>
-                          effect({
-                            path: draft.effect.path.map((pt, n) =>
-                              n === i
-                                ? pt.map((x, k) =>
-                                    k === j ? e.target.value : x,
-                                  )
-                                : pt,
-                            ),
-                          })
-                        }
-                      />
-                    ))}
-                    <button
-                      aria-label={`删除路径点 ${i + 1}`}
-                      onClick={() =>
-                        effect({
-                          path: draft.effect.path.filter((_, n) => n !== i),
-                        })
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() =>
-                    effect({ path: [...draft.effect.path, [0, 0, 0]] })
-                  }
-                >
-                  ＋ 路径点
-                </button>
-              </div>
-            )}
+            <h3>3 · 动效</h3>
+            <MotionResourceSelect
+              draft={draft}
+              onSelect={(resource) =>
+                change({
+                  effect: structuredClone(resource.effect),
+                  transitionMs: resource.transitionMs,
+                  motionResourceId: resource.id,
+                })
+              }
+            />
+            <MotionEffectFields
+              value={draft.effect}
+              onChange={effect}
+              mappingEnabled={draft.mapping.enabled}
+              picking={picking}
+              onTogglePicking={() => setPicking((v) => !v)}
+            />
             <h3>4 · 切换与冲突</h3>
             {numeric(
               "过渡时间（毫秒）",
@@ -780,7 +655,9 @@ export default function PartMotionEditor({
               >
                 保存规则
               </button>
-              <button onClick={() => removeRule(draft)}>{draftIndex >= 0 ? "删除规则" : "删除未保存规则"}</button>
+              <button onClick={() => removeRule(draft)}>
+                {draftIndex >= 0 ? "删除规则" : "删除未保存规则"}
+              </button>
             </div>
           </>
         ) : (

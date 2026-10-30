@@ -36,7 +36,6 @@ function readAsDataUrl(file) {
 function ModelCard({
   card,
   favorite,
-  suspendPreview,
   onFavorite,
   onPreview,
   onConfigure,
@@ -47,7 +46,7 @@ function ModelCard({
   return (
     <article className="ddc-model-card">
       <div className="ddc-model-card-visual">
-        {!suspendPreview && <ModelPreview model={card.model} compact />}
+        <ModelPreview model={card.model} compact />
         <span className="ddc-model-origin">本地模型</span>
       </div>
       <div className="ddc-model-card-body">
@@ -694,7 +693,6 @@ export default function ModelLibrary({
             <ModelCard
               key={card.key}
               card={card}
-              suspendPreview={Boolean(preview)}
               favorite={favorites.includes(card.key)}
               onFavorite={toggleFavorite}
               onPreview={showPreview}
