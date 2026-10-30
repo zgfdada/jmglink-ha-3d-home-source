@@ -2727,6 +2727,21 @@ test("placed entity-only models stream external entities without claiming their 
   assert.equal(refreshed.has("device_tracker.car"),false);
 });
 
+test("homepage presence keeps streaming after deleting its model and binding", () => {
+  const entities = [
+    {entityId:"device_tracker.car",domain:"device_tracker",state:"home",deviceId:null},
+    {entityId:"person.owner",domain:"person",state:"home"},
+    {entityId:"sensor.unused",domain:"sensor"},
+  ];
+  const project={floors:[{devices:[{entityId:"light.hall"}],rooms:[]}]};
+  const before=collectLiveEntityIds(project,entities,[{deviceId:"deleted",extraEntityIds:["sensor.unused"]}]);
+  const after=collectLiveEntityIds(project,entities,[]);
+  assert.deepEqual([...after].sort(),["device_tracker.car","light.hall","person.owner"]);
+  assert.deepEqual([...after],[...before]);
+  assert.equal(after.has("sensor.unused"),false);
+  assert.equal(collectLiveEntityIds({floors:[]},entities).has("device_tracker.car"),true);
+});
+
 test("default washer status follows HA remaining-time updates", () => {
   const start = new Date(2026, 8, 30, 13, 48).getTime();
   const runtime = {

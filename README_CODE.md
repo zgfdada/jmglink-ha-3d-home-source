@@ -8,7 +8,7 @@
 
 ## 动效资源库
 
-实时状态过滤由 `ha/boundEntityFilter.js` 收集当前户型已放置／房间绑定实体、同设备实体及对应平台绑定中的 selectedEntityIds、extraEntityIds、capabilityBindings 和 capabilityMappings。额外实体保留原归属，不扩大到额外实体所属设备的全部实体。设备平台写入成功后重算过滤范围；HA 状态事件仍使用服务端 150ms、前端 120ms 合批推送，不依赖面板轮询。面板用 `deviceEntities` 的实时值覆盖平台快照，预览使用关联实体全集。`motion-state-options.js` 展示中文状态及原始值，规则保存并匹配原始值，例如 `not_home`。
+实时状态过滤由 `ha/boundEntityFilter.js` 收集当前户型已放置／房间绑定实体、同设备实体及对应平台绑定中的 selectedEntityIds、extraEntityIds、capabilityBindings 和 capabilityMappings。额外实体保留原归属，不扩大到额外实体所属设备的全部实体。主页在家标签使用的 person／device_tracker 始终独立加入实时范围，删除模型或项目后仍更新。设备平台写入成功后重算过滤范围；HA 状态事件仍使用服务端 150ms、前端 120ms 合批推送，不依赖面板轮询。面板用 `deviceEntities` 的实时值覆盖平台快照，预览使用关联实体全集。`motion-state-options.js` 展示中文状态及原始值，规则保存并匹配原始值，例如 `not_home`。
 
 动效代码存于 `effect.program = {version:1,code}`，扫光支持 `effect.shader.vertex/fragment`；`motion-code.js` 提供默认代码和返回值校验。`motionWorker.js` 返回带禁止网络／子 Worker CSP 的独立运行器脚本；`motion-code-runtime.js` 按源码共享 Worker、按实例隔离闭包与结果，30Hz 采样、初始化／执行超时、最多 16 种并行代码，销毁时取消任务并释放引用。主线程只处理已校验的数字、颜色和向量，不执行用户 JavaScript。`part-motion-engine` 把结果接入真实变换、流光及扫光，旧规则无 program 时保持原算法。代码字段和着色源码作为类型化对象参与 portable 导出，不因其中的说明链接被误删；敏感实例字段过滤规则继续保留。`motion-code-editor.jsx` 负责代码缓冲、编译更新、未应用保护及取消后防止异步回写；库内预览和部件规则预览都反馈运行／GPU 编译错误，失败阻止保存。`motion-code.test.mjs` 覆盖九类代码、实例状态隔离、真实变换、shader、CSP 以及磁盘与设备包保存。
 

@@ -34,6 +34,8 @@ export function collectLiveEntityIds(project, entities, bindings = []) {
   }
   for (const entity of entities) {
     if (deviceIds.has(entity.deviceId)) ids.add(entity.entityId);
+    // Homepage presence badges consume these even without a placed model/binding.
+    if (["person", "device_tracker"].includes(entity.domain)) ids.add(entity.entityId);
   }
   return ids;
 }
