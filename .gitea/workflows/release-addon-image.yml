@@ -86,8 +86,8 @@ jobs:
       - name: 创建受限 BuildKit
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
-          name: ha3d-release-arm64
-          keep-state: true
+          name: ha3d-release-arm64-${{ gitea.run_id }}
+          keep-state: false
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
             cpu-quota=150000
@@ -154,8 +154,8 @@ jobs:
       - name: 创建受限 BuildKit
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
-          name: ha3d-release-amd64
-          keep-state: true
+          name: ha3d-release-amd64-${{ gitea.run_id }}
+          keep-state: false
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
             cpu-quota=150000
@@ -225,8 +225,8 @@ jobs:
       - name: 创建受限 BuildKit
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
-          name: ha3d-release-finalize
-          keep-state: true
+          name: ha3d-release-finalize-${{ gitea.run_id }}
+          keep-state: false
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
             cpu-quota=150000
