@@ -51,7 +51,7 @@ export default function MotionEffectFields({
               (to) => onChange({ to }),
             )}
           </div>}
-          {["rotate", "spin"].includes(value.type) && !rotationTools && (
+          {["rotate", "spin"].includes(value.type) && (
             <>
               <small>旋转中心：相对首个顶层作用部件原点的局部 XYZ 偏移；多选部件共用此轴心。</small>
               <div className="part-motion-row">

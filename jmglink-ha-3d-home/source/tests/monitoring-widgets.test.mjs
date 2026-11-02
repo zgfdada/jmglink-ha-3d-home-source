@@ -24,3 +24,18 @@ test('offline refresh targets the cache explicitly and independent consumables d
  const h=harness(code,e);const button=h.nodes().find(n=>n.className==='icon-button');h.update();assert.equal(h.nodes().find(n=>n.className==='icon-button'),button,'unchanged HA snapshots must not interrupt a click');await button.onclick();assert.deepEqual(h.calls[0],['refresh',{},'sensor.cache']);assert.match(h.text(),/正在等待/);e[0].state='3 台';h.update();assert.match(h.text(),/统计已更新/);await h.nodes().find(n=>n.className==='icon-button').onclick();assert.match(h.text(),/统计无变化/);
  const supplies=harness(consumablesWidgetCode(settings),e);assert.match(supplies.text(),/待补充耗材/);assert.doesNotMatch(supplies.text(),/离线设备统计|手动更新/);
 });
+
+
+test('battery and detergent icons track remaining level and color through live entity updates',()=>{
+ const settings={master:'binary_sensor.show',rules:[{name:'门锁电池',entity:'sensor.battery',condition:'binary_sensor.low'},{name:'洗涤剂',entity:'sensor.detergent',condition:'binary_sensor.low'}]};
+ const entities=[{entityId:settings.master,state:'on'},{entityId:'binary_sensor.low',state:'on'},{entityId:'sensor.battery',state:'49',attributes:{device_class:'battery',unit_of_measurement:'%'}},{entityId:'sensor.detergent',state:'Low',attributes:{}}];
+ const h=harness(consumablesWidgetCode(settings),entities);
+ assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.width,'49%');
+ assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.background,'hsl(58.8 75% 45%)');
+ assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.height,'20%');
+ entities[2].state='100';entities[3].state='0';h.update();
+ assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.width,'100%');
+ assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.background,'hsl(120 75% 45%)');
+ assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.background,'hsl(0 75% 45%)');
+ entities[2].state='unavailable';h.update();assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.background,'#94a3b8');
+});

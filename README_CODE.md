@@ -721,3 +721,10 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 旋转辅助工具嵌入右侧 MotionEffectFields 的局部轴配置下方，取消重复的角度／轴心数值输入、快捷角度及退出试转按钮。目标角度滑块同步 effect.to，校验预览恢复按条件运行；隐藏辅助轴不影响角度调整。模型 picking 传递 Ctrl／Meta 修饰键，`model-part-selection.js` 统一非破坏式选择集合计算，preview 为所有已选目标创建独立 BoxHelper 并释放。保存规则清空 draft／部件选择／验证与试转状态，规则列表恢复未选中。
 
 新增部件规则使用空 targets 草稿；选择部件后才允许校验和保存，不自动回退第一个模型网格。
+
+
+## 未发布交互修正
+
+设备浮层采用非模态外部 pointerdown 捕获监听，只关闭浮层、不 preventDefault 或 stopPropagation；不渲染全屏遮罩。卸载清理监听，浮层内部和独立播放器／选择列表保留交互。
+
+旋转辅助工具下方保留轴心 XYZ 数值输入；手动输入与拖动均写入同一 effect.pivot，沿用现有规则校验和保存流程。

@@ -38,8 +38,6 @@
 }
 .mode-home .mobile-presence-more { flex: 0 0 auto; }
 
-/* Device controls float over the scene; the backdrop consumes outside clicks. */
-.mode-home .device-control-backdrop { position:fixed; inset:0; z-index:39; background:transparent; pointer-events:auto; }
+/* Non-modal device panels only receive input inside their own bounds. */
 .mode-home .home-insight-panel.entity-selected { position:fixed; z-index:40; max-height:calc(100dvh - 3rem); overflow:auto; pointer-events:auto; }
 .mode-home .insight-detail-toolbar { grid-template-columns:minmax(0,1fr); }
-.mode-home .sidebar-backdrop { pointer-events:auto; cursor:default; }

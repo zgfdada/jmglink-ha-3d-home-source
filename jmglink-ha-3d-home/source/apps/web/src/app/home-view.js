@@ -1,3 +1,4 @@
+import { bindFloatingPanelDismiss } from "../domain/floating-panel-dismiss.js";
 import {CameraViewer} from '../components/camera-controls.jsx';
 import '../styles/mobile-development-menu.css';
 import {CameraLiveView} from './scene.js';
@@ -2516,6 +2517,16 @@ function On({ controls: t, entityCount: s, onChange: a }) {
     ],
   });
 }
+function useFloatingPanelDismiss(active, onClose) {
+  const panel = l.useRef(null);
+  const close = l.useRef(onClose);
+  close.current = onClose;
+  l.useEffect(() => {
+    if (!active) return;
+    return bindFloatingPanelDismiss(document, () => panel.current, () => close.current());
+  }, [active]);
+  return panel;
+}
 function Wn({
   cameraRoom: t,
   entities: s,
@@ -2528,6 +2539,7 @@ function Wn({
   onClearSelected: v,
   onRunScene: k,
 }) {
+  const panelRef = useFloatingPanelDismiss(!!(h || t), v);
   const j = !!(h || t),
     z =
       (h == null ? void 0 : h.entityId) ??
@@ -2544,10 +2556,11 @@ function Wn({
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, [j, v]);
-  return e.jsxs(e.Fragment, {children:[j && e.jsx("div", {className:"device-control-backdrop", "aria-hidden":true,onClick:v}), e.jsx("aside", {
+  return e.jsxs(e.Fragment, {children:[e.jsx("aside", {
+    ref: panelRef,
     className: `home-insight-panel mode-${r} ${j ? "entity-selected" : ""} ${t ? "camera-room-selected" : ""}`,
     role: j ? "dialog" : undefined,
-    "aria-modal": j ? "true" : undefined,
+    "aria-modal": undefined,
     "aria-label": "设备与摄像头详情",
     children: e.jsxs(
       "div",
@@ -2994,6 +3007,7 @@ function Qn({
       },
       [k, Q, F],
     );
+  const sidebarRef = useFloatingPanelDismiss(Ve, () => {G(false);k(undefined);ie(undefined);});
   return e.jsxs("section", {
     className: `home-workspace ${t.floors.length > 1 && !sidebarHidden ? "has-floor-selector" : ""} theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
     children: [
@@ -3167,15 +3181,14 @@ function Qn({
             }),
         ],
       }),
-      Ve &&
-        e.jsx("div", { className: "sidebar-backdrop", "aria-hidden": "true", onClick: () => {G(false);k(undefined);ie(undefined);} }),
       e.jsxs(
         "aside",
         {
+          ref: sidebarRef,
           className: `home-sidebar ${Ve ? "open" : ""} ${B || L ? "entity-selected" : ""}`,
           "aria-hidden": !Ve,
           role: B || L ? "dialog" : undefined,
-          "aria-modal": B || L ? "true" : undefined,
+          "aria-modal": undefined,
           onKeyDown: event => {if(event.key === "Escape"){G(false);k(undefined);ie(undefined);}},
           children: [
             e.jsxs("div", {
