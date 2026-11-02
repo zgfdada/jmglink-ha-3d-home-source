@@ -9,6 +9,7 @@ import {resolveSolarDirection} from '../../../../packages/schema/src/solar-direc
 import {resolveMoonlight} from '../../../../packages/schema/src/moonlight.js';
 import {haConnectionNotice} from '../domain/ha-connection-notice.js';
 import NorthDirectionControl from '../components/north-direction-control.jsx';
+import MoonlightStatus from '../components/moonlight-status.jsx';
 import {readCelestialSettings,storeCelestialSettings} from '../domain/celestial-light-settings.js';
 import { PublishedSidebar, SidebarVisibilityToggle } from "./sidebar-development/renderer.jsx";
 /**
@@ -3185,7 +3186,7 @@ function Qn({
             e.jsx(NorthDirectionControl, {value:northAngle,onChange:value=>setNorthPreview({projectId:t.id,value}),getProject:()=>Se.getState().project,saveProject:async project=>{const saved=await P(project);setNorthPreview(null);return saved;}}),
             e.jsx("p", {children: "自动模式跟随 HA 太阳高度与方位，结合户型北向计算日照；日落后关闭日光投影。手动仅调明暗，不操作真实灯具；刷新后恢复自动。"}),
             e.jsx("p", {children: (() => {const sun = resolveSolarDirection(s, northAngle); return sun.available ? `太阳方位 ${sun.azimuth.toFixed(1)}° · 高度 ${sun.elevation.toFixed(1)}° · 户型北向 ${northAngle}°` : "太阳角度数据不可用，暂用固定方向照明。";})()})
-            ,e.jsx("p", {children: (() => {const moon = resolveMoonlight(s, northAngle, solarClock); return moon.available ? `月亮方位 ${moon.azimuth.toFixed(1)}° · 高度 ${moon.elevation.toFixed(1)}° · 照亮比例 ${moon.illumination.toFixed(1)}% · ${moon.active ? "月光已启用" : "月光未启用（白天或月亮未升起）"}` : "月光数据不可用或已过期，不生成月光投影。";})()})
+            ,e.jsx(MoonlightStatus, {moon:resolveMoonlight(s,northAngle,solarClock),connection:i,intensity:celestialSettings.moonIntensity})
           ]}), voiceAssistant]}),
           vs &&
             e.jsx(Wn, {

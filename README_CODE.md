@@ -8,6 +8,8 @@
 
 ### 月光与离线状态
 
+`resolveMoonlight` 的 `reason` 区分 missing/incomplete/unavailable/invalid/stale/sun_unavailable/daytime/below_horizon/unlit/active，不改变原始光强与失效关闭策略。`domain/moonlight-notice.js` 将状态映射到中文说明，连接中断／同步优先，不把 HA 离线误判成未安装。`components/moonlight-status.jsx` 仅在环境光面板内渲染提示；missing 提供固定 Lunar Phase 安装文档链接，零增益另提示关闭。`moonlight-notice.test.mjs` 覆盖分类、正常状态、链接与连接优先级。
+
 `packages/schema/src/moonlight.js` 读取 Lunar Phase 主实体同一组 `moon_azimuth_deg`、`moon_altitude_deg`、`illumination_fraction`（0–100%），复用北向换算；不拼接不同地点的独立传感器。高度大于 0°、太阳低于地平线时才启用，至太阳 -6° 平滑增亮。强度为 `0.18 × 照亮比例 × sqrt(sin(月亮高度)) × 夜间系数`，投影再乘 0.35，以可辨识的弱冷光表现，非物理照度模拟。超过 10 分钟未更新／无效值则关闭月光。`liveSubscriptions.js` 自动订阅月亮主实体，复用现有 directionalLight 和阴影贴图，不新增一套阴影贴图。
 
 隐藏屋顶的 `colorWrite=false` 必须在描边材质替换阶段同样受尊重；`N` 将其描边材质设为不可见，防止普通视图不显示但描边 pass 填满屋顶。`moonlight.test.mjs` 包含该回归。
