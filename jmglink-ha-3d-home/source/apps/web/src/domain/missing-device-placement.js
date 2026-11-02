@@ -21,6 +21,7 @@ export function replaceDevicePlacement(placement, entity, presentation, kind) {
     name: entity.deviceDisplayName || entity.name,
     deviceId: entity.deviceId,
     deviceTemplateId: entity.deviceTemplateId,
+    deviceBindingId: entity.deviceBindingId,
     kind,
     modelId: presentation.modelId,
     customModel: presentation.customModel,

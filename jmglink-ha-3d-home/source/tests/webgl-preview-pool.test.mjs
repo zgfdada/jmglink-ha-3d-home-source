@@ -6,6 +6,20 @@ import {
   modelPreviewSignature,
 } from "../apps/web/src/domain/webgl-preview-pool.js";
 
+test("only one background thumbnail runs and interactive previews take the next free slot",async()=>{
+  const pool=createWebglPreviewPool(),started=[];
+  const a=pool.request(()=>started.push('thumb1'),undefined,{background:true});
+  const b=pool.request(()=>started.push('thumb2'),undefined,{background:true});
+  const live=pool.request(()=>started.push('live'));
+  const live2=pool.request(()=>started.push('live2'));
+  assert.deepEqual(started,['thumb1','live']);
+  a();await Promise.resolve();
+  assert.deepEqual(started,['thumb1','live','live2']);
+  live();await Promise.resolve();
+  assert.deepEqual(started,['thumb1','live','live2','thumb2']);
+  b();live2();assert.deepEqual(pool.status(),{active:0,waiting:0});
+});
+
 test("preview contexts are capped and queued previews receive released slots", async () => {
   const pool = createWebglPreviewPool(2);
   const started = [];
@@ -129,6 +143,6 @@ test("closing the device development center rebuilds only the home scene", async
   assert.doesNotMatch(app, /legacyDeviceCenter/);
   assert.match(home, /!sceneSuspended && e\.jsx\(Qs, \{\s*key: sceneResumeKey/);
   assert.match(app, /sceneSuspended: nextCenterOpen \|\| Boolean\(sidebarCenterOpen\)/);
-  assert.match(preview, /renderer\.forceContextLoss\(\)/);
+  assert.match(preview, /renderer\??\.forceContextLoss\(\)/);
   assert.match(preview, /webglPreviewPool\.request/);
 });

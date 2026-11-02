@@ -2343,7 +2343,7 @@ function En({ users: t }) {
   return t.length
     ? e.jsx("section", {
         className: "home-mobile-presence",
-        "aria-label": "在家手机用户",
+        "aria-label": "在家人员与跟踪器",
         children: e.jsxs("div", {
           className: "mobile-presence-list",
           children: [
@@ -2538,8 +2538,16 @@ function Wn({
         : t.cameraEntityIds
             .map((N) => s[N])
             .filter((N) => !!(N && N.domain === "camera"))) ?? [];
-  return e.jsx("aside", {
+  l.useEffect(() => {
+    if (!j) return;
+    const escape = event => { if(event.key === "Escape" && !document.querySelector("dialog[open]")) v(); };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [j, v]);
+  return e.jsxs(e.Fragment, {children:[j && e.jsx("div", {className:"device-control-backdrop", "aria-hidden":true,onClick:v}), e.jsx("aside", {
     className: `home-insight-panel mode-${r} ${j ? "entity-selected" : ""} ${t ? "camera-room-selected" : ""}`,
+    role: j ? "dialog" : undefined,
+    "aria-modal": j ? "true" : undefined,
     "aria-label": "设备与摄像头详情",
     children: e.jsxs(
       "div",
@@ -2561,12 +2569,6 @@ function Wn({
                     e.jsxs("div", {
                       className: "insight-detail-toolbar",
                       children: [
-                        e.jsx("button", {
-                          onClick: v,
-                          "aria-label": "返回全屋统计",
-                          title: "返回全屋统计",
-                          children: e.jsx(tt, { size: 16 }),
-                        }),
                         e.jsxs("div", {
                           children: [
                             e.jsx("small", { children: "已选设备" }),
@@ -2590,12 +2592,6 @@ function Wn({
                     e.jsxs("div", {
                       className: "insight-detail-toolbar",
                       children: [
-                        e.jsx("button", {
-                          onClick: v,
-                          "aria-label": "返回全屋统计",
-                          title: "返回全屋统计",
-                          children: e.jsx(tt, { size: 16 }),
-                        }),
                         e.jsxs("div", {
                           children: [
                             e.jsxs("small", {
@@ -2622,7 +2618,7 @@ function Wn({
       },
       z,
     ),
-  });
+  })]});
 }
 function Qn({
   project: t,
@@ -3172,19 +3168,22 @@ function Qn({
         ],
       }),
       Ve &&
-        e.jsx("div", { className: "sidebar-backdrop", "aria-hidden": "true" }),
+        e.jsx("div", { className: "sidebar-backdrop", "aria-hidden": "true", onClick: () => {G(false);k(undefined);ie(undefined);} }),
       e.jsxs(
         "aside",
         {
           className: `home-sidebar ${Ve ? "open" : ""} ${B || L ? "entity-selected" : ""}`,
           "aria-hidden": !Ve,
+          role: B || L ? "dialog" : undefined,
+          "aria-modal": B || L ? "true" : undefined,
+          onKeyDown: event => {if(event.key === "Escape"){G(false);k(undefined);ie(undefined);}},
           children: [
             e.jsxs("div", {
               className: "sidebar-heading",
               children: [
                 e.jsxs("div", {
                   children: [
-                    (B || L) &&
+                    false &&
                       e.jsx("button", {
                         className: "sidebar-back",
                         onClick: () => {
@@ -3223,7 +3222,7 @@ function Qn({
                         i != null && i.connected ? "实时" : "已同步",
                       ],
                     }),
-                    e.jsx("button", {
+                    !(B || L) && e.jsx("button", {
                       className: "sidebar-close",
                       onClick: () => {
                         (G(!1), ie(void 0));

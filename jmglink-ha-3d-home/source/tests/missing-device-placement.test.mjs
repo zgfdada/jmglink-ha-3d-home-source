@@ -8,6 +8,16 @@ const old = { id: "placed", entityId: "switch.old", deviceId: "washer", position
 const current = { entityId: "switch.new", deviceId: "washer", name: "洗衣机", domain: "switch", deviceTemplateId: "custom.washer" };
 const entities = { [current.entityId]: current };
 
+test("复制的窗帘替换实体保留轨道与位置并清除旧项目绑定身份", () => {
+  const copied = {...old,kind:"cover",modelId:"cover.sheer",deviceBindingId:"old-binding",curtainTrack:{points:[[0,0],[2,0]],height:2.5}};
+  const next = replaceDevicePlacement(copied,{entityId:"cover.new",domain:"cover",name:"纱帘",deviceId:"new-motor"},{modelId:"cover.sheer"},"cover");
+  assert.equal(next.entityId,"cover.new");
+  assert.deepEqual(next.curtainTrack,copied.curtainTrack);
+  assert.deepEqual(next.position,copied.position);
+  assert.equal(next.deviceBindingId,undefined);
+  assert.equal(next.deviceId,"new-motor");
+});
+
 test("在线时标记失效摆放，离线和 unknown/unavailable 不误报", () => {
   const floor = { devices: [old] };
   assert.deepEqual(missingDevicePlacements(floor, entities, false), []);

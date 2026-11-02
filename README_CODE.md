@@ -6,6 +6,10 @@
 
 `door-sensor-binding.jsx` 采用单个输入框加内嵌下拉按钮的 combobox；结果 listbox 在面板内展开并限高滚动，名称与实体 ID 分行换行，避免原生弹出菜单越界截字。支持方向键、Enter、Escape、失焦关闭，搜索无结果不清除当前绑定；切换门时重置搜索。候选来自完整 HA 实体表，接受 sensor／binary_sensor，不复用设备库辅助实体过滤。`domain/door-sensor.js` 提供候选筛选与共享物理开合判断，2D 编辑器和 3D 场景共用。中文门状态支持带童锁／反锁括号说明的枚举，但“已开锁”和“解除门虚掩”不表示物理开门；保留历史英文门磁状态兼容。绑定不调用 HA 控制服务。3D 门扇使用不透明且写入深度的实体材质，移除绑定后额外添加的 Edges 线框，避免透墙悬空描边；门磁状态仍驱动开合，窗户玻璃不受影响。`door-sensor.test.mjs` 覆盖搜索、类型兼容和状态；`scripts/verify-door-sensor.mjs` 提供纯内存隔离页面验收，不写用户数据。
 
+## 自定义窗帘轨道
+
+`packages/schema/src/curtain-track.js` 定义实例级 `curtainTrack`，统一轨道几何及 HA 开度到弧长区间的映射。`curtain-track-editor.jsx` 在现有 2D SVG 上编辑轨道，有效修改通过 `curtain-placement.js` 自动写项目，相同或无效路径不写入；`curtain-model.js` 创建真实米制轨道与帘布，`curtain-model.jsx` 更新缓冲和请求动画帧。内置 `cover.curtain`（遮光）和 `cover.sheer`（纱帘）共用轨道，分别使用不透明／高透光材质。取消整体缩放入口，新轨道不乘设备 scale；旧 scale 仅用于物理尺寸兼容换算。配置、数据生命周期与测试见[窗帘轨道编辑](docs/窗帘轨道编辑.md)。
+
 ## 动效资源库
 
 实时状态过滤由 `ha/boundEntityFilter.js` 收集当前户型已放置／房间绑定实体、同设备实体及对应平台绑定中的 selectedEntityIds、extraEntityIds、capabilityBindings 和 capabilityMappings。额外实体保留原归属，不扩大到额外实体所属设备的全部实体。主页在家标签使用的 person／device_tracker 始终独立加入实时范围，删除模型或项目后仍更新。设备平台写入成功后重算过滤范围；HA 状态事件仍使用服务端 150ms、前端 120ms 合批推送，不依赖面板轮询。面板用 `deviceEntities` 的实时值覆盖平台快照，预览使用关联实体全集。`motion-state-options.js` 展示中文状态及原始值，规则保存并匹配原始值，例如 `not_home`。
@@ -61,7 +65,7 @@ JMGLink HA 3D Home Custom 是一个由 Fastify 后端、React 前端、Three.js 
 
 当前源码基于官方 `0.1.5` 镜像中的 JavaScript 运行产物恢复。恢复工程已经可以安装依赖、运行测试、构建前端并生成 Docker/Add-on 镜像，但无法还原原始变量名、注释、TypeScript 类型和完整组件边界。因此开发时应优先把新逻辑提取到具名模块，逐步减少对大型恢复文件的直接修改。
 
-设备开发中心的模型缩略图共用 `domain/webgl-preview-pool.js`，最多同时占用 6 个 WebGL context。 静态缩略图在模型加载完成并渲染两帧后缓存 PNG 图片，释放 renderer 和队列名额；带动效的缩略图与大图保持实时交互。release 只在微任务中交接，等待当前卸载批次取消失效任务；初始化前检查 DOM 仍连接，失败任务也归还名额。打开预览弹层不卸载缩略图。缩略图离开视口、切换数据或卸载时须释放渲染器并显式丢弃 context；关闭开发中心时只重建主页场景画布，不重置主页交互状态。排查“主页模型偶发空白”时先核对 context 数量和 `webglcontextlost`，不要直接改动用户户型数据。
+设备开发中心的模型缩略图共用 `domain/webgl-preview-pool.js`，最多同时占用 2 个 WebGL context，后台静态缩略图最多一个。 静态缩略图在模型加载完成并渲染两帧后缓存 PNG 图片，释放 renderer 和队列名额；带动效的缩略图与大图保持实时交互。release 只在微任务中交接，等待当前卸载批次取消失效任务；初始化前检查 DOM 仍连接，失败任务也归还名额。打开交互预览时优先分配预览名额，静态缩略图成图后不再占用 context。缩略图离开视口、切换数据或卸载时须释放渲染器并显式丢弃 context；关闭开发中心时只重建主页场景画布，不重置主页交互状态。排查“主页模型偶发空白”时先核对 context 数量和 `webglcontextlost`，不要直接改动用户户型数据。
 
 能力状态将连接状态和实体取值分开判断：`unknown` 为状态未知，`unavailable` 为实体不可用，两者均不解除映射；仅全局连接断开显示 HA 离线。注册表同步读取实体的 `platform/translation_key`，通过 `frontend/get_translations` 获取 `zh-Hans` 的 `entity` 与 `entity_component` 词典，按集成实体、设备类别、实体域默认翻译的顺序生成 `stateLabels`。同连接及相同集成集合缓存 1 小时，失败时短暂缓存并降级，不能阻断设备发现；重新连接会重新获取。只为当前状态和 `options` 生成标签，不依据整份词典增加设备支持的选项；离线历史保留已取得标签。
 
@@ -690,3 +694,20 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 ## 多架构发布构建
 
 Docker 构建阶段使用 BUILDPLATFORM 原生执行通用 JS 测试、Vite 打包和产物整理；运行阶段保留目标架构 Node 镜像。生产锁文件的 cpu／os 限定依赖及 .node 扩展会阻止发布，未来引入原生依赖时必须增加目标平台安装。正式发布分别验收 AMD64／ARM64 运行镜像。测试 VM 的 2 秒保护期限用于避免高负载或模拟调度误报，不改变浏览器 Worker 的实际运行期限。
+
+## 模型解码与预览所有权
+
+`domain/model-assets.js` 提供单活动解码队列、最新导入任务标记与引用计数资源。编辑器持有源资源，实例共享几何／纹理但克隆节点与材质（含骨骼）；最后引用才统一 dispose 并关闭自有 Bitmap。主页上传模型也通过该队列取消旧请求和清理过期结果。`webgl-preview-pool.js` 默认最多两个上下文，后台缩略图最多一个，交互队列优先。缩略图成图、组件卸载、紧凑预览移出可视区、标签页隐藏或失败时释放；暂停动画仍保留交互上下文。资源销毁与 renderer 销毁是不同层次。详细场景表、尚未实施的优化及人工验收见 [资源生命周期](docs/模型加载与预览资源.md)。
+
+## 主页在家人员与跟踪器
+顶部居中横排显示 home 状态的 person，以及 home 状态且 device_class=phone、source_type=gps 或名称／实体 ID 符合手机关键词的 device_tracker。人员优先、各组中文名称排序，名称去除手机关键词及分隔符后去重；最多三个，其余显示 +数量。不是所有跟踪器都会显示，也不以自定义设备项目是否存在为条件。布局由 home-view-controls.css 覆盖旧的左侧定位。
+
+## 设备绑定替换与详情浮层
+
+`device-binding-picker.jsx` 将摆放摘要中的名称改为同页搜索选择器，复用 `replacementCandidates` 排除已占用实体；替换保留空间数据与轨道，并更新／移除旧 `deviceBindingId`，不向 HA 写归属。`home-view.js` 的内置和自定义设备共用详情浮层与外部点击遮罩，遮罩消费点击避免触发底层场景设备；手机设备面板复用外部关闭，去掉详情返回按钮。
+
+## 项目保存诊断
+
+保存 API 记录 project-save-received / project-save-phase / project-save-rejected / project-save-request-error 事件，按 Fastify reqId 关联；阶段覆盖校验、备份、项目落盘、当前项目落盘、监听器通知和广播返回，不记录请求正文或连接配置。前端保存请求设 15 秒超时，展示 API error 内容；失败后保留编辑态，按原有 900ms 间隔继续自动重试。`SaveErrorToast` 独立限频：首次立即提示，4.5 秒后淡出移除，所有保存错误共用 10 秒提示间隔；重试开始清除按钮错误不会提前移除气泡。
+
+`project-save-error.js` 在编辑器保存失败入口统一把重复设备内部 ID 映射为当前实时实体名称，供按钮、面板与气泡共同展示。名称缺失依次回退摆放名称、实体 ID；其他错误不改写，避免误吞网络或校验原因。

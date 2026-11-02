@@ -1,6 +1,7 @@
-// Keep thumbnail renderers below the browser's usual per-page WebGL context limit.
-export function createWebglPreviewPool(limit = 6) {
+// Two live previews preserve side-by-side motion editing; only one background thumbnail.
+export function createWebglPreviewPool(limit = 2) {
   let active = 0;
+  let backgroundActive = 0;
   const waiting = [];
   let scheduled = false;
   const scheduleNext = () => {
@@ -14,32 +15,38 @@ export function createWebglPreviewPool(limit = 6) {
 
   function grantNext() {
     while (active < limit && waiting.length) {
-      const ticket = waiting.shift();
+      const index = waiting.findIndex(ticket => !ticket.background || backgroundActive < 1);
+      if(index < 0) break;
+      const [ticket] = waiting.splice(index, 1);
       if (ticket.cancelled) continue;
       ticket.granted = true;
       active += 1;
+      if(ticket.background)backgroundActive++;
       try {
         if (ticket.onGranted() === false) {
           ticket.cancelled = true;
           active -= 1;
+          if(ticket.background)backgroundActive--;
         }
       } catch (error) {
         ticket.cancelled = true;
         active -= 1;
+        if(ticket.background)backgroundActive--;
         ticket.onError?.(error);
       }
     }
   }
 
   return {
-    request(onGranted, onError) {
-      const ticket = { onGranted, onError, granted: false, cancelled: false };
+    request(onGranted, onError, {background = false} = {}) {
+      const ticket = { onGranted, onError, background, granted: false, cancelled: false };
       waiting.push(ticket);
+      waiting.sort((a,b)=>Number(a.background)-Number(b.background));
       if (!scheduled) grantNext();
       return () => {
         if (ticket.cancelled) return;
         ticket.cancelled = true;
-        if (ticket.granted) active -= 1;
+        if (ticket.granted) {active -= 1;if(ticket.background)backgroundActive--;}
         else {
           const index = waiting.indexOf(ticket);
           if (index !== -1) waiting.splice(index, 1);

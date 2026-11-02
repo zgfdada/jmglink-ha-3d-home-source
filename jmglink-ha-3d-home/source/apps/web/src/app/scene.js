@@ -5,6 +5,8 @@ import {createPartMotionEngine} from "../domain/part-motion-engine.js";
 import {motionCapabilityValues} from "../../../../packages/schema/src/part-motion.js";
 import {deviceCapabilityEntities} from '../../../../packages/schema/src/associated-entities.js';
 import CameraModel from '../components/camera-model.jsx';
+import CurtainTrackModel from '../components/curtain-model.jsx';
+import {resolveCurtainTrack} from '../../../../packages/schema/src/curtain-track.js';
 import CameraControlPanel from '../components/camera-controls.jsx';
 import {CAMERA_MODELS,cameraModelDefinition} from '../../../../packages/schema/src/camera-models.js';
 import {resolveLightChromaticity, mixLightColors} from "../domain/light-color.js";
@@ -20,7 +22,7 @@ import { boundPanelStates } from "../domain/device-panel.js";
 import { c as A, u as Ie, p as Xt, R as pt, f as qs } from "./app.js";
 import { a as L } from "../vendor/react.js";
 import * as Xa from "three";
-import { GLTFLoader as za } from "three/examples/jsm/loaders/GLTFLoader.js";
+import {loadModelAsset} from "../domain/model-assets.js";
 import { normalizeFurnitureElevation } from "../domain/furniture.js";
 import { createCabinetBodyGeometry } from "../domain/cabinet-body-geometry.js";
 import { createStableRoundedBoxGeometry, STABLE_SURFACE_EDGE_PROPS } from "../domain/stable-surface-geometry.js";
@@ -991,8 +993,16 @@ const rs = [
     {
       id: "cover.curtain",
       kind: "cover",
-      label: "窗帘",
-      description: "轨道与左右帘布",
+      label: "遮光窗帘",
+      description: "低透光遮光布，沿轨道连续开合",
+      placement: "wall",
+      defaultHeight: 1.12,
+    },
+    {
+      id: "cover.sheer",
+      kind: "cover",
+      label: "纱帘",
+      description: "高透光纱布，沿轨道连续开合",
       placement: "wall",
       defaultHeight: 1.12,
     },
@@ -1370,7 +1380,7 @@ function is(e, s = e ? bt(e) : "custom") {
       : (e == null ? void 0 : e.domain) === "cover" || s === "cover"
         ? /(百叶|卷帘|blind|shade|roller)/i.test(r)
           ? "cover.blind"
-          : "cover.curtain"
+          : /(纱|sheer|voile)/i.test(r) ? "cover.sheer" : "cover.curtain"
         : (e == null ? void 0 : e.domain) === "climate" || s === "climate"
           ? /(中央空调|风管机|多联机|central|duct|cassette|vent|vrf)/i.test(r)
             ? "climate.central_ac"
@@ -5717,20 +5727,19 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
     invalidate();
   }, [s, unavailable, motionRulesKey, invalidate]);
   L.useEffect(() => {
-    let o = !0,
-      n;
-    new za().load(
-      e.source.url,
-      (i) => {
+    let o = !0, n, assetLease;
+    const controller = new AbortController();
+    r(undefined);
+    const onLoaded = () => {
         if (!o) return;
-        n = i.scene.clone(!0);
+        n = assetLease.scene;
         n.traverse((part) => {
           if (!part.isMesh || !part.material) return;
           const prepareMaterial = (material) => {
             const configured = e.projectAppearance
               ? overrideModelMaterial(material, e)
               : material;
-            return configured === material ? material.clone() : configured;
+            return configured;
           };
           part.material = Array.isArray(part.material)
             ? part.material.map(prepareMaterial)
@@ -5779,20 +5788,25 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
           }
         }
         r(n);
-      },
-      void 0,
-      () => r(void 0),
-    );
+    };
+    void (async () => {
+      const asset=await loadModelAsset(e.source.url,{signal:controller.signal});
+      try {
+        if(!o || controller.signal.aborted)return;
+        assetLease=asset.instantiate();
+        onLoaded();
+      } finally {asset.release();}
+    })().catch(error=>{
+      assetLease?.release();assetLease=null;
+      if(o && error.name!=="AbortError")r(undefined);
+    });
     return () => {
       o = !1;
       pulsator.current = null;
       indicator.current = null;
-      n?.traverse((i) => {
-        i.geometry?.dispose?.();
-        Array.isArray(i.material)
-          ? i.material.forEach((a) => a.dispose?.())
-          : i.material?.dispose?.();
-      });
+      controller.abort();
+      assetLease?.release();
+      assetLease=null;
     };
   }, [
     e.source.url,
@@ -6514,15 +6528,16 @@ function si({
       ],
     });
   }
-  if (s === "cover.curtain") {
+  if ((["cover.curtain", "cover.sheer"].includes(s))) {
     const p = V.clamp(N / 100, 0, 1),
       v = (z = 0.82) =>
         w
           ? t.jsx("meshToonMaterial", {
               color: $(k, "#ffffff", 0.08),
               side: J,
-              transparent: !0,
-              opacity: i ? 0.24 : z,
+              transparent: s === "cover.sheer" || i,
+              depthWrite: s !== "cover.sheer" && !i,
+              opacity: i ? 0.24 : s === "cover.sheer" ? 0.38 : 1,
             })
           : t.jsx("meshPhysicalMaterial", {
               color: $(k, u ? "#edf5ff" : "#ffffff", u ? 0.18 : 0.08),
@@ -6531,8 +6546,9 @@ function si({
               metalness: 0.005,
               clearcoat: 0.08,
               clearcoatRoughness: 0.92,
-              transparent: !0,
-              opacity: i ? 0.26 : z,
+              transparent: s === "cover.sheer" || i,
+              depthWrite: s !== "cover.sheer" && !i,
+              opacity: i ? 0.26 : s === "cover.sheer" ? 0.38 : 1,
             }),
       P = w
         ? t.jsx("meshToonMaterial", {
@@ -8016,7 +8032,7 @@ function Es(e) {
         ? 0.24
         : e === "light.wall_sconce"
           ? 0.22
-          : e === "light.strip" || e === "cover.curtain" || e === "cover.blind"
+          : e === "light.strip" || (["cover.curtain", "cover.sheer"].includes(e)) || e === "cover.blind"
             ? 0.36
             : [
                   "light.floor_lamp",
@@ -8049,7 +8065,7 @@ function Ns(e, s) {
     ? e.startsWith("camera.")
       ? [0.94, 0.94, 0.94]
       : e === "light.strip" ||
-          e === "cover.curtain" ||
+          (["cover.curtain", "cover.sheer"].includes(e)) ||
           e === "cover.blind" ||
           e === "media_player.tv" ||
           e === "climate.central_ac"
@@ -8083,7 +8099,7 @@ function Ns(e, s) {
                       ? [1.1, 1.1, 1.1]
                       : [1.12, 1.12, 1.12]
     : e === "light.strip" ||
-        e === "cover.curtain" ||
+        (["cover.curtain", "cover.sheer"].includes(e)) ||
         e === "cover.blind" ||
         e === "media_player.tv" ||
         e === "climate.central_ac"
@@ -8481,10 +8497,11 @@ const ii = L.memo(function ({
         a,
         o,
       );
+    const curtainTrack = (["cover.curtain", "cover.sheer"].includes(C)) && !configuredModel?.source ? resolveCurtainTrack(s, a) : null;
     return t.jsxs("group", {
-      position: ye,
-      rotation: K,
-      scale: ee,
+      position: curtainTrack ? [s.position[0], a - curtainTrack.drop, s.position[2]] : ye,
+      rotation: curtainTrack ? [0, s.rotation?.[1] || 0, 0] : K,
+      scale: curtainTrack ? [1, 1, 1] : ee,
       onClick: (ae) => {
         (ae.stopPropagation(),
           Xt(),
@@ -8521,6 +8538,8 @@ const ii = L.memo(function ({
                     }
                   : null,
               })
+            : curtainTrack
+              ? t.jsx(CurtainTrackModel, {track:curtainTrack,position:j,unavailable:m})
             : O
               ? t.jsx($s, {
                   modelId: C,

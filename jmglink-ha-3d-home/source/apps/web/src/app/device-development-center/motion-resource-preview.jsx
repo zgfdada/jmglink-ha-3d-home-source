@@ -3,6 +3,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { createPartMotionEngine } from "../../domain/part-motion-engine.js";
 import { webglPreviewPool } from "../../domain/webgl-preview-pool.js";
+import {disposePreviewObject} from "../../domain/webgl-recovery.js";
+import {reportClientError} from "../../domain/browser-recovery.js";
 import { motionResourceRule } from "../../../../../packages/schema/src/motion-library.js";
 
 export default function MotionResourcePreview({
@@ -15,33 +17,47 @@ export default function MotionResourcePreview({
     state = React.useRef({ resource, active, playing,onValidation });
   state.current = { resource, active, playing,onValidation };
   const [error, setError] = React.useState("");
+  const [pageVisible,setPageVisible]=React.useState(()=>document.visibilityState!=="hidden");
+  React.useEffect(()=>{const update=()=>setPageVisible(document.visibilityState!=="hidden");document.addEventListener('visibilitychange',update);return()=>document.removeEventListener('visibilitychange',update);},[]);
   React.useEffect(() => {
+    if(!pageVisible)return;
+    setError("");
     let disposed = false,
       cleanup = () => {};
     let release = () => {};
+    const fail=error=>{if(disposed)return;reportClientError(error,'center');setError('动效预览已停止，请重新打开；配置已保留。');queueMicrotask(()=>{cleanup();cleanup=()=>{};release();});};
     release = webglPreviewPool.request(() => {
       if (disposed || !host.current?.isConnected) return false;
       try {
         cleanup = start();
       } catch (error) {
-        setError(`3D 预览不可用：${error.message}`);
-        queueMicrotask(() => release());
+        fail(error);
       }
     });
     function start() {
-      const renderer = new THREE.WebGLRenderer({
+      let renderer,scene,controls,observer,engine=null,frame,live=true;
+      const lost=event=>{event.preventDefault();fail(new Error('WebGL context lost'));};
+      const stop=()=>{
+        if(!live)return;live=false;cancelAnimationFrame(frame);observer?.disconnect();controls?.dispose();engine?.dispose();
+        if(scene)disposePreviewObject(scene);
+        renderer?.domElement.removeEventListener('webglcontextlost',lost);
+        renderer?.dispose();renderer?.forceContextLoss();renderer?.domElement.remove();
+      };
+      try {
+      renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
       });
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.domElement.addEventListener('webglcontextlost',lost);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       let shaderError='',lastValidation='';
       renderer.debug.onShaderError=(gl,program,vertex,fragment)=>{shaderError=('着色器编译失败：'+(gl.getShaderInfoLog(fragment)||gl.getShaderInfoLog(vertex)||gl.getProgramInfoLog(program)||'请检查 GLSL 代码')).slice(0,1500);};
       host.current.appendChild(renderer.domElement);
-      const scene = new THREE.Scene(),
-        camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+      scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
       camera.position.set(3, 2.2, 3.4);
-      const controls = new OrbitControls(camera, renderer.domElement);
+      controls = new OrbitControls(camera, renderer.domElement);
       controls.target.set(0, 0.1, 0);
       controls.enableDamping = true;
       controls.enablePan = false;
@@ -67,12 +83,11 @@ export default function MotionResourcePreview({
       const grid = new THREE.GridHelper(4, 16, 0xb8cce4, 0xdce7f3);
       grid.position.y = -0.65;
       scene.add(grid);
-      let engine = null,
-        key = "",
-        frame,
+      let key = "",
         last = 0,
         time = 0;
-      const observer = new ResizeObserver(() => {
+      observer = new ResizeObserver(() => {
+        if(!live||!host.current?.isConnected)return;
         const { width, height } = host.current.getBoundingClientRect();
         renderer.setSize(Math.max(width, 1), Math.max(height, 1));
         camera.aspect = width / Math.max(height, 1);
@@ -80,8 +95,8 @@ export default function MotionResourcePreview({
       });
       observer.observe(host.current);
       const tick = (now) => {
-        if (disposed) return;
-        frame = requestAnimationFrame(tick);
+        if (disposed || !live) return;
+        try {
         const dt = Math.min((now - last) / 1000 || 0, 0.1);
         last = now;
         const current = state.current;
@@ -112,31 +127,19 @@ export default function MotionResourcePreview({
         const validation=shaderError||codeState?.errors.join('；')||'';
         if(validation){if(lastValidation!==validation){setError(validation);current.onValidation?.({key:signature,error:validation});lastValidation=validation;}}
         else if(engine&&!codeState?.pending&&lastValidation!=='ok'){current.onValidation?.({key:signature,error:''});lastValidation='ok';setError('');}
+        frame=requestAnimationFrame(tick);
+        } catch(error){fail(error);}
       };
       frame = requestAnimationFrame(tick);
-      return () => {
-        cancelAnimationFrame(frame);
-        observer.disconnect();
-        controls.dispose();
-        engine?.dispose();
-        scene.traverse((n) => {
-          n.geometry?.dispose();
-          for (const material of Array.isArray(n.material)
-            ? n.material
-            : [n.material])
-            material?.dispose();
-        });
-        renderer.dispose();
-        renderer.forceContextLoss();
-        renderer.domElement.remove();
-      };
+      return stop;
+      } catch(error){stop();throw error;}
     }
     return () => {
       disposed = true;
       cleanup();
       release();
     };
-  }, []);
+  }, [pageVisible]);
   return (
     <div
       className="motion-resource-preview"

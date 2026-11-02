@@ -5,7 +5,7 @@ import { a as React } from "../../vendor/react.js";
 import * as THREE from "three";
 import {createCameraModel} from "../../domain/camera-model.js";
 import {cameraModelDefinition} from "../../../../../packages/schema/src/camera-models.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import {loadModelAsset} from "../../domain/model-assets.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import "../../styles/model-preview.css";
 import {
@@ -28,6 +28,7 @@ function disposeObject(root) {
 
 export default function ModelPreview({
   model,
+  preparedAsset,
   compact = false,
   animated = false,
   command,
@@ -40,6 +41,8 @@ export default function ModelPreview({
   const controlsApi = React.useRef(null);
   const [visible, setVisible] = React.useState(!compact);
   const [error, setError] = React.useState("");
+  const [pageVisible,setPageVisible]=React.useState(()=>document.visibilityState!=="hidden");
+  React.useEffect(()=>{const update=()=>setPageVisible(document.visibilityState!=="hidden");document.addEventListener('visibilitychange',update);return()=>document.removeEventListener('visibilitychange',update);},[]);
   const [thumbnail,setThumbnail]=React.useState(null);
   const [loading,setLoading]=React.useState(true);
   const modelRef = React.useRef(model);
@@ -60,8 +63,9 @@ export default function ModelPreview({
   }, [compact]);
 
   React.useEffect(() => {
-    if (!visible || !model || !container.current || thumbnailReady) return;
+    if (!visible || !pageVisible || !model || !container.current || thumbnailReady) return;
     let disposed = false;
+    const loadController = new AbortController();
     let disposeRenderer;
     let releaseSlot = () => {};
     setLoading(true);
@@ -70,9 +74,10 @@ export default function ModelPreview({
       if (disposed || !container.current?.isConnected) return false;
       disposeRenderer = startPreview(modelRef.current);
       if (!disposeRenderer) queueMicrotask(() => releaseSlot());
-    },error=>{reportClientError(error,'center');failPreview('模型预览初始化失败，请重新打开预览');});
+    },error=>{reportClientError(error,'center');failPreview('模型预览初始化失败，请重新打开预览');}, {background:staticThumbnail});
     return () => {
       disposed = true;
+      loadController.abort();
       disposeRenderer?.();
       disposeRenderer=undefined;
       releaseSlot();
@@ -84,25 +89,39 @@ export default function ModelPreview({
     let active = true;
     let modelReady=false,captured=false,readyFrames=0;
     let shaderIssue='',lastCodeStatus='';
-    let frame;
-    let renderer;
+    let frame, renderer, assetLease, scene, controls, resizeObserver, contextLost, down, pick;
+    let runtimeGlow=null, motionEngine=null, selectedBox=null;
+    const cleanup=()=>{
+      if(!active)return;
+      active=false;loadController.abort();cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();controls?.dispose();controlsApi.current=null;
+      renderer?.domElement.removeEventListener('webglcontextlost',contextLost);
+      renderer?.domElement.removeEventListener('pointerdown',down);
+      renderer?.domElement.removeEventListener('pointerup',pick);
+      motionEngine?.dispose();selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();
+      disposeRuntimeModelGlow(runtimeGlow);
+      assetLease?.release();assetLease=null;
+      if(scene)disposeObject(scene);
+      renderer?.dispose();renderer?.forceContextLoss();renderer?.domElement.remove();
+    };
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: !staticThumbnail, alpha: true });
     } catch {
       failPreview("当前环境无法启用 3D 预览");
       return;
     }
+    try {
     setError("");
-    const contextLost=event=>{event.preventDefault();reportClientError(new Error('WebGL context lost'),'center');failPreview('3D 预览资源已释放，请重新打开预览；动效配置已保留。');};
+    contextLost=event=>{event.preventDefault();reportClientError(new Error('WebGL context lost'),'center');failPreview('3D 预览资源已释放，请重新打开预览；动效配置已保留。');};
     renderer.domElement.addEventListener('webglcontextlost',contextLost);
     renderer.debug.onShaderError=(gl,program,vertex,fragment)=>{shaderIssue=('动效着色器编译失败：'+(gl.getShaderInfoLog(fragment)||gl.getShaderInfoLog(vertex)||'请检查代码')).slice(0,1200);};
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(staticThumbnail ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.replaceChildren(renderer.domElement);
-    const scene = new THREE.Scene();
+    scene = new THREE.Scene();
     scene.background = animated && compact ? null : new THREE.Color(0xf1f6fb);
     const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
-    const controls = new OrbitControls(camera, renderer.domElement);
+    controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI * 0.93;
     scene.add(new THREE.HemisphereLight(0xffffff, 0x697c96, 2.5));
@@ -110,12 +129,11 @@ export default function ModelPreview({
     light.position.set(2, 4, 3);
     scene.add(light);
     const root = new THREE.Group();
-    let runtimeGlow = null;
-    let motionEngine=null,motionRoot=null,motionSignature="",selectedBox=null,lastSelection=null,elapsed=0,lastFrame=performance.now();
+    let motionRoot=null,motionSignature="",lastSelection=null,elapsed=0,lastFrame=performance.now();
     const readyMotion=object=>{lastSelection=null;motionRoot=object;motionEngine=createPartMotionEngine(object,motionRef.current.rules);motionSignature=JSON.stringify(motionRef.current.rules);motionRef.current.onParts?.(motionEngine.parts);};
     const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let pointerStart=null;
-    const down=event=>{pointerStart=[event.clientX,event.clientY];};
-    const pick=event=>{if(!motionRoot||!pointerStart||Math.hypot(event.clientX-pointerStart[0],event.clientY-pointerStart[1])>5)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObject(motionRoot,true).find(h=>h.object.isMesh&&!h.object.userData.partMotionOverlay&&!h.object.parent?.userData.partMotionOverlay);if(!hit)return;const nodes=modelPartNodes(motionRoot);const path=[...nodes].find(([,n])=>n===hit.object)?.[0];if(motionRef.current.pathPicking){const target=nodes.get(motionRef.current.selectedPart);if(target)motionRef.current.onPathPoint?.(target.worldToLocal(hit.point.clone()).toArray().map(v=>Math.round(v*10000)/10000));}else if(path)motionRef.current.onSelectPart?.(path);};
+    down=event=>{pointerStart=[event.clientX,event.clientY];};
+    pick=event=>{if(!motionRoot||!pointerStart||Math.hypot(event.clientX-pointerStart[0],event.clientY-pointerStart[1])>5)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObject(motionRoot,true).find(h=>h.object.isMesh&&!h.object.userData.partMotionOverlay&&!h.object.parent?.userData.partMotionOverlay);if(!hit)return;const nodes=modelPartNodes(motionRoot);const path=[...nodes].find(([,n])=>n===hit.object)?.[0];if(motionRef.current.pathPicking){const target=nodes.get(motionRef.current.selectedPart);if(target)motionRef.current.onPathPoint?.(target.worldToLocal(hit.point.clone()).toArray().map(v=>Math.round(v*10000)/10000));}else if(path)motionRef.current.onSelectPart?.(path);};
     renderer.domElement.addEventListener("pointerdown",down);renderer.domElement.addEventListener("pointerup",pick);
     scene.add(root);
     const fit = () => {
@@ -225,17 +243,17 @@ export default function ModelPreview({
       modelReady=true;setLoading(false);
       if (animated) runtimeGlow = createRuntimeModelGlow(root);
     } else if (source.url) {
-      new GLTFLoader().load(
-        source.url,
-        (gltf) => {
+      const onLoaded = (gltf) => {
           if (!active) {
-            disposeObject(gltf.scene);
+            assetLease?.release();
+            assetLease=null;
             return;
           }
           const box = new THREE.Box3().setFromObject(gltf.scene);
           if (box.isEmpty()) {
             failPreview("模型没有可预览的几何体");
-            disposeObject(gltf.scene);
+            assetLease?.release();
+            assetLease=null;
             return;
           }
           const size = box.getSize(new THREE.Vector3());
@@ -250,6 +268,17 @@ export default function ModelPreview({
                   )
                 : overrideModelMaterial(part.material, model);
             });
+          if(staticThumbnail){
+            const materials=new Map();
+            gltf.scene.traverse(part=>{
+              if(!part.material)return;
+              const cheap=material=>{
+                if(!materials.has(material))materials.set(material,new THREE.MeshStandardMaterial({color:material.color??0xffffff,map:material.map??null,transparent:material.transparent,opacity:material.opacity,side:material.side,roughness:.8,metalness:0}));
+                return materials.get(material);
+              };
+              part.material=Array.isArray(part.material)?part.material.map(cheap):cheap(part.material);
+            });
+          }
           const dimensions = model.dimensions ?? {};
           const scale = new THREE.Vector3(
             (dimensions.width ?? size.x) / Math.max(size.x, 0.001),
@@ -267,12 +296,20 @@ export default function ModelPreview({
           fit();
           modelReady=true;setLoading(false);
           if (animated) runtimeGlow = createRuntimeModelGlow(root);
-        },
-        undefined,
-        () => {
-          if (active) failPreview("模型文件缺失或无法解析，请重新上传");
-        },
-      );
+      };
+      void (async () => {
+        const asset = preparedAsset ? preparedAsset.retain() : await loadModelAsset(source.url, {signal:loadController.signal,background:staticThumbnail});
+        try {
+          if (!active || loadController.signal.aborted) return;
+          assetLease=asset.instantiate();
+          onLoaded({scene:assetLease.scene});
+        } finally { asset.release(); }
+      })().catch(error=>{
+        if(active && error.name!=="AbortError"){
+          reportClientError(error,'center');
+          failPreview(error.name==="TimeoutError"?"模型加载超时，请重新打开预览":"模型文件缺失或无法解析，请重新上传");
+        }
+      });
     } else failPreview("上传 GLB 或自包含 GLTF 后可预览");
     root.position.set(
       model.anchor?.x ?? 0,
@@ -283,16 +320,17 @@ export default function ModelPreview({
       if(!active)return;
       const width = Math.max(host.clientWidth, 100);
       const height = Math.max(host.clientHeight, 100);
-      renderer.setSize(width, height, false);
+      const factor=staticThumbnail?Math.min(1,320/width,200/height):1;
+      renderer.setSize(Math.round(width*factor), Math.round(height*factor), false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
     };
-    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(host);
     resize();
     const animate = () => {
       if(!active)return;
-      frame = requestAnimationFrame(animate);
+      try {
       const now=performance.now(),dt=Math.min((now-lastFrame)/1000,.1);lastFrame=now;const motion=motionRef.current;if(motion.playing)elapsed+=dt;
       if(motionEngine&&motionSignature!==JSON.stringify(motion.rules)){motionEngine.dispose();motionEngine=createPartMotionEngine(motionRoot,motion.rules);motionSignature=JSON.stringify(motion.rules);shaderIssue='';lastCodeStatus='';}
       motionEngine?.update(motion.values,elapsed,motion.playing?dt:0);
@@ -307,25 +345,17 @@ export default function ModelPreview({
         try{setThumbnail({key:modelKey,url:renderer.domElement.toDataURL('image/png')});}
         catch{failPreview('缩略图生成失败，请点击预览查看模型');}
       }
+      frame=requestAnimationFrame(animate);
+      } catch(error) {
+        reportClientError(error,'center');
+        failPreview('模型渲染失败，已释放当前预览；可继续编辑配置。');
+      }
     };
     animate();
-    return () => {
-      active = false;
-      cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
-      controls.dispose();
-      controlsApi.current = null;
-      renderer.domElement.removeEventListener('webglcontextlost',contextLost);
-      renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointerup",pick);
-      motionEngine?.dispose();selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();
-      disposeRuntimeModelGlow(runtimeGlow);
-      disposeObject(scene);
-      renderer.dispose();
-      renderer.forceContextLoss();
-      renderer.domElement.remove();
-    };
+    return cleanup;
+    } catch(error) { cleanup(); throw error; }
     }
-  }, [visible, modelKey, compact, animated, staticThumbnail,thumbnailReady]);
+  }, [visible, modelKey, compact, animated, staticThumbnail,thumbnailReady,preparedAsset,pageVisible]);
   React.useEffect(() => {
     const api = controlsApi.current;
     if (!api || !command) return;

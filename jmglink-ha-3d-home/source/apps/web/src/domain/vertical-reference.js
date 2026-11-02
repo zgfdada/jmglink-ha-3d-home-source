@@ -38,6 +38,7 @@ const defaultDeviceScaleY = (modelId, presentation = false) => {
     [
       "light.strip",
       "cover.curtain",
+      "cover.sheer",
       "cover.blind",
       "media_player.tv",
       "climate.central_ac",

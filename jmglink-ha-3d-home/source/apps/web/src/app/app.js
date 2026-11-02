@@ -466,10 +466,11 @@ async function jt(t) {
 async function We(t) {
   const e = await fetch(`./api/projects/${t.id}`, {
     method: "PUT",
+    signal: AbortSignal.timeout(15000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(t),
   });
-  if (!e.ok) throw new Error(`Save project failed: ${e.status}`);
+  if (!e.ok) throw new Error(await L(e, "项目保存失败"));
   return (await e.json()).project;
 }
 async function Fe(t, e) {

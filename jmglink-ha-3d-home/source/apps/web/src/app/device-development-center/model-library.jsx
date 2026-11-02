@@ -1,5 +1,5 @@
 import { a as React } from "../../vendor/react.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { loadModelAsset, createLatestModelTask } from "../../domain/model-assets.js";
 import { inspectGltfModelParameters } from "../../domain/model-file-parameters.js";
 import ModelPreview from "./model-preview.jsx";
 import {
@@ -139,6 +139,15 @@ function ModelEditor({
 }) {
   const [draft, setDraft] = React.useState(() => createModelDraft(initial));
   const [upload, setUpload] = React.useState(null);
+  const [preparedAsset, setPreparedAsset] = React.useState(null);
+  const [loadingFile, setLoadingFile] = React.useState(Boolean(initial?.source?.url));
+  const preparedRef = React.useRef(null);
+  const importTasks = React.useRef(createLatestModelTask());
+  React.useEffect(() => () => {
+    importTasks.current.cancel();
+    preparedRef.current?.release();
+    preparedRef.current = null;
+  }, []);
   const [previewUrl, setPreviewUrl] = React.useState("");
   const [working, setWorking] = React.useState(false);
   const [showPreview, setShowPreview] = React.useState(true);
@@ -149,6 +158,16 @@ function ModelEditor({
     },
     [previewUrl],
   );
+  React.useEffect(()=>{
+    if(!initial?.source?.url)return;
+    const task=importTasks.current.start();
+    setLoadingFile(true);
+    void loadModelAsset(initial.source.url,{signal:task.signal}).then(asset=>{
+      if(!task.isCurrent()){asset.release();return;}
+      preparedRef.current?.release();preparedRef.current=asset;setPreparedAsset(asset);
+    }).catch(error=>{if(task.isCurrent()&&error.name!=="AbortError")notify("模型读取失败，请重新选择文件","error");})
+      .finally(()=>{if(task.isCurrent())setLoadingFile(false);});
+  },[initial?.id,initial?.source?.url]);
   const change = (key, value) =>
     setDraft((current) => ({ ...current, [key]: value }));
   const nested = (key, field, value) =>
@@ -158,37 +177,40 @@ function ModelEditor({
     }));
   const pickFile = async (file) => {
     if (!file) return;
+    const task = importTasks.current.start();
+    setLoadingFile(true);
+    setUpload(null);
+    setPreviewUrl("");
+    setPreparedAsset(null);
+    preparedRef.current?.release();
+    preparedRef.current = null;
+    let asset;
     try {
-      if (file.size > 15 * 1024 * 1024)
-        throw new Error("模型文件不能超过 15 MB");
+      if (file.size > 15 * 1024 * 1024) throw new Error("模型文件不能超过 15 MB");
       const extension = file.name.split(".").pop()?.toLowerCase();
-      if (!["glb", "gltf"].includes(extension))
-        throw new Error("仅支持 GLB 或自包含 GLTF 文件");
-      const gltf = await new GLTFLoader().parseAsync(
-        extension === "glb" ? await file.arrayBuffer() : await file.text(),
-        "",
-      );
-      const parameters = inspectGltfModelParameters(gltf.scene);
-      const dataUrl = await readAsDataUrl(file);
+      if (!["glb", "gltf"].includes(extension)) throw new Error("仅支持 GLB 或自包含 GLTF 文件");
+      // Let the previous preview unmount before starting the next decode.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      asset = await loadModelAsset(file, {signal: task.signal});
+      if (!task.isCurrent()) return;
+      const parameters = inspectGltfModelParameters(asset.scene);
       const url = URL.createObjectURL(file);
+      preparedRef.current = asset;
+      setPreparedAsset(asset);
+      asset = null;
       setPreviewUrl(url);
-      setUpload({ name: file.name, dataUrl });
-      setDraft((current) => ({
-        ...current,
-        source: { type: "upload" },
-        dimensions: parameters.dimensions,
-        color: parameters.color ?? current.color,
-        roughness: parameters.roughness ?? current.roughness,
-        metalness: parameters.metalness ?? current.metalness,
-      }));
-      notify(
-        parameters.dimensionAdjusted
-          ? "已读取模型；原始尺寸超出 0.05–20 m，已限制到可配置范围，请核对单位。"
-          : "已从模型文件读取尺寸和材质参数。",
-        "success",
-      );
+      setUpload({ name: file.name, file });
+      setDraft(current => ({...current,source:{type:"upload"},dimensions:parameters.dimensions,
+        color:parameters.color ?? current.color,roughness:parameters.roughness ?? current.roughness,
+        metalness:parameters.metalness ?? current.metalness}));
+      notify(parameters.dimensionAdjusted
+        ? "已读取模型；原始尺寸超出 0.05–20 m，已限制到可配置范围，请核对单位。"
+        : "已从模型文件读取尺寸和材质参数。", "success");
     } catch (error) {
-      notify(error.message, "error");
+      if (task.isCurrent() && error.name !== "AbortError") notify(error.message, "error");
+    } finally {
+      asset?.release();
+      if (task.isCurrent()) setLoadingFile(false);
     }
   };
   const save = async () => {
@@ -208,7 +230,7 @@ function ModelEditor({
           method: "PUT",
           body: JSON.stringify({
             model: { ...draft, name: draft.name.trim() },
-            file: upload,
+            file: upload ? {name:upload.name,dataUrl:await readAsDataUrl(upload.file)} : null,
           }),
         },
       );
@@ -278,7 +300,7 @@ function ModelEditor({
           <button onClick={() => setShowPreview((value) => !value)}>
             {showPreview ? "隐藏预览" : "预览模型"}
           </button>
-          <button className="primary" disabled={working} onClick={save}>
+          <button className="primary" disabled={working || loadingFile} onClick={save}>
             保存模型
           </button>
         </div>
@@ -493,7 +515,7 @@ function ModelEditor({
           {initial && !initial.builtin && (
             <button
               className="ddc-model-delete"
-              disabled={working}
+              disabled={working || loadingFile}
               onClick={remove}
             >
               删除此模型{referenceCount ? `（引用 ${referenceCount}）` : ""}
@@ -503,7 +525,7 @@ function ModelEditor({
         {showPreview && (
           <aside className="ddc-model-editor-preview">
             <h2>模型预览</h2>
-            <ModelPreview model={previewModel} />
+            {loadingFile ? <p role="status">正在解析模型…</p> : <ModelPreview model={previewModel} preparedAsset={preparedAsset} />}
             <p>
               上传后自动读取尺寸；可拖动旋转、滚轮缩放。预览仅反映当前草稿，保存后才会用于设备。
             </p>

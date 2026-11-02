@@ -1,3 +1,7 @@
+import {formatProjectSaveError} from "../domain/project-save-error.js";
+import SaveErrorToast from "../components/save-error-toast.jsx";
+import {applyCurtainTrackToFloor} from "../domain/curtain-placement.js";
+import DeviceBindingPicker from "../components/device-binding-picker.jsx";
 import DoorSensorBinding from "../components/door-sensor-binding.jsx";
 import {isDoorSensorOpen} from "../domain/door-sensor.js";
 /**
@@ -7,6 +11,7 @@ import {isDoorSensorOpen} from "../domain/door-sensor.js";
 import {cameraModelDefinition} from "../../../../packages/schema/src/camera-models.js";
 import CameraPlanGlyph from '../components/camera-plan-glyph.jsx';
 import CameraSettings from '../components/camera-settings.jsx';
+import CurtainTrackEditor, {CurtainTrackPlan,CurtainTrackOverlay} from '../components/curtain-track-editor.jsx';
 import { j as t } from "../vendor/three.js";
 import { a as x } from "../vendor/react.js";
 import { shouldRightPanEmptyCanvas, canvasPanHasMoved } from "../domain/editor-canvas-pan.js";
@@ -1234,7 +1239,7 @@ const Lc = x.lazy(() =>
     s === "media_player.tv" ||
     s === "climate.central_ac" ||
     s === "light.strip" ||
-    s === "cover.curtain" ||
+    (["cover.curtain", "cover.sheer"].includes(s)) ||
     s === "cover.blind"
       ? [1.16, 1.16, 1.16]
       : [
@@ -2927,6 +2932,7 @@ function vd({
     [nt, it] = x.useState([]),
     [L, We] = x.useState("select"),
     [D, Is] = x.useState(),
+    [curtainSession, setCurtainSession] = x.useState(null),
     [pe, _s] = x.useState([]),
     [ne, cs] = x.useState(),
     [fe, Pe] = x.useState(),
@@ -3258,6 +3264,8 @@ function vd({
       : "未保存",
     Ui = we(Os),
     Bs = L === "device" && !!(je && Ui);
+  x.useEffect(() => {setCurtainSession(null);}, [w?.id, b.id]);
+  x.useEffect(() => {if(rt !== '2d')setCurtainSession(null);}, [rt]);
   x.useEffect(() => {
     let active = !0;
     const loadModels = () =>
@@ -3658,6 +3666,7 @@ function vd({
       rt === "2d" && Ks();
     }, [C == null ? void 0 : C.id, Ks, b.id, rt]));
   const ht = x.useCallback((e) => {
+      Fe(void 0);
       U((n) => {
         const a = e(n);
         return a === n
@@ -3686,6 +3695,7 @@ function vd({
     ),
     wo = x.useCallback(
       (e) => {
+        setCurtainSession(null);
         !w ||
           !q ||
           F((n) => ({
@@ -3697,7 +3707,7 @@ function vd({
               r[1] = rn(q, n.height, e);
               const l = we(e),
                 h = e === "media_player.tv",
-                u = e === "cover.curtain" || e === "cover.blind",
+                u = (["cover.curtain", "cover.sheer"].includes(e)) || e === "cover.blind",
                 p = e === "climate.central_ac",
                 N = a.scale ? qr(a.scale, a.modelId) * 100 : 100;
               let m;
@@ -3725,6 +3735,7 @@ function vd({
                 {
                   ...a,
                   modelId: e,
+                  curtainTrack: a.curtainTrack ? {...a.curtainTrack, fabric:e === "cover.sheer" ? "sheer" : "blackout"} : undefined,
                   verticalReference: cameraModelDefinition(e) ? (e === "camera.desktop" ? {targetType:"floor",surface:"top",offset:r[1]} : {targetType:"ceiling",surface:"bottom",offset:0}) : a.verticalReference,
                   position: r,
                   scale: m,
@@ -5815,7 +5826,7 @@ function vd({
         };
         (await v(e), U(e), Di(e.updatedAt), ve(!1));
       } catch (e) {
-        Fe(e instanceof Error ? e.message : "保存失败，请重试");
+        Fe(formatProjectSaveError(e instanceof Error ? e.message : "保存失败，请重试", P, i));
       } finally {
         ki(!1);
       }
@@ -6154,7 +6165,7 @@ function vd({
     pt = we(te == null ? void 0 : te.id),
     ka = (te == null ? void 0 : te.id) === "media_player.tv",
     Ca =
-      (te == null ? void 0 : te.id) === "cover.curtain" ||
+      ["cover.curtain", "cover.sheer"].includes(te?.id) ||
       (te == null ? void 0 : te.id) === "cover.blind",
     Ia = (te == null ? void 0 : te.id) === "climate.central_ac",
     _a = w && !pt ? ti(w) : void 0,
@@ -6375,6 +6386,7 @@ function vd({
     className: "editor-workspace",
     "data-editor-revision": "object-inspector-v5",
     children: [
+      t.jsx(SaveErrorToast, {error:wt}),
       t.jsxs("div", {
         className: "editor-commandbar",
         children: [
@@ -8676,6 +8688,8 @@ function vd({
                               }),
                           ],
                         }),
+                      ...b.devices.filter(device=>device.curtainTrack && ['cover.curtain','cover.sheer'].includes(ws(device,i[device.entityId]).id) && (!curtainSession || curtainSession.deviceId!==device.id)).map(device=>t.jsx(CurtainTrackPlan,{device,track:device.curtainTrack,selected:w?.id===device.id,onSelect:event=>{event.stopPropagation();Ve({type:'device',id:device.id});B(device.entityId);Te(true);}},`curtain-track-${device.id}`)),
+                      curtainSession && w?.id===curtainSession.deviceId && t.jsx(CurtainTrackOverlay,{device:w,session:curtainSession,setSession:setCurtainSession,getPoint:event=>ss(event,false).point,walls:b.walls,snapEnabled:Xe,zoom:ye,panActive:xn||!!Ae}),
                     ],
                   }),
               L === "device" &&
@@ -10306,10 +10320,11 @@ function vd({
                         t.jsxs("div", {
                           className: "device-summary-copy",
                           children: [
-                            t.jsx("strong", {
-                              children:
-                                (q == null ? void 0 : q.name) ?? w.entityId,
-                            }),
+                            t.jsx(DeviceBindingPicker, {key:w.id,placement:w,floor:b,entities:i,onChange:entity=>{
+                              setCurtainSession(null);
+                              F(floor=>({...floor,devices:floor.devices.map(device=>device.id!==w.id?device:replaceDevicePlacement(device,entity,resolveBoundDevicePresentation(entity,device.modelId),hi(entity)))}));
+                              B(entity.entityId);
+                            }}),
                             t.jsx("small", {
                               children: q
                                 ? `${(Je == null ? void 0 : Je.name) ?? "未指定房间"} · ${ls(q)}`
@@ -10396,7 +10411,7 @@ function vd({
                       }),
                     q?.domain === "camera" && t.jsx(CameraSettings,{placement:w,modelId:te?.id,entity:q,entities:i,onChange:settings=>F(floor=>({...floor,devices:floor.devices.map(device=>device.id===w.id?{...device,cameraSettings:settings}:device)}))}),
                     q && t.jsx(fl, { compact: !0, entity: q }),
-                    qs !== void 0 &&
+                    qs !== void 0 && !Ca &&
                       t.jsxs("div", {
                         className: "property-section device-scale-property",
                         children: [
@@ -10683,7 +10698,8 @@ function vd({
                           }),
                         ],
                       }),
-                    Ca &&
+                    ['cover.curtain','cover.sheer'].includes(te?.id) && w && t.jsx(CurtainTrackEditor,{key:w.id,device:w,floor:b,session:curtainSession,setSession:setCurtainSession,onBegin:()=>{We('select');$i('2d');},onApply:track=>F(floor=>applyCurtainTrackToFloor(floor,w.id,track))}),
+                    Ca && !['cover.curtain','cover.sheer'].includes(te?.id) &&
                       zn &&
                       t.jsxs("div", {
                         className: "property-section curtain-size-property",
@@ -10978,42 +10994,9 @@ function vd({
                             e,
                           ),
                         ),
-                        t.jsxs("label", {
-                          children: [
-                            t.jsx("span", { children: "所属房间" }),
-                            t.jsxs(ns, {
-                              value: w.roomId ?? "",
-                              onChange: (e) =>
-                                F((n) => ({
-                                  ...n,
-                                  devices: n.devices.map((a) =>
-                                    a.id === w.id
-                                      ? {
-                                          ...a,
-                                          roomId: e.target.value || void 0,
-                                        }
-                                      : a,
-                                  ),
-                                })),
-                              children: [
-                                t.jsx("option", {
-                                  value: "",
-                                  children: Je ? `自动：${Je.name}` : "未指定",
-                                }),
-                                b.rooms.map((e) =>
-                                  t.jsx(
-                                    "option",
-                                    { value: e.id, children: e.name },
-                                    e.id,
-                                  ),
-                                ),
-                              ],
-                            }),
-                          ],
-                        }),
                       ],
                     }),
-                    t.jsx(VerticalReferenceEditor, {
+                    !["cover.curtain","cover.sheer"].includes(te?.id) && t.jsx(VerticalReferenceEditor, {
                       floor: b,
                       type: "device",
                       item: w,

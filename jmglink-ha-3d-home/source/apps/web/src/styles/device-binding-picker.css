@@ -1,0 +1,9 @@
+.device-binding-picker { width:100%; min-width:0; }
+.device-binding-trigger { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:8px 0; border:0; background:transparent; color:inherit; text-align:left; cursor:pointer; }
+.device-binding-trigger strong { min-width:0; overflow-wrap:anywhere; }
+.device-binding-options { padding:8px; border:1px solid #d8e3f4; border-radius:12px; background:#fff; }
+.device-binding-options input { width:100%; min-width:0; box-sizing:border-box; }
+.device-binding-options>div { max-height:240px; overflow:auto; overscroll-behavior:contain; }
+.device-binding-options button { display:flex; flex-direction:column; align-items:flex-start; gap:4px; width:100%; padding:10px 4px; border:0; background:transparent; text-align:left; color:#263b52; white-space:normal; overflow-wrap:anywhere; }
+.device-binding-options button[aria-pressed=true] { background:#edf3ff; }
+.device-binding-options small { font-size:10px; overflow-wrap:anywhere; }

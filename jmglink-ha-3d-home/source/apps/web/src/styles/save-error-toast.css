@@ -1,0 +1,6 @@
+.save-error-toast { position:fixed; top:max(5rem,env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:140; width:min(30rem,calc(100vw - 2rem)); box-sizing:border-box; display:grid; gap:6px; padding:14px 18px; border:1px solid #edc9b7; border-radius:14px; background:#fff8f3f5; color:#774126; box-shadow:0 10px 35px #24364a24; pointer-events:none; animation:save-toast-life 4.5s ease both; overflow-wrap:anywhere; }
+.save-error-toast strong { font-size:14px; }
+.save-error-toast span { font-size:12px; line-height:1.6; }
+.save-error-toast small { font-size:11px; color:#8a7264; }
+@keyframes save-toast-life { 0% {opacity:0} 6%,88% {opacity:1} 100% {opacity:0} }
+@media(prefers-reduced-motion:reduce) { .save-error-toast {animation:none} }

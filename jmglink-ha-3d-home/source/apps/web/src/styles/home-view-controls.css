@@ -15,3 +15,31 @@
     min-height: 44px;
   }
 }
+
+/* 在家人员和跟踪器顶部横排，兼容手机横竖屏。 */
+.mode-home .home-mobile-presence {
+  top: max(1rem, env(safe-area-inset-top));
+  right: auto;
+  left: 50%;
+  width: min(64rem, calc(100% - 2 * var(--home-edge-x, 1rem)));
+  transform: translateX(-50%);
+  animation: none;
+}
+.mode-home .mobile-presence-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem 1rem;
+}
+.mode-home .mobile-presence-user {
+  flex: 0 1 auto;
+  max-width: min(18rem, 100%);
+}
+.mode-home .mobile-presence-more { flex: 0 0 auto; }
+
+/* Device controls float over the scene; the backdrop consumes outside clicks. */
+.mode-home .device-control-backdrop { position:fixed; inset:0; z-index:39; background:transparent; pointer-events:auto; }
+.mode-home .home-insight-panel.entity-selected { position:fixed; z-index:40; max-height:calc(100dvh - 3rem); overflow:auto; pointer-events:auto; }
+.mode-home .insight-detail-toolbar { grid-template-columns:minmax(0,1fr); }
+.mode-home .sidebar-backdrop { pointer-events:auto; cursor:default; }

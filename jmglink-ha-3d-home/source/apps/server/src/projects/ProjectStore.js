@@ -107,19 +107,29 @@ export class ProjectStore {
         this.emitProjectSaved(project);
         return project;
     }
-    async saveProject(project) {
+    async saveProject(project, { onPhase = () => {} } = {}) {
+        onPhase("validate-start");
         if (!this.projects.has(project.id))
             throw new Error("Project not found");
         const validation = validateFloorplanProject(project);
         if (!validation.valid || !validation.project)
             throw new Error(validation.issues.join("; "));
+        onPhase("backup-start");
         await this.createBackup(project.id);
+        onPhase("backup-done");
         const saved = { ...validation.project, updatedAt: new Date().toISOString() };
         this.projects.set(saved.id, saved);
+        onPhase("project-write-start");
         await this.persistProject(saved);
-        if (saved.id === this.currentProjectId)
+        onPhase("project-write-done");
+        if (saved.id === this.currentProjectId) {
+            onPhase("current-write-start");
             await this.persistCurrentProject();
+            onPhase("current-write-done");
+        }
+        onPhase("notify-start");
         this.emitProjectSaved(saved);
+        onPhase("notify-done");
         return saved;
     }
     async deleteProject(id) {

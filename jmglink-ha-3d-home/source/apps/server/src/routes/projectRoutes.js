@@ -121,16 +121,25 @@ export async function registerProjectRoutes(app, store, gateway, platform) {
         return { project };
     });
     app.put("/api/projects/:id", async (request, reply) => {
-        if (request.params.id !== request.body.id)
-            return reply.code(400).send({ error: "Project id mismatch" });
+        if (request.params.id !== request.body.id) {
+            request.log.warn({event:"project-save-rejected",reason:"project-id-mismatch"},"Project save rejected");
+            return reply.code(400).send({ error: "项目编号与保存目标不一致" });
+        }
+        const started = performance.now();
+        const onPhase = phase => request.log.info({event:"project-save-phase",phase,elapsedMs:Math.round(performance.now()-started)},"Project save progress");
+        request.log.info({event:"project-save-received",version:request.body.version,floorCount:request.body.floors?.length,deviceCount:request.body.floors?.reduce((sum,floor)=>sum+(floor.devices?.length||0),0),bytes:request.headers["content-length"]},"Project save received");
         let project;
         try {
-            project = await store.saveProject(request.body);
+            project = await store.saveProject(request.body, {onPhase});
         }
         catch (error) {
+            const message = error instanceof Error ? error.message : "Invalid project";
+            request.log.warn({ event: "project-save-rejected", reason: message.includes("重复放置") ? "duplicate-device" : message.includes("未关联墙体") ? "unbound-opening" : "invalid-project" }, "Project save rejected");
             return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid project" });
         }
+        onPhase("broadcast-start");
         gateway?.broadcast({ type: "project.updated", payload: project });
+        onPhase("response-ready");
         return { project };
     });
     app.delete("/api/projects/:id", async (request, reply) => {

@@ -138,6 +138,9 @@ app.addHook("onResponse", async (request, reply) => {
   }
 });
 app.setErrorHandler((error, request, reply) => {
+  if (request.method === "PUT" && request.url.startsWith("/api/projects/")) {
+    request.log.warn({event:"project-save-request-error",code:error.code || "request-error",validation:error.validation?.map(item=>({path:item.instancePath,keyword:item.keyword}))},"Project save request failed before completion");
+  }
   request.log.error({ err: error }, "Request failed");
   if (error.validation) {
     return reply.code(400).send({
