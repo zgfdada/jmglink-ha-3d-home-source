@@ -1,3 +1,4 @@
+import {rotationGroupTargets,baselineWorldMatrix,applySharedPartRotation} from "./shared-part-rotation.js";
 import * as THREE from "three";
 import { disableSceneEffectPicking } from "./scene-picking.js";
 import { createSurfaceScan } from "./surface-scan.js";
@@ -70,6 +71,8 @@ export function createPartMotionEngine(root, rules = []) {
         ? [n.material]
         : [];
     baselines.set(n, {
+      matrixAutoUpdate:n.matrixAutoUpdate,
+      matrix:n.matrix.clone(),
       position: n.position.clone(),
       quaternion: n.quaternion.clone(),
       scale: n.scale.clone(),
@@ -85,6 +88,9 @@ export function createPartMotionEngine(root, rules = []) {
   const orderedRules = [...rules].sort((a, b) => a.priority - b.priority);
   let disposed = false;
   function reset(n, b) {
+    n.matrixAutoUpdate=b.matrixAutoUpdate;
+    n.matrix.copy(b.matrix);
+    n.matrixWorldNeedsUpdate=true;
     n.position.copy(b.position);
     n.quaternion.copy(b.quaternion);
     n.scale.copy(b.scale);
@@ -249,6 +255,7 @@ export function createPartMotionEngine(root, rules = []) {
         winners.set(key, { n, r, s, path });
       }
     }
+    const sharedRotations=new Map();
     for (const { n, r, s, path } of winners.values()) {
       const b = baselines.get(n),
         custom = s.custom ?? {},
@@ -275,6 +282,14 @@ export function createPartMotionEngine(root, rules = []) {
                 ? s.phase * w
                 : ((value * Math.PI) / 180) * w,
           q = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+        if(r.targets.length>1){
+          if(!sharedRotations.has(r.id)){
+            const paths=rotationGroupTargets(r.targets),reference=nodes.get(paths[0]);
+            sharedRotations.set(r.id,{targets:[],frame:reference?baselineWorldMatrix(reference,baselines):null,paths,axis:e.axis,pivot:e.pivot,angle});
+          }
+          const job=sharedRotations.get(r.id);
+          if(job.paths.includes(path))job.targets.push(n);
+        }else{
         n.quaternion.multiply(q);
         const pivot = new THREE.Vector3(...e.pivot)
           .multiply(b.scale)
@@ -293,6 +308,7 @@ export function createPartMotionEngine(root, rules = []) {
                 ),
             ),
         );
+        }
       }
       if (e.type === "visible")
         n.visible = w < 0.5 ? b.visible : (custom.visible ?? value >= 0.5);
@@ -374,6 +390,7 @@ export function createPartMotionEngine(root, rules = []) {
         });
       }
     }
+    for(const job of sharedRotations.values())if(job.frame)applySharedPartRotation(job.targets,job.frame,job.axis,job.pivot,job.angle);
     for (const job of scanJobs) job();
     if (!available)
       for (const [n, b] of baselines) {

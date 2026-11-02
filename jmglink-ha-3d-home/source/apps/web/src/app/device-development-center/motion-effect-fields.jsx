@@ -5,6 +5,7 @@ export default function MotionEffectFields({
   mappingEnabled = false,
   picking = false,
   onTogglePicking,
+  rotationTools,
 }) {
   const input = (label, value, change, props = {}) => (
     <label>
@@ -36,7 +37,9 @@ export default function MotionEffectFields({
               ))}
             </select>
           </label>
-          <div className="part-motion-row">
+          {["rotate","spin"].includes(value.type) && <small>局部轴是旋转时保持不动的那根轴；其余两个方向围绕它转动。例如绕 X 轴开盖，X 轴方向不变。</small>}
+          {rotationTools}
+          {(value.type !== "rotate" || !rotationTools) && <div className="part-motion-row">
             {numeric("起始值", value.from, (from) => onChange({ from }))}
             {numeric(
               value.type === "spin"
@@ -47,10 +50,10 @@ export default function MotionEffectFields({
               value.to,
               (to) => onChange({ to }),
             )}
-          </div>
-          {["rotate", "spin"].includes(value.type) && (
+          </div>}
+          {["rotate", "spin"].includes(value.type) && !rotationTools && (
             <>
-              <small>旋转中心：相对部件原点的局部 XYZ 偏移。</small>
+              <small>旋转中心：相对首个顶层作用部件原点的局部 XYZ 偏移；多选部件共用此轴心。</small>
               <div className="part-motion-row">
                 {[0, 1, 2].map((i) => (
                   <React.Fragment key={i}>

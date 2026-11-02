@@ -711,3 +711,13 @@ Docker 构建阶段使用 BUILDPLATFORM 原生执行通用 JS 测试、Vite 打�
 保存 API 记录 project-save-received / project-save-phase / project-save-rejected / project-save-request-error 事件，按 Fastify reqId 关联；阶段覆盖校验、备份、项目落盘、当前项目落盘、监听器通知和广播返回，不记录请求正文或连接配置。前端保存请求设 15 秒超时，展示 API error 内容；失败后保留编辑态，按原有 900ms 间隔继续自动重试。`SaveErrorToast` 独立限频：首次立即提示，4.5 秒后淡出移除，所有保存错误共用 10 秒提示间隔；重试开始清除按钮错误不会提前移除气泡。
 
 `project-save-error.js` 在编辑器保存失败入口统一把重复设备内部 ID 映射为当前实时实体名称，供按钮、面板与气泡共同展示。名称缺失依次回退摆放名称、实体 ID；其他错误不改写，避免误吞网络或校验原因。
+
+## 旋转轴与轴心辅助编辑（本地开发版）
+
+`rotation-pivot-preview.js` 在 ModelPreview 的同一个 renderer 中建立编辑专用辅助组和 TransformControls，不申请额外 WebGL context。辅助组放在场景下，不进入模型层级／部件树；其矩阵由部件未动效的 position／quaternion／scale 和实时父节点世界矩阵组成，与 part-motion-engine 的局部轴心语义一致。拖动只回写 effect.pivot，并暂时禁用 OrbitControls，松开后恢复。切换目标、关闭或释放预览时 detach、dispose 辅助几何／材质与事件。
+
+PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、拖动中心、恢复原点；rotate 的目标角度滑块直接更新 effect.to 并预览。试转使用隔离的临时 rotate 规则与虚拟预览值，通过同一动效引擎执行，预览全部勾选部件；退出或校验并模拟预览恢复真实规则。临时预览状态与辅助工具开关只存 React 编辑态；目标角度滑块直接修改规则 effect.to，仍需校验并保存规则。轴心仍需按原流程校验并保存规则。多目标旋转以首个顶层勾选部件为轴心参考，把该部件局部 pivot 与 axis 转成共同世界轴心，并对所有顶层目标施加同一个刚性变换。`shared-part-rotation.js` 过滤已选祖先下的后代，避免重复旋转；保留精确矩阵以兼容不同缩放父层，在下一帧重置及销毁时恢复矩阵自动更新。试转与主页共用此实现，把手、玻璃和框架不会各绕自己的原点分离。XYZ 标签位于箭头末端并使用固定 13px 文字，辅助箭头按 72px 对应的世界尺寸逐帧计算，不随模型缩放或相机远近变大。规则设置中不再提供部件中文重命名表单，现有名称映射仍用于部件树。`rotation-pivot-preview.test.mjs` 覆盖三个轴、父层旋转缩放、坐标反算、临时规则隔离、部件树与辅助资源释放。
+
+旋转辅助工具嵌入右侧 MotionEffectFields 的局部轴配置下方，取消重复的角度／轴心数值输入、快捷角度及退出试转按钮。目标角度滑块同步 effect.to，校验预览恢复按条件运行；隐藏辅助轴不影响角度调整。模型 picking 传递 Ctrl／Meta 修饰键，`model-part-selection.js` 统一非破坏式选择集合计算，preview 为所有已选目标创建独立 BoxHelper 并释放。保存规则清空 draft／部件选择／验证与试转状态，规则列表恢复未选中。
+
+新增部件规则使用空 targets 草稿；选择部件后才允许校验和保存，不自动回退第一个模型网格。

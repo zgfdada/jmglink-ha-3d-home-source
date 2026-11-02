@@ -1,3 +1,4 @@
+import {createRotationPivotGizmo,rotationTrialRules} from "../../domain/rotation-pivot-preview.js";
 import {createPartMotionEngine,modelPartNodes} from "../../domain/part-motion-engine.js";
 import {disposePreviewObject} from '../../domain/webgl-recovery.js';
 import {reportClientError} from '../../domain/browser-recovery.js';
@@ -33,10 +34,11 @@ export default function ModelPreview({
   animated = false,
   command,
   onPalette,
-  motionRules, motionValues, motionPlaying=true, selectedPart, onParts, onSelectPart, pathPicking=false, onPathPoint,onMotionValidation,
+  rotationPreview, onPivotChange,
+  motionRules, motionValues, motionPlaying=true, selectedPart, selectedParts, onParts, onSelectPart, pathPicking=false, onPathPoint,onMotionValidation,
 }) {
   const motionRef = React.useRef({});
-  motionRef.current={rules:motionRules??[],values:motionValues??{},playing:motionPlaying,selectedPart,onParts,onSelectPart,pathPicking,onPathPoint,onMotionValidation};
+  motionRef.current={rules:motionRules??[],values:motionValues??{},playing:motionPlaying,rotationPreview,onPivotChange,selectedPart,selectedParts,onParts,onSelectPart,pathPicking,onPathPoint,onMotionValidation};
   const container = React.useRef(null);
   const controlsApi = React.useRef(null);
   const [visible, setVisible] = React.useState(!compact);
@@ -90,7 +92,7 @@ export default function ModelPreview({
     let modelReady=false,captured=false,readyFrames=0;
     let shaderIssue='',lastCodeStatus='';
     let frame, renderer, assetLease, scene, controls, resizeObserver, contextLost, down, pick;
-    let runtimeGlow=null, motionEngine=null, selectedBox=null;
+    let runtimeGlow=null, motionEngine=null, selectedBoxes=[], pivotGizmo=null;
     const cleanup=()=>{
       if(!active)return;
       active=false;loadController.abort();cancelAnimationFrame(frame);
@@ -98,7 +100,7 @@ export default function ModelPreview({
       renderer?.domElement.removeEventListener('webglcontextlost',contextLost);
       renderer?.domElement.removeEventListener('pointerdown',down);
       renderer?.domElement.removeEventListener('pointerup',pick);
-      motionEngine?.dispose();selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();
+      pivotGizmo?.dispose();motionEngine?.dispose();selectedBoxes.forEach(box=>{box.removeFromParent();box.geometry.dispose();box.material.dispose();});
       disposeRuntimeModelGlow(runtimeGlow);
       assetLease?.release();assetLease=null;
       if(scene)disposeObject(scene);
@@ -129,11 +131,17 @@ export default function ModelPreview({
     light.position.set(2, 4, 3);
     scene.add(light);
     const root = new THREE.Group();
+    let motionNodes=new Map(),baselines=new Map();
     let motionRoot=null,motionSignature="",lastSelection=null,elapsed=0,lastFrame=performance.now();
-    const readyMotion=object=>{lastSelection=null;motionRoot=object;motionEngine=createPartMotionEngine(object,motionRef.current.rules);motionSignature=JSON.stringify(motionRef.current.rules);motionRef.current.onParts?.(motionEngine.parts);};
+    const readyMotion=object=>{lastSelection=null;motionRoot=object;
+      motionNodes=modelPartNodes(object);
+      baselines=new Map([...motionNodes].map(([path,node])=>[path,{position:node.position.clone(),quaternion:node.quaternion.clone(),scale:node.scale.clone()}]));
+      motionEngine=createPartMotionEngine(object,motionRef.current.rules);motionSignature=JSON.stringify(motionRef.current.rules);motionRef.current.onParts?.(motionEngine.parts);
+    };
+    if(motionRef.current.onPivotChange) pivotGizmo=createRotationPivotGizmo({scene,camera,domElement:renderer.domElement,orbit:controls,onChange:point=>motionRef.current.onPivotChange?.(point)});
     const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let pointerStart=null;
-    down=event=>{pointerStart=[event.clientX,event.clientY];};
-    pick=event=>{if(!motionRoot||!pointerStart||Math.hypot(event.clientX-pointerStart[0],event.clientY-pointerStart[1])>5)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObject(motionRoot,true).find(h=>h.object.isMesh&&!h.object.userData.partMotionOverlay&&!h.object.parent?.userData.partMotionOverlay);if(!hit)return;const nodes=modelPartNodes(motionRoot);const path=[...nodes].find(([,n])=>n===hit.object)?.[0];if(motionRef.current.pathPicking){const target=nodes.get(motionRef.current.selectedPart);if(target)motionRef.current.onPathPoint?.(target.worldToLocal(hit.point.clone()).toArray().map(v=>Math.round(v*10000)/10000));}else if(path)motionRef.current.onSelectPart?.(path);};
+    down=event=>{pointerStart=pivotGizmo?.interacting?null:[event.clientX,event.clientY];};
+    pick=event=>{if(pivotGizmo?.interacting||!motionRoot||!pointerStart||Math.hypot(event.clientX-pointerStart[0],event.clientY-pointerStart[1])>5)return;const rect=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObject(motionRoot,true).find(h=>h.object.isMesh&&!h.object.userData.partMotionOverlay&&!h.object.parent?.userData.partMotionOverlay);if(!hit)return;const nodes=modelPartNodes(motionRoot);const path=[...nodes].find(([,n])=>n===hit.object)?.[0];if(motionRef.current.pathPicking){const target=nodes.get(motionRef.current.selectedPart);if(target)motionRef.current.onPathPoint?.(target.worldToLocal(hit.point.clone()).toArray().map(v=>Math.round(v*10000)/10000));}else if(path)motionRef.current.onSelectPart?.(path,{additive:event.ctrlKey||event.metaKey});};
     renderer.domElement.addEventListener("pointerdown",down);renderer.domElement.addEventListener("pointerup",pick);
     scene.add(root);
     const fit = () => {
@@ -332,10 +340,18 @@ export default function ModelPreview({
       if(!active)return;
       try {
       const now=performance.now(),dt=Math.min((now-lastFrame)/1000,.1);lastFrame=now;const motion=motionRef.current;if(motion.playing)elapsed+=dt;
-      if(motionEngine&&motionSignature!==JSON.stringify(motion.rules)){motionEngine.dispose();motionEngine=createPartMotionEngine(motionRoot,motion.rules);motionSignature=JSON.stringify(motion.rules);shaderIssue='';lastCodeStatus='';}
-      motionEngine?.update(motion.values,elapsed,motion.playing?dt:0);
-      if(motion.selectedPart!==lastSelection){selectedBox?.removeFromParent();selectedBox?.geometry.dispose();selectedBox?.material.dispose();const part=motionRoot&&modelPartNodes(motionRoot).get(motion.selectedPart);selectedBox=part?new THREE.BoxHelper(part,0x397bff):null;if(selectedBox)scene.add(selectedBox);lastSelection=motion.selectedPart;}
-      selectedBox?.update();
+      const trial=rotationTrialRules(motion.rotationPreview), activeRules=trial??motion.rules;
+      if(motionEngine&&motionSignature!==JSON.stringify(activeRules)){motionEngine.dispose();motionEngine=createPartMotionEngine(motionRoot,activeRules);motionSignature=JSON.stringify(activeRules);shaderIssue='';lastCodeStatus='';}
+      motionEngine?.update(trial?{"rotation-axis-trial":"on"}:motion.values,elapsed,motion.playing?dt:0);
+      const pivotConfig=motion.rotationPreview, pivotNode=pivotConfig&&motionNodes.get(pivotConfig.target);
+      pivotGizmo?.update(pivotConfig,pivotNode,pivotConfig&&baselines.get(pivotConfig.target));
+      const selectedPaths=motion.selectedParts??(motion.selectedPart?[motion.selectedPart]:[]),selectionKey=JSON.stringify(selectedPaths);
+      if(selectionKey!==lastSelection){
+        selectedBoxes.forEach(box=>{box.removeFromParent();box.geometry.dispose();box.material.dispose();});
+        selectedBoxes=selectedPaths.map(path=>motionNodes.get(path)).filter(Boolean).map(part=>new THREE.BoxHelper(part,0x397bff));
+        selectedBoxes.forEach(box=>scene.add(box));lastSelection=selectionKey;
+      }
+      selectedBoxes.forEach(box=>box.update());
       updateRuntimeModelGlow(runtimeGlow, now / 1000);
       controls.update();
       renderer.render(scene, camera);

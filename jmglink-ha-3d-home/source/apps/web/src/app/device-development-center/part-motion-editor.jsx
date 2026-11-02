@@ -1,3 +1,5 @@
+import {toggleModelPartSelection} from "../../domain/model-part-selection.js";
+import {rotationGroupTargets} from "../../domain/shared-part-rotation.js";
 import MotionEffectFields from "./motion-effect-fields.jsx";
 import {
   MotionResourceSelect,
@@ -6,7 +8,6 @@ import {
 import { motionResourceRule } from "../../../../../packages/schema/src/motion-library.js";
 import {
   modelPartLabel,
-  normalizePartLabels,
 } from "../../../../../packages/schema/src/model-part-labels.js";
 import { a as React } from "../../vendor/react.js";
 import ModelPreview from "./model-preview.jsx";
@@ -30,7 +31,6 @@ export default function PartMotionEditor({
   onChange,
   registerDraftGuard,
   partLabels = {},
-  onLabelsChange,
 }) {
   const { resources: motionResources } = useMotionResources();
   const [codePreviewStatus,setCodePreviewStatus]=React.useState({pending:false,error:''});
@@ -46,7 +46,13 @@ export default function PartMotionEditor({
     [message, setMessage] = React.useState(""),
     [picking, setPicking] = React.useState(false),
     [offline, setOffline] = React.useState(false);
+  const [pickedParts,setPickedParts]=React.useState([]);
   const [unsaved, setUnsaved] = React.useState(false);
+  const [showRotationAxes,setShowRotationAxes]=React.useState(true);
+  const [pivotDragging,setPivotDragging]=React.useState(false);
+  const [trialAngle,setTrialAngle]=React.useState(null);
+  React.useEffect(()=>{setPivotDragging(false);},[draft?.id,draft?.effect.type,selected]);
+  React.useEffect(()=>{setTrialAngle(draft?.effect.type==="rotate"?Number(draft.effect.to)||0:null);},[draft?.id,draft?.effect.type,draft?.effect.to]);
   React.useEffect(() => {
     registerDraftGuard?.(() => {
       if (unsaved) {
@@ -57,30 +63,13 @@ export default function PartMotionEditor({
     });
     return () => registerDraftGuard?.(null);
   }, [unsaved, registerDraftGuard]);
-  const [labelDraft, setLabelDraft] = React.useState("");
-  React.useEffect(() => {
-    const part = parts.find((p) => p.path === selected);
-    setLabelDraft(part ? modelPartLabel(part, partLabels) : "");
-  }, [selected, JSON.stringify(partLabels), parts]);
   const label = (part) => modelPartLabel(part, partLabels);
-  const saveLabel = () => {
-    if (!selected) return;
-    try {
-      const next = normalizePartLabels({
-        ...partLabels,
-        [selected]: labelDraft,
-      });
-      onLabelsChange?.(next);
-      setMessage("部件中文名称已保存，原模型绑定保持有效。");
-    } catch (error) {
-      setMessage(error.message);
-    }
-  };
   const sourceKey = JSON.stringify(model?.source);
   React.useEffect(() => {
     setParts([]);
     setDraft(null);
     setSelected("");
+    setPickedParts([]);
     setPicking(false);
     setValidated(false);
   }, [sourceKey]);
@@ -111,34 +100,31 @@ export default function PartMotionEditor({
     }
     setUnsaved(!rules.some((r) => r.id === rule.id));
     setDraft(copy(rule));
+    setPickedParts([...rule.targets]);
     setSelected(rule.targets[0] ?? "");
     setValidated(false);
     setMessage("");
     setPicking(false);
   };
   const add = () => {
-    const cap = capabilities[0],
-      target = selected || parts.find((p) => p.mesh)?.path;
-    if (!target) {
-      setMessage("模型加载完成后，请先选择一个部件");
-      return;
-    }
+    const cap = capabilities[0];
     choose(
-      motionResourceRule(
+      {...motionResourceRule(
         motionResources.find((r) => r.id === "builtin.motion.translate"),
         {
           id: `motion-${Date.now()}`,
           name: "新部件动效",
-          targets: [target],
           capabilityId: cap?.capabilityId ?? "",
           condition: { operator: "eq", value: stateValue(cap) },
         },
-      ),
+      ), targets: []},
     );
   };
-  const selectPart = (path) => {
-    setSelected(path);
-    if (draft) change({ targets: [path] });
+  const selectPart = (path, {additive=false}={}) => {
+    const next=toggleModelPartSelection(draft?.targets??pickedParts,path,additive);
+    setPickedParts(next);
+    setSelected(next.includes(path)?path:next.at(-1)||"");
+    if(draft)change({targets:next});
   };
   const removeRule = (rule) => {
     if (unsaved && draft?.id !== rule.id) {
@@ -172,6 +158,7 @@ export default function PartMotionEditor({
     issues = [error.message];
   }
   const preview = () => {
+    setTrialAngle(null);setPivotDragging(false);
     if(codePreviewStatus.error||codePreviewStatus.pending){setMessage(codePreviewStatus.error||'动效代码正在编译，请稍候再校验。');return;}
     if (issues.length) {
       setMessage(issues.join("；"));
@@ -203,7 +190,9 @@ export default function PartMotionEditor({
       ),
     );
     setUnsaved(false);
-    setMessage("规则已应用，随当前外观自动保存。");
+    setDraft(null);setSelected("");setPickedParts([]);setValidated(false);
+    setTrialAngle(null);setPivotDragging(false);setPicking(false);
+    setMessage("规则已应用，已退出规则编辑，随当前外观自动保存。");
   };
   const input = (label, value, onChange, props = {}) => (
     <label>
@@ -241,6 +230,25 @@ export default function PartMotionEditor({
     (c) => c.capabilityId === draft?.capabilityId,
   );
   const draftIndex = rules.findIndex((r) => r.id === draft?.id);
+  const rotationRule=draft && ["rotate","spin"].includes(draft.effect.type);
+  const rotationTarget=rotationRule?rotationGroupTargets(draft.targets)[0]:null;
+  const rotationPreview=rotationRule && rotationTarget ? {
+    target:rotationTarget,targets:[...draft.targets],
+    axis:draft.effect.axis,pivot:draft.effect.pivot.map(value=>Number(value)||0),
+    editing:pivotDragging&&showRotationAxes,showAxes:showRotationAxes,angle:trialAngle,
+  }:undefined;
+  const rotationTools = rotationRule && <div className="rotation-pivot-tools">
+            <small>共同轴心参考：{parts.find(part=>part.path===rotationTarget)?label(parts.find(part=>part.path===rotationTarget)):"请选择作用部件"} · {draft.targets.length} 个部件</small>
+            <div className="part-motion-toolbar">
+              <label><input type="checkbox" checked={showRotationAxes} onChange={event=>{setShowRotationAxes(event.target.checked);if(!event.target.checked){setPivotDragging(false);setTrialAngle(null);}}}/>显示旋转辅助轴</label>
+              <button type="button" aria-pressed={pivotDragging} disabled={!rotationTarget || !showRotationAxes} onClick={()=>{setPivotDragging(!pivotDragging);setTrialAngle(pivotDragging?Number(draft.effect.to)||0:0);}}>{pivotDragging?"结束调整中心":"拖动旋转中心"}</button>
+              <button type="button" onClick={()=>{effect({pivot:[0,0,0]});setTrialAngle(Number(draft.effect.to)||0);setShowRotationAxes(true);}}>恢复部件原点</button>
+            </div>
+            <small>拖动彩色手柄调整共同旋转中心，坐标以首个顶层勾选部件为参考。</small>
+            {draft.effect.type==="rotate" && <label className="rotation-trial-slider">目标角度：{Number(draft.effect.to)||0}°
+              <input aria-label="旋转目标角度" type="range" min={Math.min(-180,Number(draft.effect.to)||0)} max={Math.max(180,Number(draft.effect.to)||0)} step="1" disabled={!rotationTarget} value={Number(draft.effect.to)||0} onChange={event=>{const angle=Number(event.target.value);setPivotDragging(false);setTrialAngle(angle);effect({to:angle});}}/>
+            </label>}
+          </div>;
   return (
     <div className="part-motion-editor">
       <aside className="part-motion-left">
@@ -262,7 +270,7 @@ export default function PartMotionEditor({
               .map((p) => (
                 <div
                   key={p.path}
-                  className={selected === p.path ? "selected" : ""}
+                  className={(draft?.targets??pickedParts).includes(p.path) ? "selected" : ""}
                   style={{ paddingLeft: 8 + Math.min(p.depth, 5) * 12 }}
                 >
                   {draft && (
@@ -281,9 +289,9 @@ export default function PartMotionEditor({
                   )}
                   <button
                     role="treeitem"
-                    aria-selected={selected === p.path}
+                    aria-selected={(draft?.targets??pickedParts).includes(p.path)}
                     title={`${p.path} · ${p.type}`}
-                    onClick={() => selectPart(p.path)}
+                    onClick={event => selectPart(p.path,{additive:event.ctrlKey||event.metaKey})}
                   >
                     {p.mesh ? "◇" : "▱"} {label(p)}
                   </button>
@@ -332,7 +340,7 @@ export default function PartMotionEditor({
         <section className="part-motion-viewport">
           <header>
             <strong>
-              {picking ? "点击模型表面添加流光路径点" : "点击模型选择部件"}
+              {picking ? "点击模型表面添加流光路径点" : "点击选中／反选部件 · Ctrl 多选"}
             </strong>
             <button
               onClick={() => {
@@ -349,6 +357,9 @@ export default function PartMotionEditor({
             onParts={receiveParts}
             onSelectPart={selectPart}
             selectedPart={selected}
+            selectedParts={draft?.targets??pickedParts}
+            rotationPreview={rotationPreview}
+            onPivotChange={point=>effect({pivot:point})}
             motionRules={checked}
             motionValues={sampleValues}
             motionPlaying={playing}
@@ -362,6 +373,7 @@ export default function PartMotionEditor({
                 effect({ path: [...draft.effect.path, point] });
             }}
           />
+
         </section>
         <section className="part-motion-simulation">
           <h3>
@@ -438,20 +450,6 @@ export default function PartMotionEditor({
       </main>
       <aside className="part-motion-settings">
         <h2>规则设置</h2>
-        {selected && (
-          <div className="part-motion-rename">
-            <label>
-              部件中文名称
-              <input
-                aria-label="部件中文名称"
-                value={labelDraft}
-                maxLength={80}
-                onChange={(e) => setLabelDraft(e.target.value)}
-              />
-            </label>
-            <button onClick={saveLabel}>保存中文名称</button>
-          </div>
-        )}
         {draft ? (
           <>
             {input("规则名称", draft.name, (name) => change({ name }))}
@@ -607,12 +605,14 @@ export default function PartMotionEditor({
               }
             />
             <MotionEffectFields
+              rotationTools={rotationTools}
               value={draft.effect}
               onChange={effect}
               mappingEnabled={draft.mapping.enabled}
               picking={picking}
               onTogglePicking={() => setPicking((v) => !v)}
             />
+
             <h3>4 · 切换与冲突</h3>
             {numeric(
               "过渡时间（毫秒）",
