@@ -72,6 +72,8 @@ export class HomeAssistantClient extends EventEmitter {
   discoveryRefreshTimer;
   reconnectAttempt = 0;
   websocketReady = false;
+  synchronizing = false;
+  coreStopping = false;
   lastError;
   nextCommandId = 2;
   pendingCommands = new Map();
@@ -133,6 +135,7 @@ export class HomeAssistantClient extends EventEmitter {
       return;
     }
     try {
+      this.synchronizing = true;
       this.lastError = undefined;
       await this.syncFromRest();
       this.openWebSocket();
@@ -209,9 +212,10 @@ export class HomeAssistantClient extends EventEmitter {
     return {
       mode: this.config.mode,
       configured: Boolean(this.config.ha.token),
-      connected: this.websocketReady,
+      connected: this.websocketReady && !this.synchronizing,
+      synchronizing: this.websocketReady && this.synchronizing && !this.coreStopping,
       mock: !this.config.ha.token,
-      reconnecting: Boolean(this.config.ha.token) && !this.websocketReady,
+      reconnecting: Boolean(this.config.ha.token) && (!this.websocketReady || this.synchronizing),
       entityCount: entities.length,
       areaCount: this.getAreas().length,
       deviceCount: this.getDevices().length,
@@ -652,10 +656,14 @@ export class HomeAssistantClient extends EventEmitter {
     }
     if (message.type === "auth_ok") {
       this.websocketReady = true;
+      this.synchronizing = true;
+      this.coreStopping = false;
       this.lastError = undefined;
       this.reconnectAttempt = 0;
       this.emit("status", {
-        connected: true,
+        connected: false,
+        synchronizing: true,
+        reconnecting: true,
         mode: this.config.mode,
         mock: false,
         configured: true,
@@ -668,6 +676,8 @@ export class HomeAssistantClient extends EventEmitter {
         }),
       );
       for (const eventType of [
+        "homeassistant_stop",
+        "homeassistant_started",
         "entity_registry_updated",
         "device_registry_updated",
         "area_registry_updated",
@@ -681,7 +691,7 @@ export class HomeAssistantClient extends EventEmitter {
           }),
         );
       }
-      void this.syncRegistriesFromWebSocket(socket);
+      void this.finishConnectionSync(socket);
       void this.syncWeatherForecasts(socket);
       return;
     }
@@ -732,6 +742,17 @@ export class HomeAssistantClient extends EventEmitter {
       }
     }
     const event = message.event;
+    if (event?.event_type === "homeassistant_stop") {
+      this.synchronizing = true;
+      this.coreStopping = true;
+      this.emit("status", {...this.getStatus(), synchronizing:false, connected:false, reconnecting:true});
+      return;
+    }
+    if (event?.event_type === "homeassistant_started") {
+      this.coreStopping = false;
+      void this.finishConnectionSync(socket);
+      return;
+    }
     if (
       [
         "entity_registry_updated",
@@ -757,6 +778,24 @@ export class HomeAssistantClient extends EventEmitter {
     void this.historyStore?.rememberEntities([entity]);
     this.queueEntityUpdate(entity);
     if (entity.domain === "weather") void this.syncWeatherForecasts(socket);
+  }
+  async finishConnectionSync(socket) {
+    try {
+      const config = await this.sendCommand(socket, "get_config");
+      if (config?.state && config.state !== "RUNNING") {
+        this.coreStopping = true;
+        this.emit("status", this.getStatus());
+        return;
+      }
+      const states = await this.fetchStates();
+      await this.syncRegistriesFromWebSocket(socket, states);
+      if (this.socket !== socket || !this.websocketReady) return;
+      this.synchronizing = false;
+      this.emit("status", {...this.getStatus(), reconnecting:false});
+    } catch (error) {
+      this.emit("ha_error", {message: error instanceof Error ? error.message : String(error), source:"connection_sync"});
+      if(this.socket === socket) socket.close();
+    }
   }
   scheduleReconnect() {
     if (!this.config.ha.token || this.reconnectTimer) return;

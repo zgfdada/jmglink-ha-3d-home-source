@@ -1,5 +1,6 @@
 import {collectLiveEntityIds} from './boundEntityFilter.js';
 import {resolveSidebarEntities} from '../../../../packages/schema/src/sidebar-bindings.js';
+import {isMoonlightEntity} from '../../../../packages/schema/src/moonlight.js';
 
 export function collectInstanceLiveEntityIds(projects, sidebars, entities, bindings) {
   const ids = new Set();
@@ -17,6 +18,6 @@ export function collectInstanceLiveEntityIds(projects, sidebars, entities, bindi
       }
     }
   }
-  for (const entity of entities) if (['weather','sun'].includes(entity.domain)) ids.add(entity.entityId);
+  for (const entity of entities) if (['weather','sun'].includes(entity.domain) || isMoonlightEntity(entity)) ids.add(entity.entityId);
   return ids;
 }

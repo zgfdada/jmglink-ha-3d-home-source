@@ -1292,6 +1292,7 @@ const $ = pe((t, e) => ({
               x = {
                 ...e().connection,
                 ...w,
+                synchronizing: w.synchronizing === true,
                 error: w.connected
                   ? void 0
                   : (w.error ??

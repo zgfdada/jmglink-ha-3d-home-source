@@ -393,6 +393,7 @@ export function normalizeFloorplanProject(value) {
         name: text(source.name, sampleProject.name),
         version: Math.max(CURRENT_PROJECT_VERSION, Math.floor(finite(source.version, CURRENT_PROJECT_VERSION, 1, Number.MAX_SAFE_INTEGER))),
         unit: "m",
+        northAngle: typeof source.northAngle === "number" && Number.isFinite(source.northAngle) ? ((source.northAngle % 360) + 360) % 360 : 0,
         createdAt: text(source.createdAt, new Date().toISOString()),
         updatedAt: text(source.updatedAt, new Date().toISOString()),
         floors,

@@ -4,6 +4,12 @@ import '../styles/mobile-development-menu.css';
 import {CameraLiveView} from './scene.js';
 import InstanceTransfer from "./instance-transfer.jsx";
 import { resolveDaylight } from "../../../../packages/schema/src/daylight.js";
+import {readShadowIntensity, storeShadowIntensity} from '../domain/scene-shadows.js';
+import {resolveSolarDirection} from '../../../../packages/schema/src/solar-direction.js';
+import {resolveMoonlight} from '../../../../packages/schema/src/moonlight.js';
+import {haConnectionNotice} from '../domain/ha-connection-notice.js';
+import NorthDirectionControl from '../components/north-direction-control.jsx';
+import {readCelestialSettings,storeCelestialSettings} from '../domain/celestial-light-settings.js';
 import { PublishedSidebar, SidebarVisibilityToggle } from "./sidebar-development/renderer.jsx";
 /**
  * Recovered application module from official 0.1.5 Vite artifact: HomeView-BFS1nsev.js
@@ -2655,6 +2661,11 @@ function Qn({
   const [sidebarHidden, setSidebarHidden] = l.useState(() => {try{return localStorage.getItem("ha3d.sidebar.hidden") === "1";}catch{return false;}});
   const toggleSidebarVisibility = () => setSidebarHidden(previous => {const next = !previous;try{localStorage.setItem("ha3d.sidebar.hidden",next ? "1" : "0");}catch{}return next;});
   const [manualLight, setManualLight] = l.useState(null);
+  const [shadowIntensity, setShadowIntensity] = l.useState(readShadowIntensity);
+  const [celestialSettings,setCelestialSettings] = l.useState(readCelestialSettings);
+  const changeCelestialSettings = patch => setCelestialSettings(previous=>{const next={...previous,...patch};storeCelestialSettings(next);return next;});
+  const [northPreview,setNorthPreview] = l.useState(null);
+  const northAngle = northPreview?.projectId === t.id ? northPreview.value : (t.northAngle ?? 0);
   const [lightSettingsOpen, setLightSettingsOpen] = l.useState(false);
   const v = Se((n) => n.selectedEntityId),
     k = Se((n) => n.selectEntity),
@@ -3016,6 +3027,7 @@ function Qn({
         className: "home-scene",
         style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[139,187,211,193,210,200]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},
         children: [
+          haConnectionNotice(i) && e.jsx("div", {className:"ha-connection-notice", role:"status", "aria-live":"polite", style:{position:"absolute",right:24,top:24,zIndex:60,maxWidth:280,padding:"12px 18px",borderRadius:14,background:"rgba(40,51,69,.92)",color:"#fff",border:"1px solid rgba(255,207,124,.65)",pointerEvents:"none",boxShadow:"0 6px 24px #0003"},children:haConnectionNotice(i)}),
           e.jsx("div", {className: "sb-scene-viewport", children: !sceneSuspended && e.jsx(Qs, {
             key: sceneResumeKey,
             project: xe,
@@ -3025,6 +3037,10 @@ function Qn({
             showLabels: !1,
             theme: C,
             daylight: lightLevel,
+            shadowIntensity,
+            celestialSettings,
+            solarDirection: resolveSolarDirection(s, northAngle),
+            moonDirection: resolveMoonlight(s, northAngle, solarClock),
             wallMode: "full",
             wallThicknessScale: 0.56,
             presentation: !0,
@@ -3160,7 +3176,16 @@ function Qn({
             e.jsxs("label", {children: [`环境光强度 · ${Math.round(lightLevel * 100)}%`, e.jsx("input", {type: "range", min: 0, max: 100, step: 1, "aria-label": "环境光强度", value: Math.round(lightLevel * 100), onChange: event => setManualLight(Number(event.target.value) / 100)})]}),
             e.jsx("div", {className: "light-presets", children: [["夜间", 0], ["黄昏", 0.35], ["白天", 1]].map(([name,value]) => e.jsx("button", {onClick: () => setManualLight(value), children: name}, name))}),
             e.jsx("button", {className: "auto-light", onClick: () => setManualLight(null), children: "恢复自动环境光"}),
-            e.jsx("p", {children: "自动模式跟随 HA 当地太阳高度。手动预览仅改变场景照明，不操作真实灯具；刷新后恢复自动。"})
+            ...[["日光强度","sunIntensity",300],["月光强度","moonIntensity",2000]].map(([label,key,max])=>e.jsxs("label",{style:{marginTop:14},children:[`${label} · ${Math.round(celestialSettings[key]*100)}%`,e.jsx("input",{type:"range",min:0,max,step:10,"aria-label":label,value:Math.round(celestialSettings[key]*100),onChange:event=>changeCelestialSettings({[key]:Number(event.target.value)/100})})]},key)),
+            e.jsx("p",{children:"100% 为默认强度；月光可增强至 20 倍。日光只在白天、月光只在夜间且月亮升起时生效。"}),
+            e.jsxs("label",{style:{display:"flex",alignItems:"center",gap:8,margin:"12px 0"},children:[e.jsx("input",{type:"checkbox",style:{width:"auto"},"aria-label":"屋顶遮光",checked:celestialSettings.roofOcclusion,onChange:event=>changeCelestialSettings({roofOcclusion:event.target.checked})}),"屋顶遮光"]}),
+            e.jsx("p",{children:celestialSettings.roofOcclusion?"真实遮光：室内通过窗户受光。关闭后可观察室内日月投影。":"展示模式：顶部光线可进入室内，便于观察投影；墙体仍然遮光。"}),
+            e.jsxs("label", {children: [`阴影强度 · ${Math.round(shadowIntensity * 100)}%`, e.jsx("input", {type: "range", min: 0, max: 100, step: 1, "aria-label": "阴影强度", value: Math.round(shadowIntensity * 100), onChange: event => {const value = Number(event.target.value) / 100; setShadowIntensity(value); storeShadowIntensity(value);}})]}),
+            e.jsx("p", {children: "阴影强度独立调节，0% 隐藏投影，100% 为默认强度；设置保存在当前浏览器。"}),
+            e.jsx(NorthDirectionControl, {value:northAngle,onChange:value=>setNorthPreview({projectId:t.id,value}),getProject:()=>Se.getState().project,saveProject:async project=>{const saved=await P(project);setNorthPreview(null);return saved;}}),
+            e.jsx("p", {children: "自动模式跟随 HA 太阳高度与方位，结合户型北向计算日照；日落后关闭日光投影。手动仅调明暗，不操作真实灯具；刷新后恢复自动。"}),
+            e.jsx("p", {children: (() => {const sun = resolveSolarDirection(s, northAngle); return sun.available ? `太阳方位 ${sun.azimuth.toFixed(1)}° · 高度 ${sun.elevation.toFixed(1)}° · 户型北向 ${northAngle}°` : "太阳角度数据不可用，暂用固定方向照明。";})()})
+            ,e.jsx("p", {children: (() => {const moon = resolveMoonlight(s, northAngle, solarClock); return moon.available ? `月亮方位 ${moon.azimuth.toFixed(1)}° · 高度 ${moon.elevation.toFixed(1)}° · 照亮比例 ${moon.illumination.toFixed(1)}% · ${moon.active ? "月光已启用" : "月光未启用（白天或月亮未升起）"}` : "月光数据不可用或已过期，不生成月光投影。";})()})
           ]}), voiceAssistant]}),
           vs &&
             e.jsx(Wn, {

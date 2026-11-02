@@ -1,4 +1,8 @@
 import {isDoorSensorOpen} from "../domain/door-sensor.js";
+import {WALL_SHADOW_PROPS, SUN_SHADOW_PROPS, normalizeShadowIntensity} from '../domain/scene-shadows.js';
+import {resolveSolarDirection} from '../../../../packages/schema/src/solar-direction.js';
+import {resolveMoonlight} from '../../../../packages/schema/src/moonlight.js';
+import {normalizeCelestialSettings,celestialIntensity} from '../domain/celestial-light-settings.js';
 import RecoverableSceneCanvas from '../components/recoverable-scene-canvas.jsx';
 import { disableSceneEffectPicking, configureDeviceModelPicking, ignoreSceneEffectRaycast } from "../domain/scene-picking.js";
 import {createPartMotionEngine} from "../domain/part-motion-engine.js";
@@ -1739,7 +1743,7 @@ class Lo {
               _.alpha !== void 0 && _.alpha < 1 ? !0 : g.transparent),
             _.keepAlive !== void 0 && (c[g.uuid].keepAlive = _.keepAlive))
           : ((d.transparent = g.transparent), (d.visible = g.visible)),
-        (g.wireframe === !0 || g.depthTest === !1) && (d.visible = !1),
+        (g.colorWrite === !1 || g.wireframe === !0 || g.depthTest === !1) && (d.visible = !1),
         g.clippingPlanes &&
           ((d.clipping = !0),
           (d.clippingPlanes = g.clippingPlanes),
@@ -4243,8 +4247,7 @@ function Bn({
     children: [
       t.jsxs("mesh", {
         position: [0, 0, -w / 2],
-        castShadow: !n,
-        receiveShadow: !0,
+        ...WALL_SHADOW_PROPS,
         children: [
           t.jsx("extrudeGeometry", {
             args: [
@@ -10654,8 +10657,21 @@ function ui({ floors: e, theme: s, presentationMode: r }) {
     ),
   });
 }
+function ShadowOnlyRoof({floor}) {
+  const shapes = L.useMemo(() => {
+    const polygons = floor.rooms.filter(room => room.polygon.length >= 3).map(room => room.polygon);
+    return (polygons.length ? polygons : Fs([floor])).map(di);
+  }, [floor.rooms, floor.walls]);
+  return t.jsx('group', {position: [0, floor.height + 0.002, 0], children: shapes.map((shape,index) =>
+    t.jsxs('mesh', {rotation: [-Math.PI / 2, 0, 0], castShadow: true, receiveShadow: false, raycast: ignoreSceneEffectRaycast, children: [
+      t.jsx('extrudeGeometry', {args: [shape, {depth: 0.06, bevelEnabled: false, curveSegments: 1}]}),
+      t.jsx('meshBasicMaterial', {colorWrite: false, depthWrite: false, side: Xa.DoubleSide}),
+    ]}, index)
+  )});
+}
 function fi({
   floor: e,
+  roofOcclusion = true,
   project: s,
   entities: r,
   wallMode: o,
@@ -10678,6 +10694,7 @@ function fi({
   setHoveredRoomKey: C,
 }) {
   const connected = Ie((state) => state.connection?.connected === true);
+  const knownEntities = Ie((state) => state.entities);
   const O = L.useRef(null),
     { invalidate: N } = tt();
   (L.useEffect(() => {
@@ -10729,6 +10746,7 @@ function fi({
     ref: O,
     position: [0, 0, 0],
     children: [
+      l && roofOcclusion && t.jsx(ShadowOnlyRoof, {floor: e}),
       e.rooms.map((S) => {
         const B = `${e.id}:${S.id}`,
           R = z.filter((ae) => ae.roomId === S.id),
@@ -10838,7 +10856,7 @@ function fi({
         ),
       ),
       n &&
-        missingDevicePlacements(e, r, connected).map((device) =>
+        missingDevicePlacements(e, knownEntities, connected).map((device) =>
           t.jsx(le, {
             position: [device.position[0], (device.position[1] || 0) + 0.6, device.position[2]],
             center: true,
@@ -10897,6 +10915,7 @@ function fi({
 }
 function pi({
   project: e,
+  roofOcclusion = true,
   entities: s,
   floorId: r,
   showAllFloors: o,
@@ -10964,6 +10983,7 @@ function pi({
                     fi,
                     {
                       floor: R,
+                      roofOcclusion,
                       project: e,
                       entities: s,
                       wallMode: n,
@@ -11572,6 +11592,10 @@ function _a({
   showGrid: l = !1,
   theme: f = "day",
   daylight,
+  shadowIntensity = 1,
+  celestialSettings,
+  solarDirection,
+  moonDirection,
   presentation: u = !1,
   wallThicknessScale: h = 1,
   focusedRoom: m,
@@ -11602,6 +11626,13 @@ function _a({
         }),
       [r, m, u, e, o],
     ),
+    lightSettings = normalizeCelestialSettings(celestialSettings),
+    solar = solarDirection ?? resolveSolarDirection(s, e.northAngle),
+    solarActive = u && solar.available,
+    moon = moonDirection ?? resolveMoonlight(s, e.northAngle),
+    moonActive = u && solarActive && !solar.aboveHorizon && moon.active,
+    sunDistance = 50,
+    sunPosition = moonActive ? moon.direction.map(value => value * sunDistance) : solarActive ? solar.direction.map(value => value * sunDistance) : [8,14,9],
     sunlight = typeof daylight === "number" ? Math.max(0, Math.min(1, daylight)) : 1,
     ambientScale = daylight === undefined ? 1 : 0.22 + sunlight * 0.78,
     directScale = daylight === undefined ? 1 : 0.1 + sunlight * 0.9,
@@ -11680,16 +11711,16 @@ function _a({
           ],
         }),
         t.jsx("directionalLight", {
-          position: [8, 14, 9],
-          color: v ? "#fff0cc" : P ? "#fff2d8" : I ? "#e4eaff" : "#ffffff",
-          intensity: (v ? 1.44 : P ? 1.28 : I ? 0.96 : u ? 0.88 : 1.8) * F * directScale,
-          castShadow: R.shadows,
+          position: sunPosition,
+          color: moonActive ? "#b8ccff" : v ? "#fff0cc" : P ? "#fff2d8" : I ? "#e4eaff" : "#ffffff",
+          intensity: celestialIntensity((solarActive && !solar.aboveHorizon ? 0 : 1) * (v ? 1.44 : P ? 1.28 : I ? 0.96 : u ? 0.88 : 1.8) * F * directScale, moon.intensity, moonActive, lightSettings),
+          castShadow: R.shadows && (moonActive || !solarActive || solar.aboveHorizon),
           "shadow-mapSize": R.shadowMapSize,
-          "shadow-bias": -16e-5,
-          "shadow-normalBias": 0.045,
+          ...SUN_SHADOW_PROPS,
+          "shadow-intensity": normalizeShadowIntensity(shadowIntensity) * (moonActive ? 0.35 : 1),
           children: t.jsx("orthographicCamera", {
             attach: "shadow-camera",
-            args: [-16, 16, 16, -16],
+            args: [-16, 16, 16, -16, SUN_SHADOW_PROPS['shadow-camera-near'], SUN_SHADOW_PROPS['shadow-camera-far']],
           }),
         }),
         u &&
@@ -11751,6 +11782,7 @@ function _a({
         }),
         t.jsx(pi, {
           project: e,
+          roofOcclusion: lightSettings.roofOcclusion,
           entities: s,
           floorId: r,
           showAllFloors: o,

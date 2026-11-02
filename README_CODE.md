@@ -1,5 +1,25 @@
 # 开发说明
 
+## 墙体与日光阴影
+
+`celestial-light-settings.js` 归一化日光 0–3 倍、月光 0–20 倍增益和屋顶遮光开关，缺省均为 1 倍／开启，localStorage 键 `ha3d.celestialLighting`。主页实时传给场景：`celestialIntensity` 只乘当前生效光源，零基础强度不会被放大出光；`roofOcclusion` 经场景、楼层透传到遮光屋顶的条件挂载，卸载由 R3F 清理。环境光、阴影强度与增益相互独立，不修改 HA，也不触发相机重置。回归见 `celestial-light-settings.test.mjs`。
+
+北向配置入口为主页环境光面板的 `north-direction-control.jsx`，不再放在 2D 楼层设置。`northPreview` 仅实时覆写传入日／月方向的角度，不改变相机或重建 Canvas；滑块松开／键盘释放、数值输入失焦时读取最新项目并走带版本保护的 `saveProject`。在途用 ref 防重复提交，失败保留预览并显示重试，成功恢复项目持久值。阴影强度沿用即时更新。
+
+### 月光与离线状态
+
+`packages/schema/src/moonlight.js` 读取 Lunar Phase 主实体同一组 `moon_azimuth_deg`、`moon_altitude_deg`、`illumination_fraction`（0–100%），复用北向换算；不拼接不同地点的独立传感器。高度大于 0°、太阳低于地平线时才启用，至太阳 -6° 平滑增亮。强度为 `0.18 × 照亮比例 × sqrt(sin(月亮高度)) × 夜间系数`，投影再乘 0.35，以可辨识的弱冷光表现，非物理照度模拟。超过 10 分钟未更新／无效值则关闭月光。`liveSubscriptions.js` 自动订阅月亮主实体，复用现有 directionalLight 和阴影贴图，不新增一套阴影贴图。
+
+隐藏屋顶的 `colorWrite=false` 必须在描边材质替换阶段同样受尊重；`N` 将其描边材质设为不可见，防止普通视图不显示但描边 pass 填满屋顶。`moonlight.test.mjs` 包含该回归。
+
+HA `auth_ok` 只说明 WebSocket 已认证；`finishConnectionSync` 检查 HA RUNNING 并重新获取实体、注册表后才公布 connected。收到 `homeassistant_stop` 立即公布离线，启动阶段继续暂停实体缺失诊断。主页右侧常驻气泡，不拦截鼠标；missing-device 检查使用完整实体表而非场景筛选结果。`ha-offline-notice.test.mjs` 覆盖停机、STARTING、同步前后及失败路径。
+
+环境光面板将 `shadowIntensity` 传入主页场景并设置 Three.js `LightShadow.intensity`，0–1 独立控制投影，不降低直射光强度。当前浏览器 localStorage 保存 `ha3d.shadowIntensity`，不可用时保持会话内调节。项目 `northAngle` 从图上方顺时针计度，默认 0°；schema 归一化及备份导入保留该值。`solar-direction.js` 用 `heading = azimuth + northAngle`、`[sin(heading)*cos(elevation), sin(elevation), -cos(heading)*cos(elevation)]` 换算向阳单位向量，场景将其乘 50m 设置光源位置。使用主页原始实体表，避免场景状态筛选丢失 sun；沿用太阳实体实时订阅。太阳高度≤0°关闭直射光与投影；缺角度时才回退固定 `[8,14,9]`。环境明暗继续按太阳高度 -6° 到 10° smoothstep 调整；编辑模式保留固定工作光。
+
+`ShadowOnlyRoof` 按房间多边形生成天花板上方 6cm 遮光体，无房间时用楼层外轮廓兜底；`colorWrite=false`、`depthWrite=false` 隐藏视图表面但保留 shadow pass，raycast 禁用，不阻挡选择。几何与材质由 R3F 生命周期释放，复用现有日光阴影贴图。当前不计算窗玻璃物理透射率及周边楼宇；模型不是建筑日照分析工具。`solar-direction.test.mjs` 覆盖坐标方向、北向保存、无效状态、落山和屋顶光路。
+
+`domain/scene-shadows.js` 集中维护墙体遮光和日光阴影参数。主页展示模式与编辑模式的墙体均参与阴影遮挡，不能只接收阴影而不投射，否则室内物体会向外墙投影。法线偏移采用米制 0.003m，阴影相机显式使用 0.5–80m 深度范围，避免原有 0.045m 偏移使薄墙边缘漏光。保持现有阴影贴图档位，不增加贴图数量或分辨率。`scene-shadows.test.mjs` 覆盖遮挡光路和场景接入；最终 GPU 视觉效果需在实际户型核验。
+
 本文面向参与源码维护、功能开发、测试和发布的开发者。安装与日常使用请阅读 [README.md](README.md)，版本变化请阅读 [RELEASE_NOTES.md](RELEASE_NOTES.md)，运维接手流程请阅读 [服务交接文档](docs/HA3DHome服务交接文档.md)。
 
 ## 门磁绑定
