@@ -1,3 +1,4 @@
+import {saveProjectRequest} from "../domain/project-save-request.js";
 /**
  * Recovered application module from official 0.1.5 Vite artifact: index-CWMUN1IG.js
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.
@@ -463,16 +464,10 @@ async function jt(t) {
   if (!e.ok) throw new Error(await L(e, "Camera stream request failed"));
   return await e.json();
 }
-async function We(t) {
-  const e = await fetch(`./api/projects/${t.id}`, {
-    method: "PUT",
-    signal: AbortSignal.timeout(15000),
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(t),
-  });
-  if (!e.ok) throw new Error(await L(e, "项目保存失败"));
-  return (await e.json()).project;
+async function We(t, expectedVersion = t.version) {
+  return saveProjectRequest(t,{expectedVersion});
 }
+
 async function Fe(t, e) {
   const s = await fetch(`./api/projects/${t}/blueprints`, {
     method: "POST",
@@ -1288,6 +1283,7 @@ const $ = pe((t, e) => ({
                 .then(([x, devices]) => t({ areas: x, devices }))
                 .catch(() => {}));
           }
+          if(l.type === "instance.restored")window.dispatchEvent(new CustomEvent("ha3d-instance-restored"));
           if (
             (l.type === "project.updated" && t({ project: l.payload }),
             l.type === "ha.status")
@@ -1352,9 +1348,10 @@ const $ = pe((t, e) => ({
     const i = await ze(s);
     t({ connection: i, ...(await Q(i)) });
   },
-  async saveProject(s) {
-    const i = await We(s);
+  async saveProject(s, options = {}) {
+    const i = await We(s, options.expectedVersion ?? s.version);
     t({ project: i });
+    return i;
   },
   async importBlueprint(s) {
     const i = e().project;

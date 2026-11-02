@@ -86,7 +86,7 @@ export function validateInstanceBackup(value) {
   return { ...value, projects, sidebars };
 }
 export async function exportInstance(projects, platform, sidebars) {
-  await Promise.all([sidebars.queue, platform.writeQueue, platform.controlLibrary?.queue,platform.motionLibrary?.queue]);
+  await Promise.all([projects.writeQueue,sidebars.queue, platform.writeQueue, platform.controlLibrary?.queue,platform.motionLibrary?.queue]);
   const devicePlatform = structuredClone(await platform.exportBundle());
   for (const model of devicePlatform.modelTemplates || [])
     if (
@@ -148,13 +148,13 @@ export async function restoreInstance(value, projects, platform, sidebars) {
 }
 export async function registerInstanceBackup(
   app,
-  { projects, platform, sidebars, dataDir, onRestored = () => {} },
+  { projects, platform, sidebars, dataDir, writeGate, onRestored = () => {} },
 ) {
   let busy = false;
   app.get("/api/instance-backup", async () => {
     if (busy)
       throw Object.assign(Error("正在恢复，请稍后"), { statusCode: 409 });
-    return exportInstance(projects, platform, sidebars);
+    return writeGate ? writeGate.exclusive(()=>exportInstance(projects, platform, sidebars)) : exportInstance(projects, platform, sidebars);
   });
   app.post(
     "/api/instance-backup",
@@ -174,6 +174,7 @@ export async function registerInstanceBackup(
       if (busy)
         throw Object.assign(Error("正在恢复，请稍后"), { statusCode: 409 });
       validateInstanceBackup(req.body.backup);
+      const restore = async () => {
       busy = true;
       try {
         const previous = await exportInstance(projects, platform, sidebars);
@@ -195,6 +196,8 @@ export async function registerInstanceBackup(
       } finally {
         busy = false;
       }
+      };
+      return writeGate ? writeGate.exclusive(restore) : restore();
     },
   );
 }

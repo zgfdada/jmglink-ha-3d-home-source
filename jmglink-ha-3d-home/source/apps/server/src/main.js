@@ -1,8 +1,10 @@
+import {createAccessPolicy,registerAccessPolicy} from "./config/access-policy.js";
+import {createInstanceWriteGate,registerInstanceWriteGate} from "./instance-write-gate.js";
+import {collectInstanceLiveEntityIds} from "./ha/liveSubscriptions.js";
 import { registerInstanceBackup } from "./routes/instanceBackup.js";
 import {registerMotionWorkerRoute} from './routes/motionWorker.js';
 import {MotionLibraryStore,registerMotionLibraryRoutes} from './motion-library/MotionLibraryStore.js';
 import { registerSidebarServices } from "./sidebar/SidebarServices.js";
-import { resolveSidebarEntities } from "../../../packages/schema/src/sidebar-bindings.js";
 import { SidebarStore, registerSidebarRoutes } from "./sidebar/SidebarStore.js";
 import { ControlLibraryStore, registerControlLibraryRoutes } from "./control-library/ControlLibraryStore.js";
 import { existsSync } from "node:fs";
@@ -19,7 +21,6 @@ import { HaConfigStore } from "./config/haConfigStore.js";
 import { loadRuntimeConfig } from "./config/runtime.js";
 import { DevicePlatformStore } from "./device-platform/DevicePlatformStore.js";
 import { HomeAssistantClient } from "./ha/HomeAssistantClient.js";
-import { collectLiveEntityIds } from "./ha/boundEntityFilter.js";
 import { EntityHistoryStore } from "./ha/EntityHistoryStore.js";
 import { createResourceMonitor } from "./observability/resourceMonitor.js";
 import { ProjectStore } from "./projects/ProjectStore.js";
@@ -42,6 +43,10 @@ const app = Fastify({
   logger: { level: process.env.LOG_LEVEL ?? "info" },
   bodyLimit: 22 * 1024 * 1024,
 });
+const accessPolicy=createAccessPolicy({token:process.env.HA3D_ACCESS_TOKEN?.trim(),allowedOrigins:(process.env.HA3D_ALLOWED_ORIGINS||"").split(",").map(s=>s.trim()).filter(Boolean)});
+registerAccessPolicy(app,accessPolicy);
+const writeGate=createInstanceWriteGate();
+registerInstanceWriteGate(app,writeGate);
 await registerClientErrorRoutes(app);
 await registerMotionWorkerRoute(app);
 await registerSkillPackageRoutes(app);
@@ -112,17 +117,11 @@ const ha = new HomeAssistantClient(
 registerSidebarServices(app,ha,sidebarStore,projectStore);
 function refreshBoundEntityFilter() {
   try {
-    const project = projectStore.getProject();
-    const boundIds = collectLiveEntityIds(project, ha.getEntities(), devicePlatformStore.getBindings());
-    const sidebar = sidebarStore.get(project.id);
-    for (const config of [sidebar.draft, sidebar.published]) {
-      for (const widget of config.widgets) for (const id of resolveSidebarEntities(widget, {}, ha.getEntities()).ids) boundIds.add(id);
-      for (const page of config.pages) for (const item of page.items) for (const id of resolveSidebarEntities(config.widgets.find(w=>w.id===item.widgetId), item, ha.getEntities()).ids) boundIds.add(id);
-    }
-    for (const entity of ha.getEntities()) if (entity.domain === "weather" || entity.domain === "sun") boundIds.add(entity.entityId);
+    const boundIds=collectInstanceLiveEntityIds(projectStore,sidebarStore,ha.getEntities(),devicePlatformStore.getBindings());
     ha.setBoundEntityFilter(boundIds.size ? boundIds : null);
   } catch (error) {
     // A failed filter refresh must not break project persistence; keep broadcasting everything.
+    ha.setBoundEntityFilter(null);
     console.warn("Failed to refresh bound entity filter", error);
   }
 }
@@ -159,12 +158,12 @@ app.setErrorHandler((error, request, reply) => {
       : error.message;
   return reply.code(statusCode).send({ error: message });
 });
-await app.register(cors, { origin: true });
+await app.register(cors, { origin: false });
 await registerHaRoutes(app, ha, projectStore, haConfigStore, gateway);
 await registerVoiceAssistantRoutes(app, await VoiceAssistant.create(config.dataDir, ha));
 await registerDevicePlatformRoutes(app, devicePlatformStore, ha);
 await registerProjectRoutes(app, projectStore, gateway, devicePlatformStore);
-await registerInstanceBackup(app,{projects:projectStore,platform:devicePlatformStore,sidebars:sidebarStore,dataDir:config.dataDir,onRestored:()=>{refreshBoundEntityFilter();sidebarChanged();}});
+await registerInstanceBackup(app,{projects:projectStore,platform:devicePlatformStore,sidebars:sidebarStore,dataDir:config.dataDir,writeGate,onRestored:()=>{refreshBoundEntityFilter();sidebarChanged();gateway.broadcast({type:"instance.restored",payload:{generation:Date.now()}});}});
 app.get("/api/health", async () => ({
   ok: true,
   mode: config.mode,
@@ -213,6 +212,7 @@ try {
 }
 const wss = new WebSocketServer({
   server: app.server,
+  verifyClient: (info,done) => {const error=accessPolicy.authorize(info.req);done(!error,error?.status,error?.message);},
   path: "/ws",
   maxPayload: 24 * 1024 * 1024,
   perMessageDeflate: false,
@@ -220,8 +220,8 @@ const wss = new WebSocketServer({
 });
 gateway.attach(wss, {
   getProject: () => projectStore.getProject(),
-  saveProject: (project) => projectStore.saveProject(project),
-  performAction: (action) => ha.performAction(action),
+  saveProject: (project) => writeGate.shared(() => {if(!Number.isSafeInteger(project.version))throw Object.assign(new Error("缺少户型保存版本"),{statusCode:428});return projectStore.saveProject(project,{expectedVersion:project.version});}),
+  performAction: (action) => writeGate.shared(() => ha.performAction(action)),
 });
 await ha.connect();
 const resourceMonitor = createResourceMonitor({

@@ -121,7 +121,7 @@ export async function registerProjectRoutes(app, store, gateway, platform) {
         return { project };
     });
     app.put("/api/projects/:id", async (request, reply) => {
-        if (request.params.id !== request.body.id) {
+        if (request.params.id !== request.body?.id) {
             request.log.warn({event:"project-save-rejected",reason:"project-id-mismatch"},"Project save rejected");
             return reply.code(400).send({ error: "项目编号与保存目标不一致" });
         }
@@ -130,12 +130,17 @@ export async function registerProjectRoutes(app, store, gateway, platform) {
         request.log.info({event:"project-save-received",version:request.body.version,floorCount:request.body.floors?.length,deviceCount:request.body.floors?.reduce((sum,floor)=>sum+(floor.devices?.length||0),0),bytes:request.headers["content-length"]},"Project save received");
         let project;
         try {
-            project = await store.saveProject(request.body, {onPhase});
+            const match = request.headers["if-match"];
+            if(match===undefined)throw Object.assign(new Error("请刷新页面以启用保存版本保护，当前编辑请先导出备份"),{statusCode:428});
+            const expectedVersion = Number(String(match).replace(/^"|"$/g,""));
+            if (match !== undefined && (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0))
+                throw Object.assign(new Error("保存版本无效"), {statusCode:400});
+            project = await store.saveProject(request.body, {onPhase, expectedVersion});
         }
         catch (error) {
             const message = error instanceof Error ? error.message : "Invalid project";
             request.log.warn({ event: "project-save-rejected", reason: message.includes("重复放置") ? "duplicate-device" : message.includes("未关联墙体") ? "unbound-opening" : "invalid-project" }, "Project save rejected");
-            return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid project" });
+            return reply.code(error.statusCode || (error.code ? 500 : 422)).send({ error: error.code ? "保存失败，请检查服务器存储，当前编辑已保留" : message });
         }
         onPhase("broadcast-start");
         gateway?.broadcast({ type: "project.updated", payload: project });

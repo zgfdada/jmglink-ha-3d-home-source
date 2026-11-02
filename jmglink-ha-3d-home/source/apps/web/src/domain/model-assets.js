@@ -1,3 +1,5 @@
+import {MODEL_BUDGET,inspectModelBudget} from "./model-budget.js";
+import {runModelWorker,hydrateModelPacket} from "./model-worker-client.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { disposePreviewObject } from "./webgl-recovery.js";
@@ -139,7 +141,7 @@ export const modelLoadQueue = createModelLoadQueue();
 // The prepared asset is handed to the editor preview, rather than parsed a second time.
 export function loadModelAsset(
   source,
-  { signal, background = false, timeoutMs = 45000 } = {},
+  { signal, background = false, timeoutMs = 45000, decode } = {},
 ) {
   const controller = new AbortController();
   const cancel = () => controller.abort();
@@ -160,18 +162,34 @@ export function loadModelAsset(
         if (typeof source === "string") {
           const response = await fetch(source, { signal: activeSignal });
           if (!response.ok) throw Error("模型文件加载失败");
-          data = await response.arrayBuffer();
+          if(Number(response.headers?.get('content-length'))>MODEL_BUDGET.fileBytes)throw Error('模型文件超过30MiB限制');
+          if(response.body?.getReader){
+            const reader=response.body.getReader(),chunks=[];let size=0;
+            try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MODEL_BUDGET.fileBytes){controller.abort();throw Error('模型文件超过30MiB限制');}chunks.push(value);}}
+            catch(error){await reader.cancel().catch(()=>{});throw error;}
+            const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}data=bytes.buffer;
+          }else data = await response.arrayBuffer();
           const url = new URL(source, document.baseURI);
           if (["http:", "https:", "file:"].includes(url.protocol))
             resourcePath = new URL(".", url).href;
-        } else
+        } else {
+          if(source.size>MODEL_BUDGET.fileBytes)throw Error("模型文件超过30MiB限制");
           data = source.name?.toLowerCase().endsWith(".gltf")
             ? await source.text()
             : await source.arrayBuffer();
+        }
         if (activeSignal.aborted) throw aborted();
-        const asset = createModelAsset(
-          await new GLTFLoader().parseAsync(data, resourcePath),
-        );
+        let gltf;
+        if(decode)gltf=await decode(data,{signal:activeSignal});
+        else if(typeof window!=="undefined"){
+          if(typeof Worker==='undefined')throw new Error('当前浏览器不支持隔离模型解码，请使用支持 Worker 的浏览器');
+          const packet=await runModelWorker(data,{signal:activeSignal});
+          gltf=hydrateModelPacket(packet);
+        }else{
+          inspectModelBudget(data);
+          gltf=await new GLTFLoader().parseAsync(data, resourcePath);
+        }
+        const asset = createModelAsset(gltf);
         if (activeSignal.aborted) {
           asset.release();
           throw aborted();

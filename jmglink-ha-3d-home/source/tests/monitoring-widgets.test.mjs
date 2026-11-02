@@ -32,10 +32,27 @@ test('battery and detergent icons track remaining level and color through live e
  const h=harness(consumablesWidgetCode(settings),entities);
  assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.width,'49%');
  assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.background,'hsl(58.8 75% 45%)');
- assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.height,'20%');
- entities[2].state='100';entities[3].state='0';h.update();
+ assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.height,'0%');
+ entities[2].state='100';entities[3].state='0';entities[3].attributes.unit_of_measurement='%';h.update();
  assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.width,'100%');
  assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.background,'hsl(120 75% 45%)');
  assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.background,'hsl(0 75% 45%)');
  entities[2].state='unavailable';h.update();assert.equal(h.nodes().find(n=>n.className==='battery-fill').style.background,'#94a3b8');
+});
+
+test('P2: consumable fill normalizes only percentages or explicit same-unit capacity, never voltage or raw volume',()=>{
+ const rule={name:'洗涤剂',entity:'sensor.supply',condition:'binary_sensor.low'};
+ const settings={master:'binary_sensor.show',rules:[rule]};
+ const entities=[{entityId:settings.master,state:'on'},{entityId:rule.condition,state:'on'},{entityId:rule.entity,state:'350',attributes:{unit_of_measurement:'mL'}}];
+ const h=harness(consumablesWidgetCode(settings),entities);
+ assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.height,'0%');
+ assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.background,'#94a3b8');
+ const configured=harness(consumablesWidgetCode({...settings,rules:[{...rule,capacity:1000,capacityUnit:'mL'}]}),entities);
+ assert.equal(configured.nodes().find(n=>n.className==='bottle-fill').style.height,'35%');
+ entities[2].attributes.unit_of_measurement='g';configured.update();assert.equal(configured.nodes().find(n=>n.className==='bottle-fill').style.height,'0%');
+ entities[2].attributes.unit_of_measurement='%';entities[2].state='49';h.update();assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.height,'49%');
+ entities[2].state='150';h.update();assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.background,'#94a3b8');
+ entities[2].state='Low';h.update();assert.equal(h.nodes().find(n=>n.className==='bottle-fill').style.height,'0%');assert.notEqual(h.nodes().find(n=>n.className==='bottle-fill').style.background,'#94a3b8');
+ const battery={...rule,name:'电池',entity:'sensor.battery'};entities[2]={entityId:battery.entity,state:'3.7',attributes:{device_class:'battery',unit_of_measurement:'V'}};
+ const volts=harness(consumablesWidgetCode({...settings,rules:[battery]}),entities);assert.equal(volts.nodes().find(n=>n.className==='battery-fill').style.width,'0%');
 });

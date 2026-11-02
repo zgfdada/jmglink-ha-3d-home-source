@@ -1,3 +1,4 @@
+import {createProjectSaveSession,finishProjectSave} from "../domain/project-save-session.js";
 import {formatProjectSaveError} from "../domain/project-save-error.js";
 import SaveErrorToast from "../components/save-error-toast.jsx";
 import {applyCurtainTrackToFloor} from "../domain/curtain-placement.js";
@@ -3557,6 +3558,9 @@ function vd({
     Ks = x.useCallback(() => {
       (ee(void 0), Dt(1), Yt([0, 0]));
     }, []);
+  const saveSession = x.useRef(createProjectSaveSession(s));
+  if(saveSession.current.projectId !== s.id) saveSession.current = createProjectSaveSession(s);
+  x.useEffect(()=>{const restored=()=>{saveSession.current.blocked=true;Fe("实例已恢复，请先导出当前未保存编辑，再重新加载页面。");};window.addEventListener("ha3d-instance-restored",restored);return()=>window.removeEventListener("ha3d-instance-restored",restored);},[]);
   (x.useEffect(() => {
     window.localStorage.setItem("ha3d:show-dimensions", String(hs));
   }, [hs]),
@@ -3564,7 +3568,7 @@ function vd({
       window.localStorage.setItem("ha3d:show-device-labels", String(bt));
     }, [bt]),
     x.useEffect(() => {
-      Ue || U(tt(s));
+      if(!Ue){saveSession.current.baseVersion=s.version;U(tt(s));}
     }, [Ue, s]),
     x.useEffect(() => {
       Ue || Di(s.updatedAt);
@@ -3666,6 +3670,7 @@ function vd({
       rt === "2d" && Ks();
     }, [C == null ? void 0 : C.id, Ks, b.id, rt]));
   const ht = x.useCallback((e) => {
+      saveSession.current.generation++;
       Fe(void 0);
       U((n) => {
         const a = e(n);
@@ -5818,14 +5823,22 @@ function vd({
   async function En() {
     if (!(!Ue || Ut)) {
       (ki(!0), Fe(void 0));
+      const session=saveSession.current;
+      const ticket={projectId:session.projectId,generation:session.generation,expectedVersion:session.baseVersion,snapshot:P};
       try {
         const e = {
           ...P,
           updatedAt: new Date().toISOString(),
           version: P.version + 1,
         };
-        (await v(e), U(e), Di(e.updatedAt), ve(!1));
+        const saved=await v(e,{expectedVersion:ticket.expectedVersion});
+        if(saveSession.current!==session)return;
+        session.blocked=false;
+        // Keep edits made while this request was in flight; acknowledge only this snapshot.
+        U(current=>{const result=finishProjectSave(session,ticket,current,saved);ve(result.dirty);return result.project;});
+        Di(saved.updatedAt);
       } catch (e) {
+        if([409,423,428].includes(e.statusCode))session.blocked=true;
         Fe(formatProjectSaveError(e instanceof Error ? e.message : "保存失败，请重试", P, i));
       } finally {
         ki(!1);
@@ -5833,7 +5846,7 @@ function vd({
     }
   }
   x.useEffect(() => {
-    if (!Ue || Ut || E) return;
+    if (!Ue || Ut || E || saveSession.current.blocked) return;
     const e = window.setTimeout(() => {
       En();
     }, 900);

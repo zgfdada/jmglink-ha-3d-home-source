@@ -17,5 +17,13 @@
   "devDependencies": {
     "javascript-obfuscator": "4.1.1",
     "prettier": "^3.9.6"
+  },
+  "overrides": {
+    "@fastify/static": {
+      "glob": "14.0.3"
+    },
+    "glob": {
+      "minimatch": "11.0.4"
+    }
   }
 }

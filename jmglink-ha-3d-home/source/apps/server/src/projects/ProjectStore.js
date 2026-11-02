@@ -1,5 +1,6 @@
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { normalizeFloorplanProject, sampleProject, validateFloorplanProject } from "@ha3d/schema";
 const projectFileName = (id) => `project-${Buffer.from(id).toString("base64url")}.json`;
 const projectIdFromFileName = (fileName) => {
@@ -15,6 +16,12 @@ const projectIdFromFileName = (fileName) => {
 };
 export class ProjectStore {
     projectsDirectory;
+    writeQueue = Promise.resolve();
+    enqueueWrite(task) {
+        const result = this.writeQueue.catch(() => {}).then(task);
+        this.writeQueue = result.catch(() => {});
+        return result;
+    }
     projects = new Map();
     currentProjectId = sampleProject.id;
     projectSavedListeners = new Array();
@@ -56,9 +63,10 @@ export class ProjectStore {
             }
         }
     }
-    async replaceAll(projects, currentId) {
+    replaceAll(projects, currentId) { return this.enqueueWrite(() => this.replaceAllNow(projects, currentId)); }
+    async replaceAllNow(projects, currentId) {
         const next=new Map();
-        for(const project of projects){const v=validateFloorplanProject(project);if(!v.valid||!v.project||next.has(v.project.id))throw Error("户型备份校验失败");next.set(v.project.id,v.project);}
+        for(const project of projects){const v=validateFloorplanProject(project);if(!v.valid||!v.project||next.has(v.project.id))throw Error("户型备份校验失败");next.set(v.project.id,{...v.project,version:Math.max(v.project.version,this.projects.get(v.project.id)?.version||0)+1});}
         if(!next.has(currentId))throw Error("当前户型不存在");
         const staging=await mkdtemp(this.projectsDirectory+"-import-");
         for(const project of next.values())await this.writeJsonAtomically(path.join(staging,projectFileName(project.id)),project);
@@ -74,7 +82,7 @@ export class ProjectStore {
         if (!project)
             throw new Error("Project not found");
         const asset = { ...input, id: `asset-${Date.now().toString(36)}` };
-        await this.saveProject({ ...project, assets: [...project.assets, asset] });
+        await this.saveProject({ ...project, assets: [...project.assets, asset] }, {expectedVersion:project.version});
         return asset;
     }
     async deleteAsset(assetId, id = this.currentProjectId) {
@@ -84,10 +92,11 @@ export class ProjectStore {
         const asset = project.assets.find((item) => item.id === assetId);
         if (!asset)
             return undefined;
-        await this.saveProject({ ...project, assets: project.assets.filter((item) => item.id !== assetId) });
+        await this.saveProject({ ...project, assets: project.assets.filter((item) => item.id !== assetId) }, {expectedVersion:project.version});
         return asset;
     }
-    async createProject(input = {}) {
+    createProject(input = {}) { return this.enqueueWrite(() => this.createProjectNow(input)); }
+    async createProjectNow(input = {}) {
         const source = input.sourceProjectId ? this.projects.get(input.sourceProjectId) : undefined;
         if (input.sourceProjectId && !source)
             throw new Error("Source project not found");
@@ -100,64 +109,77 @@ export class ProjectStore {
             createdAt: timestamp,
             updatedAt: timestamp,
         });
+        await this.persistProject(project);
+        try { await this.writeJsonAtomically(this.currentProjectPath(), project); }
+        catch(error){await rm(this.projectPath(project.id),{force:true});throw error;}
         this.projects.set(project.id, project);
         this.currentProjectId = project.id;
-        await this.persistProject(project);
-        await this.persistCurrentProject();
         this.emitProjectSaved(project);
         return project;
     }
-    async saveProject(project, { onPhase = () => {} } = {}) {
+    saveProject(project, options = {}) {
+        const snapshot = structuredClone(project);
+        return this.enqueueWrite(() => this.saveProjectNow(snapshot, options));
+    }
+    async saveProjectNow(project, { onPhase = () => {}, expectedVersion } = {}) {
         onPhase("validate-start");
         if (!this.projects.has(project.id))
             throw new Error("Project not found");
+        const current = this.projects.get(project.id);
+        if (expectedVersion !== undefined && expectedVersion !== current.version)
+            throw Object.assign(new Error("户型已被其他页面修改，请先备份当前编辑再重新加载，避免覆盖其他修改"), {statusCode:409});
         const validation = validateFloorplanProject(project);
         if (!validation.valid || !validation.project)
-            throw new Error(validation.issues.join("; "));
+            throw Object.assign(new Error(validation.issues.join("; ")), {statusCode:422});
         onPhase("backup-start");
         await this.createBackup(project.id);
         onPhase("backup-done");
-        const saved = { ...validation.project, updatedAt: new Date().toISOString() };
-        this.projects.set(saved.id, saved);
+        const saved = { ...validation.project, version: current.version + 1, updatedAt: new Date().toISOString() };
         onPhase("project-write-start");
         await this.persistProject(saved);
-        onPhase("project-write-done");
-        if (saved.id === this.currentProjectId) {
-            onPhase("current-write-start");
-            await this.persistCurrentProject();
-            onPhase("current-write-done");
+        try {
+            if (saved.id === this.currentProjectId) {
+                onPhase("current-write-start");
+                await this.writeJsonAtomically(this.currentProjectPath(), saved);
+                onPhase("current-write-done");
+            }
+        } catch (error) {
+            // Named project files are authoritative after restart; restore them before rejecting.
+            try { await this.persistProject(current); }
+            catch (rollback) { throw Object.assign(new Error("保存失败且磁盘回滚失败，请保留编辑并检查存储", {cause:rollback}), {statusCode:500}); }
+            throw error;
         }
+        this.projects.set(saved.id, saved);
+        onPhase("project-write-done");
         onPhase("notify-start");
         this.emitProjectSaved(saved);
         onPhase("notify-done");
         return saved;
     }
-    async deleteProject(id) {
+    deleteProject(id) { return this.enqueueWrite(() => this.deleteProjectNow(id)); }
+    async deleteProjectNow(id) {
         if (!this.projects.has(id))
             return false;
         if (this.projects.size <= 1)
             throw new Error("At least one project is required");
+        const previous=this.projects.get(id),wasCurrent=id===this.currentProjectId;
+        const next=wasCurrent?[...this.projects.values()].find(project=>project.id!==id):this.getProject();
+        if(wasCurrent)await this.writeJsonAtomically(this.currentProjectPath(),next);
+        try { await rm(this.projectPath(id), {force:true}); }
+        catch(error){if(wasCurrent)await this.writeJsonAtomically(this.currentProjectPath(),previous);throw error;}
         this.projects.delete(id);
-        await rm(this.projectPath(id), { force: true });
-        await rm(this.backupDirectory(id), { force: true, recursive: true });
-        if (id === this.currentProjectId) {
-            this.currentProjectId = this.projects.keys().next().value;
-            await this.persistCurrentProject();
-        }
+        if(wasCurrent)this.currentProjectId=next.id;
+        // Project deletion is committed; stale backup cleanup cannot make it appear to fail.
+        await rm(this.backupDirectory(id),{force:true,recursive:true}).catch(()=>{});
         return true;
     }
-    async reset(id = this.currentProjectId) {
+    reset(id = this.currentProjectId) { return this.enqueueWrite(() => this.resetNow(id)); }
+    async resetNow(id = this.currentProjectId) {
         if (!this.projects.has(id))
             throw new Error("Project not found");
-        await this.createBackup(id);
         const now = new Date().toISOString();
         const project = normalizeFloorplanProject({ ...structuredClone(sampleProject), id, createdAt: this.projects.get(id)?.createdAt ?? now, updatedAt: now });
-        this.projects.set(id, project);
-        await this.persistProject(project);
-        if (id === this.currentProjectId)
-            await this.persistCurrentProject();
-        this.emitProjectSaved(project);
-        return project;
+        return this.saveProjectNow(project);
     }
     async listBackups(id = this.currentProjectId) {
         if (!this.projects.has(id))
@@ -175,7 +197,8 @@ export class ProjectStore {
             return [];
         }
     }
-    async restoreBackup(id, backupId) {
+    restoreBackup(id, backupId) { return this.enqueueWrite(() => this.restoreBackupNow(id, backupId)); }
+    async restoreBackupNow(id, backupId) {
         if (!this.projects.has(id))
             throw new Error("Project not found");
         if (!/^backup-\d+\.json$/.test(backupId))
@@ -184,14 +207,8 @@ export class ProjectStore {
         const validation = validateFloorplanProject(JSON.parse(raw));
         if (!validation.valid || !validation.project)
             throw new Error(validation.issues.join("; "));
-        await this.createBackup(id);
         const project = { ...validation.project, id, createdAt: this.projects.get(id)?.createdAt ?? validation.project.createdAt, updatedAt: new Date().toISOString() };
-        this.projects.set(id, project);
-        await this.persistProject(project);
-        if (id === this.currentProjectId)
-            await this.persistCurrentProject();
-        this.emitProjectSaved(project);
-        return project;
+        return this.saveProjectNow(project);
     }
     async load() {
         await mkdir(this.projectsDirectory, { recursive: true });
@@ -374,7 +391,7 @@ export class ProjectStore {
             throw new Error("Project not found");
         const directory = this.backupDirectory(id);
         await mkdir(directory, { recursive: true });
-        await writeFile(path.join(directory, `backup-${Date.now()}.json`), JSON.stringify(project, null, 2), "utf8");
+        await writeFile(path.join(directory, `backup-${this.backupStamp = Math.max(Date.now(), (this.backupStamp || 0) + 1)}.json`), JSON.stringify(project, null, 2), "utf8");
         const files = await readdir(directory);
         const stale = files.filter((file) => /^backup-\d+\.json$/.test(file)).sort().slice(0, -12);
         await Promise.all(stale.map((file) => unlink(path.join(directory, file))));
@@ -389,8 +406,10 @@ export class ProjectStore {
         await this.writeJsonAtomically(this.currentProjectPath(), current);
     }
     async writeJsonAtomically(filePath, value) {
-        const temporaryPath = `${filePath}.tmp`;
-        await writeFile(temporaryPath, JSON.stringify(value, null, 2), "utf8");
-        await rename(temporaryPath, filePath);
+        const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
+        try {
+            await writeFile(temporaryPath, JSON.stringify(value, null, 2), {encoding:"utf8",flag:"wx",mode:0o600});
+            await rename(temporaryPath, filePath);
+        } finally { await rm(temporaryPath, {force:true}); }
     }
 }
