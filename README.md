@@ -14,7 +14,7 @@
 
 环境光面板可分别调节环境光、日光（0–300%）、月光（0–2000%）和阴影强度，100% 日月光为默认增益。屋顶遮光开启时室内通过窗户受光，关闭后顶部光线可进入室内，便于观察投影；墙体仍遮光。日月光只在对应时段且天体升起时生效，不会用增益强制生成落山后的光线；强度与屋顶开关在当前浏览器记忆。
 
-本仓库提供当前公开源码；安装和版本下载请使用[安装仓库](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom)。
+本仓库提供当前公开源码；安装和版本下载请使用[安装仓库](https://github.com/zgfdada/jmglink-ha-3d-home-custom)。
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
@@ -61,7 +61,7 @@
 1. 在 Home Assistant 的应用商店添加仓库：
 
    ```text
-   https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+   https://github.com/zgfdada/jmglink-ha-3d-home-custom
    ```
 
 2. 安装 **JMGLink HA 3D Home Custom**，启动后点击“打开 Web 界面”。
@@ -194,3 +194,7 @@ docker compose -f docker-compose.release.yml up -d
 
 
 当前开发分支增加保存冲突保护与隔离模型解码。升级开发版前先保存／导出未保存编辑，再重载页面；模型须满足资源预算。独立部署访问密码及迁移说明见[修复说明](docs/评审问题修复与回归.md)。这些变更尚未发布新的正式版本。
+
+## 代码与 CI 维护入口
+
+源码主仓库已迁至 GitHub，日常 main／PR 只构建和测试，正式版本 Tag 才发布到 GHCR。现有 `0.1.5-custom.38` 安装库与历史镜像保持可用，不因本次迁移重新发布或改指尚未存在的镜像；后续正式版本使用 GHCR。详见[GitHub Actions 与 GHCR 迁移](docs/GitHub-Actions与GHCR迁移.md)。

@@ -29,6 +29,6 @@ Compose 通过独立入口运行已发布的同一多架构镜像。`./ha3d-data
 安装与排障完整入口见仓库 README、部署说明和“数据备份与升级”。
 ## Home Assistant App
 
-在应用商店添加 https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom ，安装 JMGLink HA 3D Home Custom。Supervisor 自动选择架构并连接 HA。升级前备份 App，保留相同 slug，勿卸载重装。升级后强制刷新页面。
+在应用商店添加 https://github.com/zgfdada/jmglink-ha-3d-home-custom ，安装 JMGLink HA 3D Home Custom。Supervisor 自动选择架构并连接 HA。升级前备份 App，保留相同 slug，勿卸载重装。升级后强制刷新页面。
 
 App 运行数据位于 /data，素材位于 /config/assets；运行密钥属于受保护数据。

@@ -5,7 +5,7 @@
 在 Home Assistant 的 Add-on 商店打开“仓库”，添加：
 
 ```text
-https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+https://github.com/zgfdada/jmglink-ha-3d-home-custom
 ```
 
 搜索并安装 **JMGLink HA 3D Home Custom**。启用开机启动和侧边栏显示。

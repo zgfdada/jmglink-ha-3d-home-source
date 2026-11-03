@@ -28,7 +28,7 @@
 3. 添加以下仓库地址：
 
    ```text
-   https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+   https://github.com/zgfdada/jmglink-ha-3d-home-custom
    ```
 
 4. 刷新加载项商店并选择 **JMGLink HA 3D Home Custom**。
@@ -127,5 +127,5 @@ Add-on 模式使用 Supervisor 提供的 `SUPERVISOR_TOKEN` 连接当前 Home As
 
 ## 来源
 
-- 增强版仓库：<https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom>
+- 增强版仓库：<https://github.com/zgfdada/jmglink-ha-3d-home-custom>
 - 原始项目：<https://gitee.com/tuotuo4ever/jmglink-ha-3d-home.git>

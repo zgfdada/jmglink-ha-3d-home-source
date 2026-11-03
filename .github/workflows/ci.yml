@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
-      - .gitea/workflows/**
+      - .github/workflows/**
       - jmglink-ha-3d-home/**
-      - scripts/publish-installation.py
+      - scripts/**
       - scripts/test-publication.py
       - distribution/**
       - distribution-manifest.json
@@ -15,9 +15,9 @@ on:
     branches:
       - main
     paths:
-      - .gitea/workflows/**
+      - .github/workflows/**
       - jmglink-ha-3d-home/**
-      - scripts/publish-installation.py
+      - scripts/**
       - scripts/test-publication.py
       - distribution/**
       - distribution-manifest.json
@@ -27,16 +27,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ gitea.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   verify:
     name: 验证恢复源码构建
-    runs-on: linux-docker-220
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      IMAGE: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+      IMAGE: ghcr.io/zgfdada/jmglink-ha-3d-home-custom
 
     steps:
       - name: 检出源码
@@ -50,6 +50,7 @@ jobs:
           set -euo pipefail
           python3 scripts/publish-installation.py --check
           python3 scripts/test-publication.py
+          python3 scripts/test-github-publication.py
 
       - name: 读取并校验版本信息
         id: metadata
@@ -91,12 +92,12 @@ jobs:
             --provenance=false \
             --build-arg HA3D_RELEASE_BUILD=1 --build-arg BUILD_ARCH=amd64 \
             --build-arg BUILD_VERSION="${{ steps.metadata.outputs.version }}" \
-            --load --tag ha3d-ci:${{ gitea.sha }} \
+            --load --tag ha3d-ci:${{ github.sha }} \
             .
           docker run --rm --interactive --network none --read-only --tmpfs /tmp \
-            --entrypoint node ha3d-ci:${{ gitea.sha }} --input-type=module \
+            --entrypoint node ha3d-ci:${{ github.sha }} --input-type=module \
             < source/tests/fixtures/voice-api-image-smoke.mjs
           docker run --rm --interactive --network none --read-only --tmpfs /tmp \
-            --entrypoint node ha3d-ci:${{ gitea.sha }} --input-type=module \
+            --entrypoint node ha3d-ci:${{ github.sha }} --input-type=module \
             < source/tests/fixtures/release-http-smoke.mjs
-          docker image rm ha3d-ci:${{ gitea.sha }}
+          docker image rm ha3d-ci:${{ github.sha }}

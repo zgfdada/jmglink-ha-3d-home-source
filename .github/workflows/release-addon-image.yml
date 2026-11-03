@@ -6,22 +6,20 @@ on:
       - "v*"
 
 permissions:
-  code: read
-  releases: none
-  packages: none
+  contents: read
 
 concurrency:
-  group: release-${{ gitea.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  REGISTRY: gitea.700117.xyz:16666
-  IMAGE: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/zgfdada/jmglink-ha-3d-home-custom
 
 jobs:
   prepare:
     name: 校验版本与发布元数据
-    runs-on: linux-docker-220
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       version: ${{ steps.release.outputs.version }}
@@ -68,8 +66,11 @@ jobs:
 
   build_arm64:
     name: 构建并发布 ARM64 镜像
+    permissions:
+      contents: read
+      packages: write
     needs: prepare
-    runs-on: linux-docker-220
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
 
     steps:
@@ -78,15 +79,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: 启用 ARM64 模拟
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
-        with:
-          platforms: arm64
-
       - name: 创建受限 BuildKit
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
-          name: ha3d-release-arm64-${{ gitea.run_id }}
+          name: ha3d-release-arm64-${{ github.run_id }}
           keep-state: false
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
@@ -96,8 +92,8 @@ jobs:
       - name: 使用软件包专用密钥登录仓库
         shell: bash
         env:
-          REGISTRY_USERNAME: ${{ gitea.actor }}
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
@@ -141,8 +137,11 @@ jobs:
 
   build_amd64:
     name: 构建并发布 AMD64 镜像
+    permissions:
+      contents: read
+      packages: write
     needs: prepare
-    runs-on: linux-docker-220
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
 
     steps:
@@ -154,7 +153,7 @@ jobs:
       - name: 创建受限 BuildKit
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
-          name: ha3d-release-amd64-${{ gitea.run_id }}
+          name: ha3d-release-amd64-${{ github.run_id }}
           keep-state: false
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
@@ -164,8 +163,8 @@ jobs:
       - name: 使用软件包专用密钥登录仓库
         shell: bash
         env:
-          REGISTRY_USERNAME: ${{ gitea.actor }}
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
@@ -209,11 +208,14 @@ jobs:
 
   finalize:
     name: 汇总多架构镜像并创建 Release
+    permissions:
+      contents: read
+      packages: write
     needs:
       - prepare
       - build_arm64
       - build_amd64
-    runs-on: linux-docker-220
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -222,10 +224,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: 为最终 ARM64 冒烟验证启用模拟
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        with:
+          platforms: arm64
+
       - name: 创建受限 BuildKit
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
         with:
-          name: ha3d-release-finalize-${{ gitea.run_id }}
+          name: ha3d-release-finalize-${{ github.run_id }}
           keep-state: false
           driver-opts: |
             image=moby/buildkit:buildx-stable-1
@@ -235,8 +242,8 @@ jobs:
       - name: 使用软件包专用密钥登录仓库
         shell: bash
         env:
-          REGISTRY_USERNAME: ${{ gitea.actor }}
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
@@ -304,6 +311,9 @@ jobs:
             --read-only --tmpfs /tmp --entrypoint node "${{ needs.prepare.outputs.arm_tag }}" \
             --input-type=module < jmglink-ha-3d-home/source/tests/fixtures/release-http-smoke.mjs
 
+      - name: 验证 GHCR 镜像可匿名拉取
+        run: python3 scripts/publish-installation.py --verify-image
+
       - name: 更新并验证 latest 镜像
         shell: bash
         run: |
@@ -313,7 +323,7 @@ jobs:
           docker buildx imagetools inspect "${{ needs.prepare.outputs.release_tag }}" --raw > /tmp/version-index.json
           cmp /tmp/latest-index.json /tmp/version-index.json
 
-      - name: 同步公开安装库、Wiki、镜像关联与 Release
+      - name: 同步公开安装库、版本化教程与 Release
         shell: bash
         env:
           INSTALLATION_TOKEN: ${{ secrets.INSTALLATION_TOKEN }}

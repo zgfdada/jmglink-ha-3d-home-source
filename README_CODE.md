@@ -116,7 +116,7 @@ JMGLink HA 3D Home Custom 是一个由 Fastify 后端、React 前端、Three.js 
 | Schema | 共享 ES Module 和类型声明；负责项目归一化、验证、旧数据迁移与房间拓扑计算 |
 | Docker | 多阶段构建；构建阶段执行测试和 Vite 打包，运行阶段仅保留生产依赖与产物 |
 | Home Assistant Add-on | Ingress、Supervisor API、固定 slug、多架构预构建镜像 |
-| CI | Gitea Actions；构建并发布 `linux/amd64` 与 `linux/arm64` 镜像及多架构版本标签 |
+| CI | GitHub Actions；构建并发布 `linux/amd64` 与 `linux/arm64` 镜像及多架构版本标签 |
 
 ## 代码结构
 
@@ -132,8 +132,8 @@ jmglink-ha-3d-home-custom/
 ├─ scripts/
 │  ├─ reconstruct-source.mjs         从运行产物重新生成恢复源码基线
 │  └─ publish-addon-image.ps1        手动发布多架构 Add-on 镜像
-├─ .gitea/workflows/
-│  └─ publish-addon-image.yml        Gitea Actions 发布工作流
+├─ .github/workflows/
+│  └─ publish-addon-image.yml        GitHub Actions 发布工作流
 └─ jmglink-ha-3d-home/
    ├─ config.yaml                    Add-on 名称、版本、架构、镜像和权限
    ├─ Dockerfile                     Add-on 多阶段构建文件
@@ -362,7 +362,7 @@ docker compose version
 
 ```text
 .
-├─ .gitea/workflows/             Gitea Actions 验证与发布
+├─ .github/workflows/             GitHub Actions 验证与发布
 ├─ docs/                         随代码版本维护的部署和发布文档
 ├─ extracted-image/              官方镜像运行产物基线
 ├─ jmglink-ha-3d-home/
@@ -582,9 +582,9 @@ npx prettier --write apps/web/src/app apps/web/src/domain apps/web/src/styles te
 
 Gitea Actions 分为三个入口：
 
-1. `.gitea/workflows/ci.yml` 在 `main` Push、PR 和手动触发时运行源码测试、前端生产构建与 `amd64` 镜像构建验证，不发布正式镜像。
-2. `.gitea/workflows/release-addon-image.yml` 仅由 `v*` Tag 触发，校验 Tag 与 `config.yaml` 版本一致后发布 `<version>-aarch64`、`<version>-amd64` 和 `<version>` 多架构清单，将软件包关联到仓库，并在同版本 Gitea Release 正文中提供软件包直链和拉取命令。
-3. `.gitea/workflows/windows-runner-test.yml` 仅供手动检查 Windows Runner。
+1. `.github/workflows/ci.yml` 在 `main` Push、PR 和手动触发时运行源码测试、前端生产构建与 `amd64` 镜像构建验证，不发布正式镜像。
+2. `.github/workflows/release-addon-image.yml` 仅由 `v*` Tag 触发，校验 Tag 与 `config.yaml` 版本一致后发布 `<version>-aarch64`、`<version>-amd64` 和 `<version>` 多架构清单，将软件包关联到仓库，并在同版本 Gitea Release 正文中提供软件包直链和拉取命令。
+3. `.github/workflows/windows-runner-test.yml` 仅供手动检查 Windows Runner。
 
 镜像地址：
 
@@ -634,9 +634,9 @@ gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom:<version>
 
 ## CI 与正式发布
 
-- `.gitea/workflows/ci.yml` 在 `main` Push、面向 `main` 的 PR 和手动触发时运行，只验证 amd64 源码镜像，不发布正式软件包。
-- `.gitea/workflows/release-addon-image.yml` 只响应 `v*` Tag，校验 Tag 与 `config.yaml` 版本一致后构建并发布 amd64、arm64 和多架构镜像。
-- `.gitea/workflows/windows-runner-test.yml` 只允许手动触发，用于检查按需启动的 Windows Runner、Git、PowerShell、.NET 与 Visual Studio Build Tools。
+- `.github/workflows/ci.yml` 在 `main` Push、面向 `main` 的 PR 和手动触发时运行，只验证 amd64 源码镜像，不发布正式软件包。
+- `.github/workflows/release-addon-image.yml` 只响应 `v*` Tag，校验 Tag 与 `config.yaml` 版本一致后构建并发布 amd64、arm64 和多架构镜像。
+- `.github/workflows/windows-runner-test.yml` 只允许手动触发，用于检查按需启动的 Windows Runner、Git、PowerShell、.NET 与 Visual Studio Build Tools。
 - 正式发布会使用 Gitea 内置的短生命周期 `GITEA_TOKEN`，把容器软件包关联到当前仓库，并创建或更新同名 Gitea Release；容器软件包不会成为 Release 附件，正文会提供该版本的直接入口。
 - BuildKit 以架构区分缓存。Dockerfile 在安装依赖前只复制 package 文件和 `package-lock.json`，因此依赖缓存会随锁文件变化自动失效。
 - 所有外部 Action 固定到完整 Commit SHA；检出步骤不把令牌持久化到 Git 配置。
@@ -755,3 +755,7 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 ## 评审问题加固
 
 保存会话、项目写队列、实例维护锁、访问来源策略、多楼层订阅、模型Worker与资源预算的实现约束和回归方法见[评审问题修复与回归](docs/评审问题修复与回归.md)。普通项目PUT必须携带If-Match，旧客户端返回428；不要移除冲突或维护锁错误以恢复自动覆盖。
+
+## GitHub Actions 与 GHCR
+
+当前 origin 为 GitHub，Gitea 保留为 gitea 备份远程；GitHub 托管 AMD64／ARM64 Runner 执行验证与发布。日常构建使用只读令牌，Tag 发布任务单独声明 packages: write，跨仓库安装快照仅在最终发布步骤使用 INSTALLATION_TOKEN；没有迁移旧 Gitea Registry Token。发布器改用 GitHub Git Data／Release API，教程在受白名单管理的 docs/wiki 目录维护，不调用 Gitea Wiki API。详见[迁移与首次发布要求](docs/GitHub-Actions与GHCR迁移.md)。

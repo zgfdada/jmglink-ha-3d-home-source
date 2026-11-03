@@ -2,11 +2,11 @@ name: JMGLink HA 3D Home Custom
 version: 0.1.5-custom.38
 slug: jmglink_ha_3d_home_custom
 description: 由恢复源码构建，支持设备平台、在线模型库和可配置控制面板的 3D 户型图可视化与控制中心
-url: https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+url: https://github.com/zgfdada/jmglink-ha-3d-home-custom
 arch:
   - aarch64
   - amd64
-image: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+image: ghcr.io/zgfdada/jmglink-ha-3d-home-custom
 startup: application
 boot: auto
 init: false

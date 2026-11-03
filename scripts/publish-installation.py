@@ -10,9 +10,10 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_REPO = "zgf/jmglink-ha-3d-home-custom"
+PUBLIC_REPO = "zgfdada/jmglink-ha-3d-home-custom"
 IMAGE_NAME = "jmglink-ha-3d-home-custom"
-SERVER = "https://gitea.700117.xyz:16666"
+SERVER = "https://api.github.com"
+IMAGE = "ghcr.io/zgfdada/" + IMAGE_NAME
 
 
 def snapshot(root=ROOT):
@@ -42,9 +43,9 @@ def snapshot(root=ROOT):
         pattern = r"^" + key + r": (\S+)\s*$"
         if re.search(pattern, source_config, re.M).group(1) != re.search(pattern, config, re.M).group(1):
             raise ValueError("Source/public configuration mismatch: " + key)
-    if "image: gitea.700117.xyz:16666/zgf/" + IMAGE_NAME not in config:
+    if "image: ghcr.io/zgfdada/" + IMAGE_NAME not in config:
         raise ValueError("Public image endpoint changed")
-    if ("image: gitea.700117.xyz:16666/zgf/" + IMAGE_NAME + ":latest") not in result["docker-compose.release.yml"].decode():
+    if ("image: ghcr.io/zgfdada/" + IMAGE_NAME + ":latest") not in result["docker-compose.release.yml"].decode():
         raise ValueError("Public Compose must use latest")
     for name in ["README.md", "RELEASE_NOTES.md",
                  "jmglink-ha-3d-home/RELEASE_NOTES.md", "jmglink-ha-3d-home/CHANGELOG.md"]:
@@ -73,16 +74,19 @@ def snapshot(root=ROOT):
     return result, version
 
 
+
 class Client:
     def __init__(self, token):
         self.token = token
 
     def request(self, path, method="GET", data=None, missing=False):
         request = urllib.request.Request(
-            SERVER + "/api/v1" + path,
+            SERVER + path,
             data=json.dumps(data).encode() if data is not None else None,
             method=method,
-            headers={"Authorization": "token " + self.token, "Content-Type": "application/json"},
+            headers={"Authorization": "Bearer " + self.token,
+                     "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
+                     "Content-Type": "application/json"},
         )
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
@@ -91,102 +95,95 @@ class Client:
         except urllib.error.HTTPError as error:
             if error.code == 404 and missing:
                 return None
-            # Do not echo remote response bodies or request headers into CI logs.
-            raise RuntimeError(f"Public publication API {method} failed: HTTP {error.code}") from None
+            raise RuntimeError(f"GitHub publication API {method} failed: HTTP {error.code}") from None
+
+
+def verify_image(version, opener=urllib.request.urlopen):
+    """Require an anonymously pullable multi-arch image before changing install config."""
+    query = urllib.parse.urlencode({"service": "ghcr.io", "scope": "repository:zgfdada/" + IMAGE_NAME + ":pull"})
+    try:
+        with opener("https://ghcr.io/token?" + query, timeout=30) as response:
+            token = json.load(response)["token"]
+        request = urllib.request.Request("https://ghcr.io/v2/zgfdada/" + IMAGE_NAME + "/manifests/" + version,
+            headers={"Authorization": "Bearer " + token,
+                     "Accept": "application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json"})
+        with opener(request, timeout=30) as response:
+            manifest = json.load(response)
+    except (urllib.error.HTTPError, KeyError) as error:
+        raise ValueError("GHCR image must be public and anonymously pullable; set package visibility to public before rerunning") from None
+    platforms = {(m.get("platform", {}).get("os"), m.get("platform", {}).get("architecture")) for m in manifest.get("manifests", [])}
+    if not {("linux", "amd64"), ("linux", "arm64")} <= platforms:
+        raise ValueError("GHCR image must include linux/amd64 and linux/arm64")
+    print("GHCR anonymous pull and both platforms verified")
+
+
+def git_blob_sha(content):
+    import hashlib
+    return hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest()
 
 
 def publish(client, files, version, docs_only=False):
+    if not docs_only:
+        verify_image(version)
     repo = "/repos/" + PUBLIC_REPO
     metadata = client.request(repo)
-    if metadata["private"] or metadata["owner"]["login"] != "zgf":
-        raise ValueError("Installation destination must be the public zgf repository")
-    tree = client.request(repo + "/git/trees/main?recursive=true")
+    if metadata["private"] or metadata["owner"]["login"] != "zgfdada":
+        raise ValueError("Installation destination must be the public zgfdada repository")
+    head = client.request(repo + "/git/ref/heads/main")["object"]["sha"]
+    tree = client.request(repo + "/git/trees/" + head + "?recursive=1")
     if tree.get("truncated"):
         raise ValueError("Incomplete installation tree")
     existing = {x["path"]: x["sha"] for x in tree["tree"] if x["type"] == "blob"}
-    operations = []
-    import hashlib
-    for name, content in files.items():
-        sha = hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest()
-        if existing.get(name) == sha:
-            continue
-        item = {"path": name, "operation": "update" if name in existing else "create",
-                "content": base64.b64encode(content).decode()}
-        if name in existing:
-            item["sha"] = existing[name]
-        operations.append(item)
-    for name in existing.keys() - files.keys():
-        operations.append({"path": name, "operation": "delete", "sha": existing[name]})
-    if operations:
-        client.request(repo + "/contents", "POST", {
-            "branch": "main", "message": f"docs(release): 更新 {version} 安装配置与用户说明",
-            "files": operations,
-        })
-    verified = client.request(repo + "/git/trees/main?recursive=true")
-    blobs = {x["path"]: x["sha"] for x in verified["tree"] if x["type"] == "blob"}
-    if set(blobs) != set(files):
-        raise ValueError("Published installation file set differs")
-    for name, content in files.items():
-        expected = hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest()
-        if blobs[name] != expected:
-            raise ValueError("Published content differs: " + name)
-    # Wiki is regenerated only from reviewed user docs, never internal docs.
-    pages = {p["title"]: p for p in (client.request(repo + "/wiki/pages", missing=True) or [])}
-    wiki = {Path(name).stem: content.decode() for name, content in files.items()
-            if name.startswith("docs/wiki/")}
-    for title, content in wiki.items():
-        payload = {"title": title, "content_base64": base64.b64encode(content.encode()).decode(),
-                   "message": f"docs: 同步 {version} 使用教程"}
-        if title in pages:
-            slug = urllib.parse.quote(urllib.parse.unquote(pages[title]["sub_url"]), safe="")
-            client.request(repo + "/wiki/page/" + slug, "PATCH", payload)
-        else:
-            client.request(repo + "/wiki/new", "POST", payload)
-    for title, page in pages.items():
-        if title not in wiki:
-            slug = urllib.parse.quote(urllib.parse.unquote(page["sub_url"]), safe="")
-            client.request(repo + "/wiki/page/" + slug, "DELETE")
+    if docs_only and "jmglink-ha-3d-home/config.yaml" in existing:
+        old_blob = client.request(repo + "/git/blobs/" + existing["jmglink-ha-3d-home/config.yaml"])
+        old_config = base64.b64decode(old_blob["content"]).decode()
+        new_config = files["jmglink-ha-3d-home/config.yaml"].decode()
+        if re.search(r"^image: (.+)$", old_config, re.M).group(1) != re.search(r"^image: (.+)$", new_config, re.M).group(1):
+            verify_image(version)
+    wanted = {name: git_blob_sha(content) for name, content in files.items()}
+    if wanted != existing:
+        entries = []
+        for name, content in files.items():
+            sha = wanted[name]
+            if existing.get(name) != sha:
+                created = client.request(repo + "/git/blobs", "POST", {"content": base64.b64encode(content).decode(), "encoding": "base64"})
+                if created["sha"] != sha:
+                    raise ValueError("GitHub blob hash mismatch")
+            entries.append({"path": name, "mode": "100644", "type": "blob", "sha": sha})
+        new_tree = client.request(repo + "/git/trees", "POST", {"tree": entries})
+        commit = client.request(repo + "/git/commits", "POST", {"message": f"docs(release): 更新 {version} 安装配置与用户说明", "tree": new_tree["sha"], "parents": [head]})
+        client.request(repo + "/git/refs/heads/main", "PATCH", {"sha": commit["sha"], "force": False})
+        head = commit["sha"]
+    verified = client.request(repo + "/git/trees/main?recursive=1")
+    if verified.get("truncated") or {x["path"]: x["sha"] for x in verified["tree"] if x["type"] == "blob"} != wanted:
+        raise ValueError("Published installation snapshot differs")
     if docs_only:
-        print(f"Updated and verified {len(files)} public installation files and {len(wiki)} Wiki pages; version tags unchanged")
+        print(f"Updated and verified {len(files)} public installation files; version tags unchanged")
         return
     tag = "v" + version
-    commit = client.request(repo + "/branches/main")["commit"]["id"]
-    existing_tag = client.request(repo + "/tags/" + tag, missing=True)
+    existing_tag = client.request(repo + "/git/ref/tags/" + tag, missing=True)
     if existing_tag:
-        if existing_tag["commit"]["sha"] != commit:
+        if existing_tag["object"]["sha"] != head:
             raise ValueError("Public version tag already points to a different snapshot")
     else:
-        client.request(repo + "/tags", "POST", {"tag_name": tag, "target": commit})
-    package_path = "/packages/zgf/container/" + IMAGE_NAME
-    packages = client.request(package_path)
-    linked = {(item.get("repository") or {}).get("full_name") for item in packages}
-    if linked != {PUBLIC_REPO}:
-        if any(linked):
-            client.request(package_path + "/-/unlink", "POST")
-        client.request(package_path + "/-/link/" + PUBLIC_REPO.split("/")[1], "POST")
-    if any((item.get("repository") or {}).get("full_name") != PUBLIC_REPO
-           for item in client.request(package_path)):
-        raise ValueError("Package association was not persisted")
+        client.request(repo + "/git/refs", "POST", {"ref": "refs/tags/" + tag, "sha": head})
     release_notes = files["RELEASE_NOTES.md"].decode()
     match = re.search(r"^## " + re.escape(version) + r"[^\n]*\n(.*?)(?=^## |\Z)", release_notes, re.S | re.M)
     if not match:
         raise ValueError("Missing user release notes")
-    image = "gitea.700117.xyz:16666/zgf/" + IMAGE_NAME + ":" + version
-    body = match.group(1).strip() + f"\n\n### 容器镜像\n\n```shell\ndocker pull {image}\n```\n\n支持平台：`linux/amd64`、`linux/arm64`\n\n[查看容器软件包]({SERVER}/zgf/-/packages/container/{IMAGE_NAME}/{version})\n"
-    payload = {"tag_name": tag, "name": "JMGLink HA 3D Home Custom " + tag,
-               "body": body, "draft": False, "prerelease": False}
+    body = match.group(1).strip() + f"\n\n### 容器镜像\n\n```shell\ndocker pull {IMAGE}:{version}\n```\n\n支持平台：`linux/amd64`、`linux/arm64`\n\n[查看容器软件包](https://github.com/users/zgfdada/packages/container/package/{IMAGE_NAME})\n"
+    payload = {"tag_name": tag, "name": "JMGLink HA 3D Home Custom " + tag, "body": body, "draft": False, "prerelease": False}
     release = client.request(repo + "/releases/tags/" + tag, missing=True)
-    if release:
-        client.request(repo + "/releases/" + str(release["id"]), "PATCH", payload)
-    else:
-        client.request(repo + "/releases", "POST", payload)
-    print(f"Published and verified {len(files)} installation files, {len(wiki)} Wiki pages, {tag}")
+    client.request(repo + ("/releases/" + str(release["id"]) if release else "/releases"), "PATCH" if release else "POST", payload)
+    print(f"Published and verified {len(files)} installation files, versioned docs/wiki, {tag}")
 
 
 if __name__ == "__main__":
     files, version = snapshot()
     if "--check" in sys.argv:
         print(f"Public snapshot valid: {len(files)} files, {version}")
+    elif "--verify-image" in sys.argv:
+        verify_image(version)
     else:
         token = os.environ.get("INSTALLATION_TOKEN")
         if not token:

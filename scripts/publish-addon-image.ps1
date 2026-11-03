@@ -5,8 +5,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$registry = 'gitea.700117.xyz:16666'
-$image = "$registry/zgf/jmglink-ha-3d-home-custom"
+$registry = 'ghcr.io'
+$image = "$registry/zgfdada/jmglink-ha-3d-home-custom"
 $builder = 'ha-multiarch'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $addonRoot = Join-Path $repositoryRoot 'jmglink-ha-3d-home'

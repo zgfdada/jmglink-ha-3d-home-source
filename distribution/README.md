@@ -10,7 +10,7 @@
 
 **当前版本：`0.1.5-custom.38`** · 支持 `linux/amd64`、`linux/arm64`
 
-[版本下载与更新日志](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom/wiki) · [RELEASE_NOTES](RELEASE_NOTES.md)
+[版本下载与更新日志](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://github.com/zgfdada/jmglink-ha-3d-home-custom/blob/main/docs/wiki/Home.md) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
 本版本新增中文部件动效、代码与效果同页的动效资源库及额外实体独立模型，修复额外实体实时更新、开发中心白屏、模型预览和门磁搜索。请查看[版本说明](RELEASE_NOTES.md)。
 
@@ -41,7 +41,7 @@
 1. 在 Home Assistant 的应用商店添加仓库：
 
    ```text
-   https://gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom
+   https://github.com/zgfdada/jmglink-ha-3d-home-custom
    ```
 
 2. 安装 **JMGLink HA 3D Home Custom**，启动后点击“打开 Web 界面”。
@@ -54,7 +54,7 @@ Supervisor 会按主机架构选择镜像，自动连接当前 HA，无需填写
 镜像地址：
 
 ```text
-gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom:latest
+ghcr.io/zgfdada/jmglink-ha-3d-home-custom:latest
 ```
 
 使用仓库提供的 [docker-compose.release.yml](docker-compose.release.yml)，将文件保存到自己的部署目录后执行：

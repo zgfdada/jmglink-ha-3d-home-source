@@ -36,6 +36,7 @@ ARG BUILD_VERSION=0.1.5-custom.38
 ARG BUILD_ARCH
 
 LABEL \
+    org.opencontainers.image.source="https://github.com/zgfdada/jmglink-ha-3d-home-source" \
     io.hass.version="${BUILD_VERSION}" \
     io.hass.type="addon" \
     io.hass.arch="${BUILD_ARCH}"

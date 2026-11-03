@@ -1,6 +1,6 @@
 services:
   ha3d-home:
-    image: gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom:latest
+    image: ghcr.io/zgfdada/jmglink-ha-3d-home-custom:latest
     restart: unless-stopped
     entrypoint: ["node", "/app/apps/server/src/main.js"]
     ports:

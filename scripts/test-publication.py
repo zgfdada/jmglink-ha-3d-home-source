@@ -63,10 +63,10 @@ class WorkspaceVersions(unittest.TestCase):
     def test_clean_base_and_latest_promotion_order(self):
         root = M.ROOT
         for name in ["ci.yml", "release-addon-image.yml"]:
-            workflow = (root / ".gitea/workflows" / name).read_text(encoding="utf-8")
+            workflow = (root / ".github/workflows" / name).read_text(encoding="utf-8")
             self.assertNotIn("ci-node22", workflow)
             self.assertNotIn("buildcache-", workflow)
-        workflow = (root / ".gitea/workflows/release-addon-image.yml").read_text(encoding="utf-8")
+        workflow = (root / ".github/workflows/release-addon-image.yml").read_text(encoding="utf-8")
         self.assertLess(workflow.index("验证正式 AMD64 运行镜像"), workflow.index("更新并验证 latest 镜像"))
         self.assertLess(workflow.index("更新并验证 latest 镜像"), workflow.index("同步公开安装库"))
 

@@ -13,7 +13,7 @@ concurrency:
 jobs:
   verify:
     name: 验证 Windows 构建环境
-    runs-on: windows-x64
+    runs-on: windows-2022
     timeout-minutes: 20
 
     steps:
