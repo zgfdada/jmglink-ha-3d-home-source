@@ -36,6 +36,7 @@ ARG BUILD_VERSION=0.1.5-custom.39
 ARG BUILD_ARCH
 
 LABEL \
+    org.opencontainers.image.licenses="GPL-3.0-only" \
     org.opencontainers.image.source="https://github.com/zgfdada/jmglink-ha-3d-home-source" \
     io.hass.version="${BUILD_VERSION}" \
     io.hass.type="addon" \
@@ -55,6 +56,7 @@ COPY --from=build /app/.release/apps/server ./apps/server
 COPY --from=build /app/.release/apps/web/dist ./apps/web/dist
 COPY --from=build /app/.release/packages/schema ./packages/schema
 COPY --from=build /app/.release/release-manifest.json ./release-manifest.json
+COPY LICENSE NOTICE.md ./
 COPY addon-entry.js addon-runtime-options.mjs addon-run.sh ./
 RUN chmod +x /app/addon-run.sh
 

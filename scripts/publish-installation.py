@@ -30,12 +30,12 @@ def snapshot(root=ROOT):
         if any((directory / Path(*Path(name).parts[:i])).is_symlink()
                for i in range(1, len(Path(name).parts))):
             raise ValueError("Public snapshot has symlink parent")
-        if path.suffix not in {".md", ".yaml", ".yml", ".png", ".jpg", ".svg"}:
+        if name != "LICENSE" and path.suffix not in {".md", ".yaml", ".yml", ".png", ".jpg", ".svg"}:
             raise ValueError("Executable or unsupported public file")
         if any(part.startswith(".") for part in Path(name).parts):
             raise ValueError("Hidden public file")
         content = path.read_bytes()
-        result[name] = content.replace(b"\r\n", b"\n") if path.suffix in {".md", ".yaml", ".yml"} else content
+        result[name] = content.replace(b"\r\n", b"\n") if name == "LICENSE" or path.suffix in {".md", ".yaml", ".yml"} else content
     config = result["jmglink-ha-3d-home/config.yaml"].decode()
     version = re.search(r"^version: (\S+)\s*$", config, re.M).group(1)
     source_config = (root / "jmglink-ha-3d-home/config.yaml").read_text(encoding="utf-8")

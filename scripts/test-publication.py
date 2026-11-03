@@ -70,6 +70,28 @@ class WorkspaceVersions(unittest.TestCase):
         self.assertLess(workflow.index("验证正式 AMD64 运行镜像"), workflow.index("更新并验证 latest 镜像"))
         self.assertLess(workflow.index("更新并验证 latest 镜像"), workflow.index("同步公开安装库"))
 
+    def test_gpl_license_survives_publication_and_future_image_builds(self):
+        root = M.ROOT
+        license_text = (root / "LICENSE").read_text(encoding="utf-8")
+        self.assertIn("Version 3, 29 June 2007", license_text)
+        self.assertIn("END OF TERMS AND CONDITIONS", license_text)
+        for name in ["distribution/LICENSE", "jmglink-ha-3d-home/LICENSE", "jmglink-ha-3d-home/source/LICENSE"]:
+            self.assertEqual((root / name).read_text(encoding="utf-8"), license_text)
+        files, _ = M.snapshot()
+        self.assertEqual(files["LICENSE"], license_text.encode())
+        self.assertIn("NOTICE.md", files)
+        self.assertEqual((root / "NOTICE.md").read_bytes(), (root / "jmglink-ha-3d-home/NOTICE.md").read_bytes())
+        self.assertEqual((root / "NOTICE.md").read_text(encoding="utf-8").encode(), files["NOTICE.md"])
+        dockerfile = (root / "jmglink-ha-3d-home/Dockerfile").read_text(encoding="utf-8")
+        self.assertIn('org.opencontainers.image.licenses="GPL-3.0-only"', dockerfile)
+        self.assertIn("COPY LICENSE NOTICE.md ./", dockerfile)
+        source = root / "jmglink-ha-3d-home/source"
+        lock = json.loads((source / "package-lock.json").read_text(encoding="utf-8"))
+        for directory in ["", "apps/server", "apps/web", "packages/schema"]:
+            package = json.loads((source / directory / "package.json").read_text(encoding="utf-8"))
+            self.assertEqual(package["license"], "GPL-3.0-only")
+            self.assertEqual(lock["packages"][directory]["license"], "GPL-3.0-only")
+
     def test_local_schema_dependency_matches_package(self):
         source = M.ROOT / "jmglink-ha-3d-home/source"
         schema = json.loads((source / "packages/schema/package.json").read_text(encoding="utf-8"))

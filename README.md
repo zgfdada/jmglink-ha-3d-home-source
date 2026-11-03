@@ -202,3 +202,7 @@ docker compose -f docker-compose.release.yml up -d
 ## 代码与 CI 维护入口
 
 源码主仓库已迁至 GitHub，日常 main／PR 只构建和测试，正式版本 Tag 才发布到 GHCR。.39 起正式版本使用 GHCR；旧 Gitea .38 镜像保留历史身份，不覆盖旧标签。详见[GitHub Actions 与 GHCR 迁移](docs/GitHub-Actions与GHCR迁移.md)。
+
+## 开源许可
+
+本项目采用 **[GPL v3（GPL-3.0-only）](LICENSE)**。再分发 GPL 覆盖的软件时须遵守源码提供等要求；原作致谢、第三方素材许可范围及镜像对应源码入口见[版权与源码说明](NOTICE.md)。历史已发布镜像不因新增声明而重写，后续构建携带许可文件。
