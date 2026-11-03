@@ -1,5 +1,9 @@
 # 开发说明
 
+## 第一人称漫游
+
+主页维护 idle/placing/walking 三种临时状态，`first-person-controller.jsx` 复用 R3F `useFrame` 和相机，不保存到项目。导航碰撞在 `first-person-navigation.js`，相机快照／恢复在 `first-person-camera.js`；漫游禁用原环绕和自动适配，壁面不透明并显示天花板。DOM 浮层只拦截自身区域，设备仍沿用原点选和浮动控制面板；门扇临时隐藏但不发真实指令。详见[操作、实现及限制](docs/第一人称室内漫游.md)，回归为 `first-person.test.mjs`。
+
 ## 墙体与日光阴影
 
 `celestial-light-settings.js` 归一化日光 0–3 倍、月光 0–20 倍增益和屋顶遮光开关，缺省均为 1 倍／开启，localStorage 键 `ha3d.celestialLighting`。主页实时传给场景：`celestialIntensity` 只乘当前生效光源，零基础强度不会被放大出光；`roofOcclusion` 经场景、楼层透传到遮光屋顶的条件挂载，卸载由 R3F 清理。环境光、阴影强度与增益相互独立，不修改 HA，也不触发相机重置。回归见 `celestial-light-settings.test.mjs`。
@@ -95,7 +99,7 @@ JMGLink HA 3D Home Custom 是一个由 Fastify 后端、React 前端、Three.js 
 
 当前项目版本：
 
-- Add-on 当前版本：`0.1.5-custom.23`（真实 HA Add-on 运行待用户安装后验证）
+- Add-on 当前版本：`0.1.5-custom.39`（GitHub Actions／GHCR 发布）
 - 项目 JSON Schema 版本：`7`
 - Node.js：`22`
 - 前端构建器：Vite `7`

@@ -6,6 +6,10 @@
 
 把户型、家具和 Home Assistant 设备放进同一个 3D 家居界面。
 
+[源码仓库](https://github.com/zgfdada/jmglink-ha-3d-home-source) · [安装仓库与版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom)
+
+主页页面工具新增“室内漫游”：选择房间空地后，以第一人称使用 WASD／方向键移动、拖动画面环顾；手机使用左下摇杆移动。支持墙体／家具简化碰撞、门洞通行和设备点击，Esc 或退出按钮恢复原全屋视角。操作与限制见[第一人称室内漫游](docs/第一人称室内漫游.md)。
+
 日照方向支持在主页环境光面板中配置“户型北向角度”，调整时实时更新日月投影：图上方为 0°、顺时针增加，所有楼层共用并自动保存。主页使用 HA `sun.sun` 的方位角和高度角计算投影，日落后关闭日光；隐藏屋顶仍遮光，环境光面板可独立调节阴影强度。缺少太阳角度时回退固定方向，不代表真实日照。
 
 安装并配置 [Lunar Phase](https://github.com/ngocjohn/lunar-phase) 后，主页自动读取月亮主实体的位置与照亮比例，夜间启用弱冷色月光，月亮落山或数据过期时关闭。HA 断线时在右侧常驻提示离线／同步状态，不把短暂中断误报为实体删除。
@@ -18,7 +22,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.38`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.39`** · 支持 `linux/amd64`、`linux/arm64`
 
 ## 你可以做什么
 
@@ -74,7 +78,7 @@ Supervisor 会按主机架构选择镜像，自动连接当前 HA，无需填写
 镜像地址：
 
 ```text
-gitea.700117.xyz:16666/zgf/jmglink-ha-3d-home-custom:latest
+ghcr.io/zgfdada/jmglink-ha-3d-home-custom:latest
 ```
 
 使用仓库提供的 [docker-compose.release.yml](docker-compose.release.yml)，将文件保存到自己的部署目录后执行：
@@ -193,7 +197,7 @@ docker compose -f docker-compose.release.yml up -d
 设备控制面板为非模态浮层，仅面板自身区域接收面板操作；在外部点击关闭时，同一次点击或拖动继续作用于3D场景，可直接旋转模型或切换设备。
 
 
-当前开发分支增加保存冲突保护与隔离模型解码。升级开发版前先保存／导出未保存编辑，再重载页面；模型须满足资源预算。独立部署访问密码及迁移说明见[修复说明](docs/评审问题修复与回归.md)。这些变更尚未发布新的正式版本。
+本版本增加保存冲突保护与隔离模型解码。升级开发版前先保存／导出未保存编辑，再重载页面；模型须满足资源预算。独立部署访问密码及迁移说明见[修复说明](docs/评审问题修复与回归.md)。这些变更已纳入 .39。
 
 ## 代码与 CI 维护入口
 

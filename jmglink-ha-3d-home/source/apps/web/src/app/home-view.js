@@ -10,6 +10,7 @@ import {resolveMoonlight} from '../../../../packages/schema/src/moonlight.js';
 import {haConnectionNotice} from '../domain/ha-connection-notice.js';
 import NorthDirectionControl from '../components/north-direction-control.jsx';
 import MoonlightStatus from '../components/moonlight-status.jsx';
+import FirstPersonOverlay from '../components/first-person-overlay.jsx';
 import {readCelestialSettings,storeCelestialSettings} from '../domain/celestial-light-settings.js';
 import { PublishedSidebar, SidebarVisibilityToggle } from "./sidebar-development/renderer.jsx";
 /**
@@ -2668,6 +2669,11 @@ function Qn({
   const [northPreview,setNorthPreview] = l.useState(null);
   const northAngle = northPreview?.projectId === t.id ? northPreview.value : (t.northAngle ?? 0);
   const [lightSettingsOpen, setLightSettingsOpen] = l.useState(false);
+  const [walkthrough,setWalkthrough]=l.useState({mode:'idle',spawn:null});
+  const [walkNotice,setWalkNotice]=l.useState('');
+  const [walkLocked,setWalkLocked]=l.useState(false);
+  const walkInput=l.useRef({move:[0,0]});
+  const exitWalk=()=>{setWalkthrough({mode:'idle',spawn:null});setWalkNotice('');setWalkLocked(false);};
   const v = Se((n) => n.selectedEntityId),
     k = Se((n) => n.selectEntity),
     j = Se((n) => n.act),
@@ -2749,7 +2755,7 @@ function Qn({
     solar = resolveDaylight(s, solarClock),
     lightLevel = manualLight === null ? solar.daylight : manualLight,
     C = manualLight === null ? solar.theme : manualLight < 0.4 ? "night" : "day";
-  (l.useEffect(() => {
+  (l.useEffect(()=>{exitWalk();},[t.id,$,sceneSuspended]),l.useEffect(() => {
     const n = () => setSolarClock(Date.now());
     n();
     const m = window.setInterval(n, 6e4);
@@ -3031,6 +3037,12 @@ function Qn({
           haConnectionNotice(i) && e.jsx("div", {className:"ha-connection-notice", role:"status", "aria-live":"polite", style:{position:"absolute",right:24,top:24,zIndex:60,maxWidth:280,padding:"12px 18px",borderRadius:14,background:"rgba(40,51,69,.92)",color:"#fff",border:"1px solid rgba(255,207,124,.65)",pointerEvents:"none",boxShadow:"0 6px 24px #0003"},children:haConnectionNotice(i)}),
           e.jsx("div", {className: "sb-scene-viewport", children: !sceneSuspended && e.jsx(Qs, {
             key: sceneResumeKey,
+            walkthrough,
+            walkInput,
+            onWalkSpawn:point=>{setWalkthrough({mode:'walking',spawn:point});setWalkNotice('');},
+            onWalkExit:exitWalk,
+            onWalkNotice:setWalkNotice,
+            onWalkLocked:setWalkLocked,
             project: xe,
             entities: ps,
             floorId: Oe == null ? void 0 : Oe.id,
@@ -3052,7 +3064,7 @@ function Qn({
             viewportInsets: { ...$s, fitScale: 1.16, fitAvailable: true, preserveViewOnPanelChange: true },
             focusedRoom: q,
             showDevices: A,
-            showRoomBadges: A && T !== "overview" && Q > 560,
+            showRoomBadges: walkthrough.mode === 'idle' && A && T !== "overview" && Q > 560,
             presentationMode: T,
             autoRotate: b,
             cameraResetKey: ls,
@@ -3062,7 +3074,8 @@ function Qn({
             onRoomSecuritySelect: As,
             onEntitySelect: Fs,
           })}),
-          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, hidden: sidebarHidden, key: $, floors: t.floors, floorId: $, onFloorChange: (id) => {x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
+          walkthrough.mode !== 'idle' && e.jsx(FirstPersonOverlay,{mode:walkthrough.mode,input:walkInput,onExit:exitWalk,notice:walkNotice,locked:walkLocked}),
+          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, hidden: sidebarHidden || walkthrough.mode !== 'idle', key: $, floors: t.floors, floorId: $, onFloorChange: (id) => {exitWalk();x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
           !A &&
             e.jsxs("div", {
               className: "scene-data-empty",
@@ -3121,6 +3134,7 @@ function Qn({
                 role: "menu",
                 children: [
                   e.jsx("button", {className: "home-tools-item", role: "menuitem", onClick: () => {I(false);setLightSettingsOpen(true);}, children: "☀ 环境光"}),
+                  e.jsx("button", {className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setLightSettingsOpen(false);if(walkthrough.mode!=='idle'){exitWalk();return;}p(false);k(void 0);ie(void 0);setWalkNotice('');setWalkthrough({mode:'placing',spawn:null});},children:walkthrough.mode==='idle'?'🚶 室内漫游':'退出室内漫游'}),
                   e.jsxs("button", {className: "home-tools-item", role: "menuitem", "aria-label": "切换模型旋转", "aria-pressed": b, onClick: () => p(n => !n), children: [e.jsx(Aa, {size: 17}), e.jsx("span", {children: b ? "停止旋转" : "旋转"})]}),
                   e.jsxs("button", {
                     className: `home-tools-item quality-dock-action quality-${g}`,

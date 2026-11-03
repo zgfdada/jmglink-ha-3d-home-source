@@ -1,0 +1,7 @@
+.first-person-overlay{position:absolute;inset:0;z-index:45;pointer-events:none}
+.walk-help{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:min(450px,calc(100% - 32px));box-sizing:border-box;padding:14px 18px;background:#16283feb;color:#f2f6ff;border:1px solid #ffffff45;border-radius:16px;pointer-events:auto;box-shadow:0 8px 28px #0003;font:13px system-ui}
+.walk-help p{font-size:12px;line-height:1.5;margin:8px 0}.walk-help button{padding:8px 14px;background:#4e84ca;color:white;border:1px solid #ffffff40;border-radius:9px;margin-right:8px;cursor:pointer}
+.walk-stick{position:absolute;left:24px;bottom:90px;width:124px;height:124px;border:1px solid #ffffff60;border-radius:50%;background:#172f5070;display:grid;place-items:center;pointer-events:auto;touch-action:none;user-select:none}
+.walk-stick-handle{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#c5dbedce;color:#193451;font:12px system-ui;pointer-events:none}
+@media (hover:hover) and (pointer:fine){.walk-stick{display:none}}
+@media (max-height:520px){.walk-help{top:8px;padding:8px 12px;width:min(480px,calc(100% - 40px))}.walk-help p{margin:4px 0}.walk-stick{bottom:24px;left:18px;width:106px;height:106px}}

@@ -38,7 +38,7 @@ test('隐藏屋顶不写颜色或视图深度、不参与点选，但阻挡从�
   assert.match(roofSource,/castShadow: true/);
   assert.match(roofSource,/colorWrite: false, depthWrite: false/);
   assert.match(roofSource,/raycast: ignoreSceneEffectRaycast/);
-  assert.match(source,/l && roofOcclusion && t.jsx\(ShadowOnlyRoof/);
+  assert.match(source,/l && \(roofOcclusion \|\| walkthrough\) && t.jsx\(ShadowOnlyRoof/);
   const roof = new Mesh(new BoxGeometry(4,.06,4), new MeshBasicMaterial({colorWrite:false,depthWrite:false}));
   roof.position.y = 2.6; roof.updateMatrixWorld(); roof.castShadow = true;
   const direction = new Vector3(...sun(90,80).direction).negate();

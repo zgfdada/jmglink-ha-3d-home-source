@@ -31,7 +31,7 @@ test('屋顶开关贯通主页、场景、楼层，阴影强度保持独立',asy
   const scene=await readFile(new URL('../apps/web/src/app/scene.js',import.meta.url),'utf8');
   const home=await readFile(new URL('../apps/web/src/app/home-view.js',import.meta.url),'utf8');
   assert.match(scene,/roofOcclusion: lightSettings.roofOcclusion/);
-  assert.match(scene,/l && roofOcclusion && t.jsx\(ShadowOnlyRoof/);
+  assert.match(scene,/l && \(roofOcclusion \|\| walkthrough\) && t.jsx\(ShadowOnlyRoof/);
   assert.match(home,/changeCelestialSettings\(\{roofOcclusion:event.target.checked\}\)/);
   assert.match(scene,/normalizeShadowIntensity\(shadowIntensity\)/);
 });
