@@ -201,4 +201,4 @@ docker compose -f docker-compose.release.yml up -d
 
 ## 代码与 CI 维护入口
 
-源码主仓库已迁至 GitHub，日常 main／PR 只构建和测试，正式版本 Tag 才发布到 GHCR。现有 `0.1.5-custom.38` 安装库与历史镜像保持可用，不因本次迁移重新发布或改指尚未存在的镜像；后续正式版本使用 GHCR。详见[GitHub Actions 与 GHCR 迁移](docs/GitHub-Actions与GHCR迁移.md)。
+源码主仓库已迁至 GitHub，日常 main／PR 只构建和测试，正式版本 Tag 才发布到 GHCR。.39 起正式版本使用 GHCR；旧 Gitea .38 镜像保留历史身份，不覆盖旧标签。详见[GitHub Actions 与 GHCR 迁移](docs/GitHub-Actions与GHCR迁移.md)。

@@ -1,32 +1,29 @@
 # 构建与发布
 
-## 仓库职责
+## 当前仓库与流程（.39 起）
 
-- 公开源码：`zgf/jmglink-ha-3d-home-source`，包含源码、测试和 `.gitea/workflows`。
-- 公开安装：`zgf/jmglink-ha-3d-home-custom`，只接收 distribution 白名单中的安装配置与用户文档。
-- 历史 Git 记录和旧 CHANGELOG 不在新的源码仓库中；本地备份用于历史恢复。
+- [源码仓库](https://github.com/zgfdada/jmglink-ha-3d-home-source)：源码、测试与 `.github/workflows`。
+- [安装仓库](https://github.com/zgfdada/jmglink-ha-3d-home-custom)：只接收 distribution 白名单的 19 个安装配置与用户文档文件。
+- 镜像：`ghcr.io/zgfdada/jmglink-ha-3d-home-custom`，正式标签和 latest 均提供 AMD64／ARM64。
+- 原 Gitea 远程保留备份；下方 .32–.38 的 Gitea 运行记录为历史证据，不作为 GitHub 当前入口。
 
-## 验证与发布
+main／PR 只校验、测试、构建与隔离冒烟，不推镜像。通过验证后推送 `v` 加版本号的正式标签，触发 GitHub 原生 AMD64／ARM64 构建、两平台运行检查、匿名多架构拉取检查，再更新 latest、安装仓库与 Release。测试及构建产物混淆不改写业务源码。
 
-普通 Push / PR 仅执行白名单检查、版本依赖检查、323 项业务测试、混淆镜像构建与运行检查。正式版本标签执行两架构构建、运行检查、latest 索引更新、公开安装文件与 Wiki 同步、软件包关联及 Release 发布。
+工作区 package、锁文件、Add-on 配置、Docker 默认版本、用户版本说明与 HAOS CHANGELOG 必须一致。已有标签不覆盖；本地业务测试 403 项、发布回归 13 项。安装快照禁止可执行源码、个人户型与未知文件。
 
-发布前同步 config.yaml、工作区 package 版本、锁文件及当前 RELEASE_NOTES.md。正式标签必须为 v加版本号。已有 v24 镜像和安装库标签保持不变，下次正式功能发布需使用新的版本号，不能用清空历史作为重发 v24 的理由。
+## 权限与首次 GHCR 发布
 
-构建使用 Dockerfile 中固定的干净 Node 基础镜像；不使用已清理的旧 CI/cache 镜像。原业务源码不被产物混淆回写。
+日常 CI 仅 `contents: read`；镜像发布 job 使用自动生成的 `GITHUB_TOKEN` 和 `packages: write`。跨安装库更新使用 Secrets 中的 `INSTALLATION_TOKEN`，不需要给本机凭据增加 packages 权限。PR 不注入发布凭据。
 
-## 凭据
+第一次创建 GHCR 软件包后，需要在 GitHub 软件包 Settings 将可见性设为 Public。匿名拉取校验会在安装配置切换前阻断私有镜像；改为公开后重跑失败 job，不能绕过检查。
 
-REGISTRY_TOKEN 只具有 package 写入范围；INSTALLATION_TOKEN 具有 repository/package 写入范围，用于安装库和软件包同步，均保存在仓库 Secrets。Gitea PAT 范围属于用户资源级，不宣称只可写单个仓库。普通 PR 不使用发布 Secrets。
+安装库教程保留在版本化 `docs/wiki`，不再调用 Gitea Wiki API。`publish-installation.py` 使用 Git Data API 创建快照提交并非强制更新分支，校验文件全集及 blob 哈希。只改文档时可用 `--docs-only`，但变更镜像地址仍要求对应版本可匿名拉取。
 
-## 安装与文档同步
+## 等待与耗时
 
-Docker 用户使用 latest；HA App 保留具体 version 以供检查更新。只更新安装文档时可使用 publish-installation.py --docs-only，不改写已发布标签或历史 Release。
+GitHub 托管 Runner 与旧 Gitea Runner 分开记录基线，不下调旧记录。GitHub 首个 CI 成功运行 1分50秒，后续首次终态查询至少等待 2 分钟；首次 GitHub 正式发布尚无成功基准，先等 10 分钟。届时仍在运行则至少再等 10 分钟。完成后记录每条流水线开始／完成、累计成功执行时间与关联墙钟；失败、重跑单列。
 
-## 验收与等待
-
-正式发布完成后记录各 Action、累计成功运行与首个 Action 至完成的墙钟时间，失败和重试单列。历史成功最长基线为源码 CI 4 分 38 秒、正式发布 21 分 31 秒、成功关联墙钟 27 分 30 秒；本次仓库重置不下调基线。首次查询分别至少等待 5 分钟和 22 分钟；仍在运行时至少再等 10 分钟。
-
-安装内容按显式白名单导出，禁止符号链接、业务可执行文件和未知文件；校验版本、Markdown 文件链接与远端 Git blob 哈希。文本统一为 LF，避免 Windows 换行差异。安装库 Wiki 与 Release 是后续步骤，不构成跨资源事务；任一步失败不能宣布完整发布成功。
+## 历史 Gitea 发布记录
 
 ## .32 发布记录与等待基线
 
