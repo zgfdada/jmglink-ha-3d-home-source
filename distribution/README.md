@@ -10,11 +10,11 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.39`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.40`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://github.com/zgfdada/jmglink-ha-3d-home-custom/blob/main/docs/wiki/Home.md) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
-本版本新增中文部件动效、代码与效果同页的动效资源库及额外实体独立模型，修复额外实体实时更新、开发中心白屏、模型预览和门磁搜索。请查看[版本说明](RELEASE_NOTES.md)。
+本版本更新墙体透明与统一光路遮挡、可调散射角与截锥渐隐光束、同步星空和多楼层总览，完善右键平移及空闲自动旋转。请查看[版本说明](RELEASE_NOTES.md)。
 
 ## 你可以做什么
 

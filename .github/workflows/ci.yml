@@ -51,6 +51,7 @@ jobs:
           python3 scripts/publish-installation.py --check
           python3 scripts/test-publication.py
           python3 scripts/test-github-publication.py
+          python3 scripts/test-showcase-release.py
 
       - name: 读取并校验版本信息
         id: metadata

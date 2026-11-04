@@ -99,7 +99,7 @@ JMGLink HA 3D Home Custom 是一个由 Fastify 后端、React 前端、Three.js 
 
 当前项目版本：
 
-- Add-on 当前版本：`0.1.5-custom.39`（GitHub Actions／GHCR 发布）
+- Add-on 当前版本：`0.1.5-custom.40`（GitHub Actions／GHCR 发布）
 - 项目 JSON Schema 版本：`7`
 - Node.js：`22`
 - 前端构建器：Vite `7`
@@ -738,7 +738,7 @@ Docker 构建阶段使用 BUILDPLATFORM 原生执行通用 JS 测试、Vite 打�
 
 `project-save-error.js` 在编辑器保存失败入口统一把重复设备内部 ID 映射为当前实时实体名称，供按钮、面板与气泡共同展示。名称缺失依次回退摆放名称、实体 ID；其他错误不改写，避免误吞网络或校验原因。
 
-## 旋转轴与轴心辅助编辑（本地开发版）
+## 旋转轴与轴心辅助编辑（当前版本）
 
 `rotation-pivot-preview.js` 在 ModelPreview 的同一个 renderer 中建立编辑专用辅助组和 TransformControls，不申请额外 WebGL context。辅助组放在场景下，不进入模型层级／部件树；其矩阵由部件未动效的 position／quaternion／scale 和实时父节点世界矩阵组成，与 part-motion-engine 的局部轴心语义一致。拖动只回写 effect.pivot，并暂时禁用 OrbitControls，松开后恢复。切换目标、关闭或释放预览时 detach、dispose 辅助几何／材质与事件。
 
