@@ -62,7 +62,8 @@ test('漫游接入、清理与设备点击保护不回归',async()=>{
   const scene=await readFile(new URL('../apps/web/src/app/scene.js',import.meta.url),'utf8');
   const controller=await readFile(new URL('../apps/web/src/components/first-person-controller.jsx',import.meta.url),'utf8');
   const home=await readFile(new URL('../apps/web/src/app/home-view.js',import.meta.url),'utf8');
-  assert.match(scene,/enabled: walkthrough.mode === 'idle'/);assert.match(scene,/opacity: walkthrough \? 1/);
+  assert.match(scene,/enabled: walkthrough.mode === 'idle'/);assert.match(scene,/surfaceOpacity = walkthrough \|\| !n \? 1 : wallOpacity/);
+ assert.match(scene,/opacity: surfaceOpacity/);
   assert.match(scene,/visibleCeiling:walkthrough/);assert.match(home,/室内漫游/);
   assert.match(controller,/abort.abort\(\);clear\(\)/);assert.match(controller,/visibilitychange/);
   assert.match(controller,/input,textarea,select/);assert.match(controller,/callbacks.current.onSpawn/);

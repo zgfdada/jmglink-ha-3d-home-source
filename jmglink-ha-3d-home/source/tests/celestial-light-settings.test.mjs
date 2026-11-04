@@ -4,7 +4,7 @@ import {normalizeCelestialSettings,celestialIntensity,readCelestialSettings,stor
 import {readFile} from 'node:fs/promises';
 
 test('日光、月光增益独立，零值关闭光强，默认保持原值',()=>{
-  assert.deepEqual(normalizeCelestialSettings(),{sunIntensity:1,moonIntensity:1,roofOcclusion:true});
+  assert.deepEqual(normalizeCelestialSettings(),{sunIntensity:1,moonIntensity:1,roofOcclusion:true,wallOpacity:0.55,starfield:true});
   const settings={sunIntensity:2,moonIntensity:10,roofOcclusion:false};
   assert.equal(celestialIntensity(.8,.06,false,settings),1.6);
   assert.equal(celestialIntensity(.8,.06,true,settings),.6);
@@ -12,15 +12,15 @@ test('日光、月光增益独立，零值关闭光强，默认保持原值',()=
   assert.equal(celestialIntensity(.8,0,true,settings),0);
   assert.equal(celestialIntensity(.8,.06,true,{moonIntensity:0}),0);
   assert.equal(celestialIntensity(.8,.06,false,{sunIntensity:0}),0);
-  assert.deepEqual(normalizeCelestialSettings({sunIntensity:9,moonIntensity:Infinity,roofOcclusion:false}),{sunIntensity:3,moonIntensity:1,roofOcclusion:false});
+  assert.deepEqual(normalizeCelestialSettings({sunIntensity:9,moonIntensity:Infinity,roofOcclusion:false}),{sunIntensity:3,moonIntensity:1,roofOcclusion:false,wallOpacity:0.55,starfield:true});
 });
 test('照明偏好保留屋顶关闭与零强度，损坏或受限存储安全降级',()=>{
   const original=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
   try {
     let stored=null;
     Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:()=>stored,setItem:(key,value)=>{stored=value;}}});
-    storeCelestialSettings({sunIntensity:0,moonIntensity:15,roofOcclusion:false});
-    assert.deepEqual(readCelestialSettings(),{sunIntensity:0,moonIntensity:15,roofOcclusion:false});
+    storeCelestialSettings({sunIntensity:0,moonIntensity:15,roofOcclusion:false,wallOpacity:0.55,starfield:true});
+    assert.deepEqual(readCelestialSettings(),{sunIntensity:0,moonIntensity:15,roofOcclusion:false,wallOpacity:0.55,starfield:true});
     stored='null';assert.equal(readCelestialSettings().moonIntensity,1);
     stored='{bad';assert.equal(readCelestialSettings().roofOcclusion,true);
     Object.defineProperty(globalThis,'localStorage',{configurable:true,get(){throw new Error('blocked');}});
@@ -34,4 +34,22 @@ test('屋顶开关贯通主页、场景、楼层，阴影强度保持独立',asy
   assert.match(scene,/l && \(roofOcclusion \|\| walkthrough\) && t.jsx\(ShadowOnlyRoof/);
   assert.match(home,/changeCelestialSettings\(\{roofOcclusion:event.target.checked\}\)/);
   assert.match(scene,/normalizeShadowIntensity\(shadowIntensity\)/);
+});
+
+
+test('墙体透明度支持端点、旧设置迁移与星光开关持久化',()=>{
+  assert.equal(normalizeCelestialSettings({}).wallOpacity, .55);
+  assert.equal(normalizeCelestialSettings({wallOpacity:-1}).wallOpacity, 0);
+  assert.equal(normalizeCelestialSettings({wallOpacity:2}).wallOpacity, 1);
+  assert.equal(normalizeCelestialSettings({wallOpacity:NaN}).wallOpacity, .55);
+  const previous=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
+  let saved;
+  try {
+    Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:()=>saved,setItem:(_,value)=>{saved=value;}}});
+    storeCelestialSettings({wallOpacity:0,starfield:false});
+    assert.equal(readCelestialSettings().wallOpacity,0);
+    assert.equal(readCelestialSettings().starfield,false);
+    storeCelestialSettings({wallOpacity:1});
+    assert.equal(readCelestialSettings().wallOpacity,1);
+  } finally {if(previous)Object.defineProperty(globalThis,'localStorage',previous);else delete globalThis.localStorage;}
 });

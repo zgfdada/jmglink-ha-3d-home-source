@@ -763,3 +763,43 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 ## GitHub Actions 与 GHCR
 
 当前 origin 为 GitHub，Gitea 保留为 gitea 备份远程；GitHub 托管 AMD64／ARM64 Runner 执行验证与发布。日常构建使用只读令牌，Tag 发布任务单独声明 packages: write，跨仓库安装快照仅在最终发布步骤使用 INSTALLATION_TOKEN；没有迁移旧 Gitea Registry Token。发布器改用 GitHub Git Data／Release API，教程在受白名单管理的 docs/wiki 目录维护，不调用 Gitea Wiki API。详见[迁移与首次发布要求](docs/GitHub-Actions与GHCR迁移.md)。
+
+## 发布中断提示
+
+`project-publish.jsx` 保留请求 HTTP 状态，发布遇到 502／503／504 或 fetch 连接失败时，显示持久的 `role="alert"` 提示及通知，指导核对 OOM 日志、调整 Node.js 堆与容器内存限制、重启并核对版本记录；普通业务错误保持原始说明。
+
+运行效果 `runtime-model-glow.js` 仅创建模型几何外壳与边线；不创建 Sprite 光晕或 PointLight，以免指示效果溢出到周围场景。主页与模型预览共用此实现，回归见 `runtime-model-glow.test.mjs`。
+
+墙体显示参数沿用 `ha3d.celestialLighting`：`wallOpacity` 默认 0.55，`starfield` 默认 true，旧设置自动补默认值；主页按 1-opacity 展示透明度。设置经 Scene / pi / fi 传至 Bn，编辑和漫游始终不透明，墙面遮光沿用原逻辑。`floor-stack.js` 统一总览楼层间距及相机高度计算，不修改项目层高；`orbit-starfield.jsx` 用单个 THREE.Points 绘制三维星点，与户型共用旋转组，并尊重 reduced-motion，不单独触发连续渲染。回归见 `celestial-light-settings.test.mjs` 和 `floor-stack.test.mjs`。
+
+建筑展示补修：Bn 与 Hn 使用中性乳白墙色／框色，墙面增加少量暖白自发光以减轻蓝色环境光染色，并降低反光；hi/ui 从 pi 的最底层移至 fi 内，所有楼层共用同一变换，楼板边缘柔光不参与点选且不增加点光源。floorStackGap 的展示间距为跨度 × 0.30，夹在 2.6–6m；摆放与取景仍共用该函数。
+
+半透明建筑材质禁用全局卡通 OutlineEffect 的背面描边（outlineParameters.visible=false），改由已有独立边线表达轮廓，避免蓝灰背面透过乳白墙面造成染色；楼板同样排除重复描边。
+
+星点在 OrbitStarfield 挂载时一次生成随机属性，普通状态更新不重新布局；GPU 着色器处理随机闪烁及微量漂移，并响应 reduced-motion。视频复核后不再添加 X/Z 楼层偏移，各层按原位置对齐，仅 Y 方向分层过渡，不改项目坐标。楼板自发光增强，边缘不透明度提高至 0.95、渐隐柔光提高至 0.68，不引入场景点光源。
+
+旋转视频复核：保持 Y-up，presentationOrbitLimits 锁定主页单层极角 48°、总览极角 62°，方位角不受限；presentationCameraPosition 与轨道约束共用极角，主页取景偏移通过 setViewOffset 调整镜头投影，保持轨道目标位于户型中心。编辑模式／top／front 保留原轨道限制。wallTintBlend 在 opacity=1、编辑或漫游时为 0，避免覆盖原墙面色与材质；透明度前 20% 平滑渐入乳白。回归使用真实 Three.js OrbitControls 验证 360° 旋转、固定俯角及取景可达。
+
+展示模式保留固定俯角与 zoomToCursor=false，开启 OrbitControls 原生右键平移，交互期间允许 target 改变；取消右键投影位移监听。恢复自动旋转时 yi 通过 anchorOrbitTarget 同步平移相机和 target，将轴心归回 frame.target，保持相对观察方向和距离，并取消未完成的取景动画。侧栏构图继续使用 applyOrbitProjection/setViewOffset。
+
+默认自动旋转由 use-idle-rotation.js / idle-rotation.js 管理，根工作区捕获交互，窗口捕获指针释放／取消、焦点与可见性；单个可取消 8000ms 定时器按最后活动重新计时，焦点、按住指针、弹窗或不可见期间不计时。卸载清除监听和定时器，无后台轮询。HomeView 移除手动旋转状态与菜单，遮罩／漫游／详情作为 blocked 输入；主场景恢复首帧 delta 限制 50ms，避免停顿后角度跳变。idle-rotation.test.mjs 使用假时钟验证精确8秒、多指针、焦点、窗口失焦及清理。
+
+拖拽停止响应补修：主页 OrbitControls enableDamping=false，直接清除每次交互增量，避免自动旋转转为 demand 渲染后继续消耗惯性；编辑器 enableDamping=true、dampingFactor=0.085。idle-rotation 策略不变。
+
+星空同步：OrbitStarfield 放在 pi 的旋转 group 内，模型自动转动时共同继承 Y 旋转，手动相机环绕时共享 world/view/projection 矩阵。2400 个随机点共一个 draw call，不参与点选、阴影或全局描边，不单独 invalidate，替代原 100 个 DOM/CSS 动画星点。ci 仅对内置柜体的主题主色与细节色分别混入38%／32%浅暖色，跳过自定义模型，不改项目或资产原色。
+
+
+## 灯具散射角与透明墙遮光（本地预览）
+
+`light-beam-settings.js` 提供完整夹角规范化、灯型默认值、fixture.id 覆盖和浏览器 localStorage（ha3d.lightBeams）外部存储；LightBeamSettings 与灯具通过同一 useSyncExternalStore 快照更新，不接 HA 服务。独立灯与开关受控虚拟灯均按放置实例 id 解析；灯带路径每段沿用所属实例的角度。
+
+`FixtureLight` 使用带256px阴影的 SpotLight，完整角度转半角传入 Three；只在灯具亮起时创建。墙面保留不透明 customDepthMaterial，显示 opacity 不影响阴影。`wallLightBlockers` 将墙体按门窗洞口切分为实体矩形条；FloorLightOcclusion 提供楼层几何，光束 shader 在楼层坐标中求光源至片元的墙面交点并截断。每帧更新逆楼层变换，保持旋转、平移和堆叠坐标一致。虚拟分区不遮光。光束不参与点选、投影和全局描边。回归覆盖类型继承、单灯恢复、存储异常、角度边界、实体墙、门楣、窗台、斜墙和同侧光路。
+
+
+光束 shader 使用锥体 UV 沿轴向归一化距离，按 1/(1+4t²) 衰减透明度，并在 t=0.72–1 平滑淡出；不增加光源、网格、纹理或每帧 CPU 计算。
+
+
+`physical-light-occlusion.js` 在 renderer 匹配的 lights_fragment_begin 中，获取 point/spot 的直接照明后、RE_Direct（BRDF）之前执行实体墙光路可见性判断；光被墙挡住时将该灯贡献置零，同时阻断漫反射、镜面与 clearcoat。使用相机视空间到楼层空间矩阵，统一消费门窗分割后的实体墙条，不受 receiveShadow、显示透明度、阴影强度与画质档位影响。保留原有环境照明和日月阴影，光束继续独立使用同一墙体几何裁剪与距离淡出。绑定监听异步模型，并在 onBeforeRender 检查后换材质；卸载恢复回调和程序缓存键。vendor/three.js 只额外导出当前 renderer 的 nR 灯光块，避免 npm Three 与恢复版 renderer 的 shader 版本差异。
+
+
+光束使用开口 CylinderGeometry(top,bottom,length)，灯口半径按灯型设定，bottom=top+length*tan(angle/2)，保持散射边缘斜率；沿轴向UV与旧锥体一致，距离淡出和遮光shader无需更改。

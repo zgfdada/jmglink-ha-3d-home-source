@@ -1,3 +1,5 @@
+import LightBeamSettings from "../components/light-beam-settings.jsx";
+import {useIdleRotation} from "../components/use-idle-rotation.js";
 import { bindFloatingPanelDismiss } from "../domain/floating-panel-dismiss.js";
 import {CameraViewer} from '../components/camera-controls.jsx';
 import '../styles/mobile-development-menu.css';
@@ -2662,6 +2664,7 @@ function Qn({
   const [sidebarCollapsed, setSidebarCollapsed] = l.useState(false);
   const [sidebarHidden, setSidebarHidden] = l.useState(() => {try{return localStorage.getItem("ha3d.sidebar.hidden") === "1";}catch{return false;}});
   const toggleSidebarVisibility = () => setSidebarHidden(previous => {const next = !previous;try{localStorage.setItem("ha3d.sidebar.hidden",next ? "1" : "0");}catch{}return next;});
+  const [showAllFloors, setShowAllFloors] = l.useState(false);
   const [manualLight, setManualLight] = l.useState(null);
   const [shadowIntensity, setShadowIntensity] = l.useState(readShadowIntensity);
   const [celestialSettings,setCelestialSettings] = l.useState(readCelestialSettings);
@@ -2689,7 +2692,6 @@ function Qn({
     [E, G] = l.useState(!1),
     [ee, I] = l.useState(!1),
     [se, u] = l.useState(!1),
-    [b, p] = l.useState(!1),
     [g, M] = l.useState(() => kn()),
     [S, d] = l.useState(() => In()),
     [o, w] = l.useState(),
@@ -3025,14 +3027,16 @@ function Qn({
       },
       [k, Q, F],
     );
+  const {rootRef:rotationRootRef,autoRotate:idleAutoRotate}=useIdleRotation(sceneSuspended || walkthrough.mode!=='idle' || lightSettingsOpen || transferOpen || developmentMenuOpen || ee || E || !!v || !!L || !!q || !!cameraMonitorId);
   const sidebarRef = useFloatingPanelDismiss(Ve, () => {G(false);k(undefined);ie(undefined);});
   return e.jsxs("section", {
+    ref: rotationRootRef,
     className: `home-workspace ${t.floors.length > 1 && !sidebarHidden ? "has-floor-selector" : ""} theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
     children: [
       cameraMonitorId && F[cameraMonitorId] && e.jsx(CameraViewer,{key:cameraMonitorId,entity:F[cameraMonitorId],project:t,entities:F,onClose:()=>setCameraMonitorId(null),renderLive:(active,key)=>e.jsx(CameraLiveView,{entity:active,compact:true,autoPlay:true},key)}),
       e.jsxs("div", {
         className: "home-scene",
-        style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[139,187,211,193,210,200]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},
+        style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[219,217,207,207,209,201]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},
         children: [
           haConnectionNotice(i) && e.jsx("div", {className:"ha-connection-notice", role:"status", "aria-live":"polite", style:{position:"absolute",right:24,top:24,zIndex:60,maxWidth:280,padding:"12px 18px",borderRadius:14,background:"rgba(40,51,69,.92)",color:"#fff",border:"1px solid rgba(255,207,124,.65)",pointerEvents:"none",boxShadow:"0 6px 24px #0003"},children:haConnectionNotice(i)}),
           e.jsx("div", {className: "sb-scene-viewport", children: !sceneSuspended && e.jsx(Qs, {
@@ -3046,7 +3050,7 @@ function Qn({
             project: xe,
             entities: ps,
             floorId: Oe == null ? void 0 : Oe.id,
-            showAllFloors: false,
+            showAllFloors,
             showLabels: !1,
             theme: C,
             daylight: lightLevel,
@@ -3057,7 +3061,7 @@ function Qn({
             wallMode: "full",
             wallThicknessScale: 0.56,
             presentation: !0,
-            cameraPreset: "top",
+            cameraPreset: "iso",
             quality: g,
             visualStyle: S,
             weather: U,
@@ -3066,7 +3070,7 @@ function Qn({
             showDevices: A,
             showRoomBadges: walkthrough.mode === 'idle' && A && T !== "overview" && Q > 560,
             presentationMode: T,
-            autoRotate: b,
+            autoRotate: idleAutoRotate,
             cameraResetKey: ls,
             onRoomFocus: ke,
             onRoomLightingAction: zs,
@@ -3075,7 +3079,7 @@ function Qn({
             onEntitySelect: Fs,
           })}),
           walkthrough.mode !== 'idle' && e.jsx(FirstPersonOverlay,{mode:walkthrough.mode,input:walkInput,onExit:exitWalk,notice:walkNotice,locked:walkLocked}),
-          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, hidden: sidebarHidden || walkthrough.mode !== 'idle', key: $, floors: t.floors, floorId: $, onFloorChange: (id) => {exitWalk();x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
+          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, hidden: sidebarHidden || walkthrough.mode !== 'idle', key: $, floors: t.floors, floorId: $, showAllFloors, onShowAllFloors: () => {exitWalk();setShowAllFloors(true);ke(void 0);k(void 0);ie(void 0);}, onFloorChange: (id) => {exitWalk();setShowAllFloors(false);x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
           !A &&
             e.jsxs("div", {
               className: "scene-data-empty",
@@ -3134,8 +3138,7 @@ function Qn({
                 role: "menu",
                 children: [
                   e.jsx("button", {className: "home-tools-item", role: "menuitem", onClick: () => {I(false);setLightSettingsOpen(true);}, children: "☀ 环境光"}),
-                  e.jsx("button", {className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setLightSettingsOpen(false);if(walkthrough.mode!=='idle'){exitWalk();return;}p(false);k(void 0);ie(void 0);setWalkNotice('');setWalkthrough({mode:'placing',spawn:null});},children:walkthrough.mode==='idle'?'🚶 室内漫游':'退出室内漫游'}),
-                  e.jsxs("button", {className: "home-tools-item", role: "menuitem", "aria-label": "切换模型旋转", "aria-pressed": b, onClick: () => p(n => !n), children: [e.jsx(Aa, {size: 17}), e.jsx("span", {children: b ? "停止旋转" : "旋转"})]}),
+                  e.jsx("button", {className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setLightSettingsOpen(false);if(walkthrough.mode!=='idle'){exitWalk();return;}k(void 0);ie(void 0);setWalkNotice('');setShowAllFloors(false);setWalkthrough({mode:'placing',spawn:null});},children:walkthrough.mode==='idle'?'🚶 室内漫游':'退出室内漫游'}),
                   e.jsxs("button", {
                     className: `home-tools-item quality-dock-action quality-${g}`,
                     onClick: gs,
@@ -3193,10 +3196,14 @@ function Qn({
             e.jsx("button", {className: "auto-light", onClick: () => setManualLight(null), children: "恢复自动环境光"}),
             ...[["日光强度","sunIntensity",300],["月光强度","moonIntensity",2000]].map(([label,key,max])=>e.jsxs("label",{style:{marginTop:14},children:[`${label} · ${Math.round(celestialSettings[key]*100)}%`,e.jsx("input",{type:"range",min:0,max,step:10,"aria-label":label,value:Math.round(celestialSettings[key]*100),onChange:event=>changeCelestialSettings({[key]:Number(event.target.value)/100})})]},key)),
             e.jsx("p",{children:"100% 为默认强度；月光可增强至 20 倍。日光只在白天、月光只在夜间且月亮升起时生效。"}),
+            e.jsxs("label", {style:{marginTop:14}, children:[`墙体透明度 · ${Math.round((1-celestialSettings.wallOpacity)*100)}%`, e.jsx("input", {type:"range",min:0,max:100,step:1,"aria-label":"墙体透明度",value:Math.round((1-celestialSettings.wallOpacity)*100),onChange:event=>changeCelestialSettings({wallOpacity:1-Number(event.target.value)/100})})]}),
+            e.jsx("p", {children:"0% 为不透明，100% 为完全透明；默认 45%。仅改变墙面显示，墙体始终遮挡灯光；室内漫游保持实体墙。"}),
+            e.jsxs("label", {style:{display:"flex",alignItems:"center",gap:8,margin:"12px 0"},children:[e.jsx("input",{type:"checkbox",style:{width:"auto"},"aria-label":"背景星光",checked:celestialSettings.starfield,onChange:event=>changeCelestialSettings({starfield:event.target.checked})}),"背景星光"]}),
             e.jsxs("label",{style:{display:"flex",alignItems:"center",gap:8,margin:"12px 0"},children:[e.jsx("input",{type:"checkbox",style:{width:"auto"},"aria-label":"屋顶遮光",checked:celestialSettings.roofOcclusion,onChange:event=>changeCelestialSettings({roofOcclusion:event.target.checked})}),"屋顶遮光"]}),
             e.jsx("p",{children:celestialSettings.roofOcclusion?"真实遮光：室内通过窗户受光。关闭后可观察室内日月投影。":"展示模式：顶部光线可进入室内，便于观察投影；墙体仍然遮光。"}),
             e.jsxs("label", {children: [`阴影强度 · ${Math.round(shadowIntensity * 100)}%`, e.jsx("input", {type: "range", min: 0, max: 100, step: 1, "aria-label": "阴影强度", value: Math.round(shadowIntensity * 100), onChange: event => {const value = Number(event.target.value) / 100; setShadowIntensity(value); storeShadowIntensity(value);}})]}),
             e.jsx("p", {children: "阴影强度独立调节，0% 隐藏投影，100% 为默认强度；设置保存在当前浏览器。"}),
+            e.jsx(LightBeamSettings,{project:t,entities:s}),
             e.jsx(NorthDirectionControl, {value:northAngle,onChange:value=>setNorthPreview({projectId:t.id,value}),getProject:()=>Se.getState().project,saveProject:async project=>{const saved=await P(project);setNorthPreview(null);return saved;}}),
             e.jsx("p", {children: "自动模式跟随 HA 太阳高度与方位，结合户型北向计算日照；日落后关闭日光投影。手动仅调明暗，不操作真实灯具；刷新后恢复自动。"}),
             e.jsx("p", {children: (() => {const sun = resolveSolarDirection(s, northAngle); return sun.available ? `太阳方位 ${sun.azimuth.toFixed(1)}° · 高度 ${sun.elevation.toFixed(1)}° · 户型北向 ${northAngle}°` : "太阳角度数据不可用，暂用固定方向照明。";})()})

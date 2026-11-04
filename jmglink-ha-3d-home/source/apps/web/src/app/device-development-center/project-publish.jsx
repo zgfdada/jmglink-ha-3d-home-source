@@ -13,7 +13,7 @@ async function request(url, options) {
   });
   const value = await response.json().catch(() => ({}));
   if (!response.ok)
-    throw new Error(value.error || `请求失败 ${response.status}`);
+    throw Object.assign(new Error(value.error || `请求失败 ${response.status}`), { status: response.status });
   return value;
 }
 
@@ -38,6 +38,7 @@ export default function ProjectPublish({
   const [previewStates, setPreviewStates] = React.useState({});
   const [draft, setDraft] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
+  const [publishError, setPublishError] = React.useState("");
   const [selectedVersion, setSelectedVersion] = React.useState(null);
   const [versionDetail, setVersionDetail] = React.useState(null);
   const refresh = React.useCallback(async () => {
@@ -120,6 +121,7 @@ export default function ProjectPublish({
     }
   };
   const publish = async () => {
+    setPublishError("");
     if (check?.publishBlocked) return notify("请先修复发布阻断项。", "error");
     if (!(await save())) return;
     const warnings =
@@ -150,7 +152,12 @@ export default function ProjectPublish({
         "success",
       );
     } catch (error) {
-      notify(error.message, "error");
+      const interrupted = [502, 503, 504].includes(error.status) || error instanceof TypeError;
+      const message = interrupted
+        ? `发布请求中断（${error.status || "连接断开"}），后端可能因内存不足而退出。请检查插件／容器日志：若出现 heap out of memory，请在插件配置中将 node_max_old_space_mb 从 256 调大到 512（MiB，需主机内存充足）；Docker 部署请相应调大 Node.js 的 --max-old-space-size 或 NODE_OPTIONS。若容器设有内存限制，请同时调大容器内存限制，并为 Node.js 堆外内存预留空间。保存配置并重启插件／容器，待服务恢复后先检查版本记录，再决定是否重试。若无内存错误，请继续检查服务和代理日志。`
+        : error.message;
+      setPublishError(message);
+      notify(message, "error");
     } finally {
       setBusy(false);
     }
@@ -161,6 +168,7 @@ export default function ProjectPublish({
         <h2>发布设备项目</h2>
         <p>发布前核对配置与预览。已发布版本为只读快照，编辑会进入下一草稿。</p>
       </div>
+      {publishError && <div className="ddc-lifecycle-card" role="alert">{publishError}</div>}
       <div className="ddc-lifecycle-publish-grid">
         <div>
           <section className="ddc-lifecycle-card">

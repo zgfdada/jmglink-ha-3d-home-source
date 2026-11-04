@@ -1,3 +1,9 @@
+import FixtureLight,{FloorLightOcclusion} from "../components/fixture-light.jsx";
+import {useBeamSettings} from "../components/light-beam-settings.jsx";
+import {resolveBeamAngle} from "../domain/light-beam-settings.js";
+import OrbitStarfield from "../components/orbit-starfield.jsx";
+import {wallTintBlend} from "../domain/wall-appearance.js";
+import {floorStackGap} from "../domain/floor-stack.js";
 import {isDoorSensorOpen} from "../domain/door-sensor.js";
 import {WALL_SHADOW_PROPS, SUN_SHADOW_PROPS, normalizeShadowIntensity} from '../domain/scene-shadows.js';
 import {resolveSolarDirection} from '../../../../packages/schema/src/solar-direction.js';
@@ -17,7 +23,7 @@ import {CAMERA_MODELS,cameraModelDefinition} from '../../../../packages/schema/s
 import {resolveLightChromaticity, mixLightColors} from "../domain/light-color.js";
 import { DEFAULT_OUTLINE_SCALE, outlineThickness, updateOutlineThickness } from "../domain/outline-settings.js";
 import { overlayRefitKey } from "../domain/camera-refit.js";
-import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
+import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, presentationOrbitLimits, presentationCameraPosition, applyOrbitProjection, anchorOrbitTarget, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
 import DevicePanel from "../components/device-panel.jsx";
 import { boundPanelStates } from "../domain/device-panel.js";
 /**
@@ -3009,9 +3015,6 @@ function Ms(e) {
 function Ct(e) {
   return e;
 }
-function ks() {
-  return 0.96;
-}
 function gn(e, s) {
   return kt(e, 0, Math.max(0.2, s ?? e));
 }
@@ -3916,6 +3919,7 @@ function Fn({
 function Hn({
   opening: e,
   wallLength: s,
+  wallOpacity = 1,
   wallDepth: r,
   presentation: o,
   theme: n,
@@ -3926,7 +3930,7 @@ function Hn({
     l = ue(),
     f = l === "cartoon" && o,
     u = l === "cream" && o,
-    h = ge(n, i),
+    h = wallOpacity >= 1 ? ge(n, i) : {...ge(n, i), wallColor: "#f4f1e9", wallEdgeColor: "#fffaf0", foundation: "#dedbd1"},
     m = o ? $(h.wallColor, "#ffffff", f ? 0.22 : u ? 0.16 : 0.34) : "#e7ebef",
     y = f ? 0.3 : u ? 0.58 : o ? 0.18 : 1,
     w = o
@@ -4165,6 +4169,7 @@ function Hn({
 }
 function Bn({
   wall: e,
+  wallOpacity = 0.55,
   walkthrough = false,
   color: s,
   openings: r,
@@ -4229,13 +4234,9 @@ function Bn({
     N = O === "cartoon" && n,
     E = O === "cream" && n,
     d = ge(i, a),
-    g = n
-      ? N
-        ? $(d.wallColor, d.wallEdgeColor, 0.18)
-        : E
-          ? d.wallEdgeColor
-          : $(d.wallEdgeColor, "#ffffff", 0.1)
-      : "#8d8982",
+    tintBlend = wallTintBlend(wallOpacity, n, walkthrough),
+    wallSurfaceColor = tintBlend ? $(s, "#f4f1e9", tintBlend) : s,
+    g = n ? $(d.wallEdgeColor, "#fffaf0", tintBlend) : "#8d8982",
     _ = n
       ? N
         ? 0.06
@@ -4243,6 +4244,7 @@ function Bn({
           ? 0.065
           : Math.max(0.15, d.wallEdgeOpacity + 0.07)
       : 0.14;
+  const surfaceOpacity = walkthrough || !n ? 1 : wallOpacity;
   return t.jsxs("group", {
     position: y,
     rotation: [0, -m, 0],
@@ -4251,6 +4253,7 @@ function Bn({
         position: [0, 0, -w / 2],
         ...WALL_SHADOW_PROPS,
         children: [
+          t.jsx("meshDepthMaterial",{attach:"customDepthMaterial",depthPacking:Xa.RGBADepthPacking,side:J}),
           t.jsx("extrudeGeometry", {
             args: [
               k,
@@ -4268,22 +4271,27 @@ function Bn({
           }),
           N
             ? t.jsx("meshToonMaterial", {
-                color: d.wallColor,
-                transparent: !walkthrough && d.wallOpacity < 0.99,
-                opacity: walkthrough ? 1 : d.wallOpacity,
+                color: wallSurfaceColor,
+                userData: {outlineParameters: {visible: tintBlend === 0}},
+                emissive: n ? "#fff8e9" : "#000000",
+                emissiveIntensity: tintBlend * 0.18,
+                transparent: surfaceOpacity < 1,
+                opacity: surfaceOpacity,
+                depthWrite: surfaceOpacity >= 1,
                 side: J,
               })
             : t.jsx("meshPhysicalMaterial", {
-                color: n ? d.wallColor : s,
-                roughness: E ? 0.6 : n ? 0.46 : 0.84,
-                metalness: 0.004,
-                clearcoat: E ? 0.04 : n ? 0.16 : 0,
+                color: wallSurfaceColor,
+                userData: {outlineParameters: {visible: tintBlend === 0}},
+                emissive: n ? "#fff8e9" : "#000000",
+                emissiveIntensity: tintBlend * 0.12,
+                roughness: tintBlend ? 0.88 : E ? 0.6 : n ? 0.46 : 0.84,
+                metalness: 0.004 * (1 - tintBlend),
+                clearcoat: (E ? 0.04 : n ? 0.16 : 0) * (1 - tintBlend),
                 clearcoatRoughness: E ? 0.86 : 0.7,
-                transparent: !walkthrough && n && d.wallOpacity < 0.99,
-                opacity: walkthrough ? 1 : n
-                  ? Math.max(0.18, d.wallOpacity * (E ? 0.96 : 0.88))
-                  : 1,
-                depthWrite: walkthrough || !n,
+                transparent: surfaceOpacity < 1,
+                opacity: surfaceOpacity,
+                depthWrite: surfaceOpacity >= 1,
                 side: J,
               }),
           t.jsx(Y, {
@@ -4301,11 +4309,7 @@ function Bn({
           children: [
             t.jsx("boxGeometry", { args: [h, N ? 0.018 : 0.012, w * 0.86] }),
             t.jsx("meshBasicMaterial", {
-              color: N
-                ? $(d.wallColor, d.wallEdgeColor, 0.3)
-                : E
-                  ? $(d.wallEdgeColor, d.wallColor, 0.16)
-                  : $(d.wallEdgeColor, "#ffffff", 0.18),
+              color: g,
               transparent: !0,
               opacity: N ? 0.2 : E ? 0.12 : 0.28,
               depthWrite: !1,
@@ -4320,6 +4324,7 @@ function Bn({
             children: t.jsx(Hn, {
               opening: walkthrough && M.type === 'door' ? {...M,hasLeaf:false} : M,
               wallLength: h,
+              wallOpacity: surfaceOpacity,
               wallDepth: w,
               presentation: walkthrough ? false : n,
               theme: i,
@@ -4942,157 +4947,7 @@ function Kt({ color: e, level: s, radius: r, position: o, elongated: n = !1 }) {
     }),
   });
 }
-function je({ color: e, brightness: s, variant: r }) {
-  const o = V.clamp(s, 0, 1),
-    n = Cs(e),
-    i = n;
-  if (r === "floor")
-    return t.jsxs(SceneEffectGroup, {
-      children: [
-        t.jsx("pointLight", {
-          color: i,
-          intensity: 0.42 + o * 1.9,
-          distance: 2.25 + o * 1.9,
-          position: [0, 1.14, 0],
-          decay: 2,
-        }),
-        t.jsx(Xe, {
-          color: n,
-          level: o,
-          position: [0, 1.06, 0],
-          radius: 0.22,
-          scale: [1.05, 0.72, 1.05],
-        }),
-        t.jsx(Kt, {
-          color: n,
-          level: o,
-          radius: 0.42 + o * 0.18,
-          position: [0, 0.026, 0],
-        }),
-      ],
-    });
-  if (r === "strip")
-    return t.jsxs(SceneEffectGroup, {
-      children: [
-        t.jsx("pointLight", {
-          color: i,
-          intensity: 0.32 + o * 1.42,
-          distance: 2.2 + o * 1.7,
-          decay: 2,
-        }),
-        t.jsx(Xe, {
-          color: n,
-          level: o,
-          position: [0, -0.045, 0],
-          radius: 0.15,
-          scale: [3.15, 0.3, 0.42],
-        }),
-        t.jsxs("mesh", {
-          position: [0, -0.09, 0],
-          rotation: [-Math.PI / 2, 0, 0],
-          children: [
-            t.jsx("planeGeometry", { args: [1.18, 0.28] }),
-            t.jsx("meshBasicMaterial", {
-              color: i,
-              transparent: !0,
-              opacity: 0.045 + o * 0.092,
-              depthWrite: !1,
-              blending: q,
-              toneMapped: !1,
-            }),
-          ],
-        }),
-      ],
-    });
-  if (r === "wall")
-    return t.jsxs(SceneEffectGroup, {
-      children: [
-        t.jsx("pointLight", {
-          color: i,
-          intensity: 0.38 + o * 1.7,
-          distance: 1.9 + o * 1.4,
-          decay: 2,
-          position: [0, 0, 0.12],
-        }),
-        t.jsx(Xe, {
-          color: n,
-          level: o,
-          position: [0, 0, 0.06],
-          radius: 0.17,
-          scale: [1.35, 0.82, 0.38],
-        }),
-        t.jsxs("mesh", {
-          position: [0, -0.18, 0.18],
-          rotation: [-Math.PI / 2, 0, 0],
-          children: [
-            t.jsx("coneGeometry", { args: [0.34, 0.72, 36, 1, !0] }),
-            t.jsx("meshBasicMaterial", {
-              color: i,
-              transparent: !0,
-              opacity: 0.014 + o * 0.048,
-              side: J,
-              depthWrite: !1,
-              blending: q,
-              toneMapped: !1,
-            }),
-          ],
-        }),
-      ],
-    });
-  const a = r === "chandelier" ? 1.08 : r === "downlight" ? 0.9 : 1.28,
-    c = r === "downlight" ? 0.16 : r === "chandelier" ? 0.38 : 0.44,
-    l = r === "chandelier" ? -0.52 : r === "downlight" ? -0.028 : -0.068,
-    f = r === "downlight" ? 0.058 : r === "chandelier" ? 0.26 : 0.24,
-    u =
-      r === "downlight"
-        ? [1, 0.18, 1]
-        : [1, r === "chandelier" ? 0.5 : 0.34, 1],
-    h = r === "downlight" ? 0.011 + o * 0.038 : 0.018 + o * 0.058;
-  return t.jsxs(SceneEffectGroup, {
-    children: [
-      t.jsx("pointLight", {
-        color: i,
-        intensity:
-          (r === "chandelier" ? 0.62 : 0.42) +
-          o * (r === "downlight" ? 1.08 : 2.12),
-        distance:
-          (r === "ceiling" ? 3.35 : r === "downlight" ? 2.15 : 2.75) +
-          o * (r === "downlight" ? 1.1 : 1.75),
-        decay: 2,
-        position: [0, l, 0],
-      }),
-      r !== "ceiling" &&
-        t.jsx(Xe, {
-          color: n,
-          level: o,
-          position: [0, l, 0],
-          radius: f,
-          scale: u,
-        }),
-      t.jsxs("mesh", {
-        position: [0, l - a / 2, 0],
-        children: [
-          t.jsx("coneGeometry", { args: [c, a, 40, 1, !0] }),
-          t.jsx("meshBasicMaterial", {
-            color: i,
-            transparent: !0,
-            opacity: h,
-            side: J,
-            depthWrite: !1,
-            blending: q,
-            toneMapped: !1,
-          }),
-        ],
-      }),
-      t.jsx(Kt, {
-        color: n,
-        level: o,
-        radius: c * (0.72 + o * 0.16),
-        position: [0, l - a + 0.012, 0],
-      }),
-    ],
-  });
-}
+function je(props) {return t.jsx(FixtureLight,props);}
 function $s({
   modelId: e,
   bodyColor: s,
@@ -5103,7 +4958,9 @@ function $s({
   selected: a = !1,
   device: c,
 }) {
-  const l = ue(),
+  const beamSettings=useBeamSettings(),
+    beamAngle=resolveBeamAngle(beamSettings,e,c?.id),
+    l = ue(),
     f = l === "cartoon" && i,
     u = l === "cream" && i,
     h = r.isOn && !o,
@@ -5323,7 +5180,7 @@ function $s({
             }),
           ],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling" }),
+        h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling", beamAngle }),
       ],
     });
   }
@@ -5355,7 +5212,7 @@ function $s({
             N(h ? 0.78 : 0.38),
           ],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling" }),
+        h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling", beamAngle }),
       ],
     });
   if (e === "light.downlight") {
@@ -5402,7 +5259,7 @@ function $s({
           renderOrder: 8,
           children: [t.jsx("circleGeometry", { args: [0.07, 48] }), N(0.42)],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "downlight" }),
+        h && t.jsx(je, { color: r.color, brightness: y, variant: "downlight", beamAngle }),
       ],
     });
   }
@@ -5446,7 +5303,7 @@ function $s({
           children: [t.jsx("circleGeometry", { args: [0.25, 40] }), N()],
         }),
         h &&
-          t.jsx(je, { color: r.color, brightness: y, variant: "chandelier" }),
+          t.jsx(je, { color: r.color, brightness: y, variant: "chandelier", beamAngle }),
       ],
     });
   if (e === "light.wall_sconce")
@@ -5485,7 +5342,7 @@ function $s({
             C(0.16),
           ],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "wall" }),
+        h && t.jsx(je, { color: r.color, brightness: y, variant: "wall", beamAngle }),
       ],
     });
   if (e === "light.floor_lamp")
@@ -5527,7 +5384,7 @@ function $s({
           rotation: [-Math.PI / 2, 0, 0],
           children: [t.jsx("circleGeometry", { args: [0.21, 40] }), N()],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "floor" }),
+        h && t.jsx(je, { color: r.color, brightness: y, variant: "floor", beamAngle }),
       ],
     });
   if (e === "light.strip") {
@@ -5546,6 +5403,7 @@ function $s({
             position: F,
             rotation: [0, -I, 0],
             children: [
+              h && t.jsx(je,{color:r.color,brightness:y,variant:"strip",beamAngle}),
               h &&
                 t.jsxs("mesh", {
                   rotation: [0, 0, Math.PI / 2],
@@ -5607,7 +5465,7 @@ function $s({
       });
     }
     return t.jsx("group", {
-      children: t.jsxs("mesh", {
+      children: [h && t.jsx(je,{color:r.color,brightness:y,variant:"strip",beamAngle}),t.jsxs("mesh", {
         rotation: [0, 0, Math.PI / 2],
         children: [
           t.jsx("capsuleGeometry", { args: [d, 0.88, 8, 28] }),
@@ -5620,7 +5478,7 @@ function $s({
             toneMapped: !1,
           }),
         ],
-      }),
+      })],
     });
   }
   return t.jsxs("group", {
@@ -5673,7 +5531,7 @@ function $s({
           }),
         ],
       }),
-      h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling" }),
+      h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling", beamAngle }),
     ],
   });
 }
@@ -9169,8 +9027,9 @@ function ci({
     i = n === "cartoon" && r,
     a = n === "cream" && r,
     c = ge(s, o),
-    l = c.furnitureMain,
-    f = c.furnitureDetail,
+    paleCabinet = r && !e.customModel?.source && ["cabinet","wardrobe","tv_stand","bookshelf","sideboard","shoe_cabinet","nightstand"].includes(e.kind),
+    l = paleCabinet ? $(c.furnitureMain, "#f4eddf", 0.38) : c.furnitureMain,
+    f = paleCabinet ? $(c.furnitureDetail, "#e9dfce", 0.32) : c.furnitureDetail,
     u = i ? l : a ? $(l, "#f7ead5", 0.26) : r ? $(l, "#edf5ff", 0.28) : l,
     h = i ? f : a ? $(f, "#cdbb9f", 0.18) : r ? $(f, "#d8e8ff", 0.22) : f,
     m = i
@@ -10519,17 +10378,9 @@ function hi({ floors: e, theme: s, presentationMode: r }) {
   const o = ue(),
     n = o === "cartoon",
     i = o === "cream",
-    a = ge(s, r),
     c = L.useMemo(() => Fs(e).map(di), [e]),
-    l =
-      n || i
-        ? a.foundation
-        : $(
-            a.foundation,
-            a.ground,
-            s === "night" || r === "shade" || r === "security" ? 0.16 : 0.28,
-          ),
-    f = n ? "#41506a" : i ? "#877c6c" : $(a.foundation, "#172942", 0.28);
+    l = "#e5e1d7",
+    f = "#fff6de";
   return t.jsx("group", {
     position: [0, -0.155, 0],
     renderOrder: -2,
@@ -10538,6 +10389,7 @@ function hi({ floors: e, theme: s, presentationMode: r }) {
         "mesh",
         {
           rotation: [-Math.PI / 2, 0, 0],
+          raycast: ignoreSceneEffectRaycast,
           receiveShadow: !0,
           castShadow: !0,
           children: [
@@ -10555,9 +10407,12 @@ function hi({ floors: e, theme: s, presentationMode: r }) {
               ],
             }),
             n
-              ? t.jsx("meshToonMaterial", { color: l })
+              ? t.jsx("meshToonMaterial", { userData: {outlineParameters: {visible: false}}, color: l, emissive: "#fff6de", emissiveIntensity: 0.36 })
               : t.jsx("meshPhysicalMaterial", {
                   color: l,
+                  userData: {outlineParameters: {visible: false}},
+                  emissive: "#fff6de",
+                  emissiveIntensity: 0.30,
                   roughness: i ? 0.68 : 0.42,
                   metalness: i ? 0.012 : 0.035,
                   clearcoat: i ? 0.05 : 0.24,
@@ -10566,7 +10421,7 @@ function hi({ floors: e, theme: s, presentationMode: r }) {
             t.jsx(Y, {
               color: f,
               threshold: 18,
-              opacity: n ? 0.54 : i ? 0.3 : 0.34,
+              opacity: 0.95,
               transparent: !0,
             }),
           ],
@@ -10577,17 +10432,10 @@ function hi({ floors: e, theme: s, presentationMode: r }) {
   });
 }
 function ui({ floors: e, theme: s, presentationMode: r }) {
-  const n = ue() === "cream",
-    i = ge(s, r),
-    a = s === "night" || r === "shade" || r === "security",
-    c = n ? 0.48 : 0.58,
+  const c = 0.28,
     l = -0.148,
-    f = n
-      ? $(i.ground, "#fff6de", 0.54)
-      : a
-        ? $(i.glow, "#d7e9ff", 0.46)
-        : $(i.glow, "#f3fbff", 0.58),
-    u = n ? 0.18 : a ? 0.38 : 0.32,
+    f = "#fff9e9",
+    u = 0.68,
     h = L.useMemo(() => {
       const y = Fs(e),
         w = [];
@@ -10619,6 +10467,7 @@ function ui({ floors: e, theme: s, presentationMode: r }) {
         "mesh",
         {
           position: y.center,
+          raycast: ignoreSceneEffectRaycast,
           rotation: [0, -y.angle, 0],
           renderOrder: -5,
           children: [
@@ -10673,6 +10522,7 @@ function ShadowOnlyRoof({floor,visibleCeiling=false}) {
 }
 function fi({
   floor: e,
+  wallOpacity = 0.55,
   roofOcclusion = true,
   walkthrough = false,
   project: s,
@@ -10705,9 +10555,9 @@ function fi({
   }, [a, N]),
     re((S, B) => {
       if (!O.current) return;
-      const R = V.damp(O.current.position.y, a, 8, B);
-      ((O.current.position.y = Math.abs(R - a) < 0.002 ? a : R),
-        O.current.position.y !== a && N());
+      const next = V.damp(O.current.position.y, a, 8, B);
+      O.current.position.y = Math.abs(next - a) < 0.002 ? a : next;
+      if (O.current.position.y !== a) N();
     }));
   const E = e.walls.flatMap((S) => [S.start, S.end]),
     d = E.length ? Math.min(...E.map((S) => S[0])) : 0,
@@ -10745,10 +10595,12 @@ function fi({
     verticalElevations = resolveFloorVerticalElevations(e, r, {
       presentation: l,
     });
-  return t.jsxs("group", {
+  return t.jsx(FloorLightOcclusion,{floor:e,root:O,children:t.jsxs("group", {
     ref: O,
     position: [0, 0, 0],
     children: [
+      l && t.jsx(hi, {floors: [e], theme: c, presentationMode: f}),
+      l && !walkthrough && t.jsx(ui, {floors: [e], theme: c, presentationMode: f}),
       l && (roofOcclusion || walkthrough) && t.jsx(ShadowOnlyRoof, {floor: e,visibleCeiling:walkthrough}),
       e.rooms.map((S) => {
         const B = `${e.id}:${S.id}`,
@@ -10833,6 +10685,7 @@ function fi({
           Bn,
           {
             wall: S,
+            wallOpacity,
             walkthrough,
             openings: e.openings.filter((B) => B.wallId === S.id),
             renderHeight: T(S),
@@ -10915,10 +10768,12 @@ function fi({
           ),
         ),
     ],
-  });
+  })});
 }
 function pi({
   project: e,
+  starfield = false,
+  wallOpacity = 0.55,
   roofOcclusion = true,
   walkthrough = false,
   entities: s,
@@ -10955,10 +10810,10 @@ function pi({
   let S = 0;
   const B = new Map();
   for (const R of d)
-    (B.set(R.id, S), (S += f ? Ct(R.height) + ks() : R.height + 1.15));
+    (B.set(R.id, S), (S += f ? Ct(R.height) + floorStackGap(d) : R.height + 1.15));
   return (
     re((R, W) => {
-      !O || !M.current || ((M.current.rotation.y += W * 0.18), p());
+      !O || !M.current || ((M.current.rotation.y += Math.min(W, 0.05) * 0.18), p());
     }),
     t.jsxs(Ss.Provider, {
       value: h,
@@ -10968,6 +10823,7 @@ function pi({
           ref: M,
           onDoubleClick: () => (b == null ? void 0 : b(void 0)),
           children: [
+            f && starfield && t.jsx(OrbitStarfield, {}),
             c &&
               t.jsx("gridHelper", {
                 args: [18, 36, "#cfd8dc", "#edf2f1"],
@@ -10976,18 +10832,12 @@ function pi({
             t.jsxs("group", {
               position: [I, 0, F],
               children: [
-                f &&
-                  h !== "cartoon" &&
-                  d[0] &&
-                  t.jsx(ui, { floors: [d[0]], theme: l, presentationMode: u }),
-                f &&
-                  d[0] &&
-                  t.jsx(hi, { floors: [d[0]], theme: l, presentationMode: u }),
                 d.map((R) =>
                   t.jsx(
                     fi,
                     {
                       floor: R,
+                      wallOpacity,
                       roofOcclusion,
                       walkthrough,
                       project: e,
@@ -11032,14 +10882,14 @@ function gi({
   const i = [...e.floors].sort((p, v) => p.level - v.level),
     a = i.find((p) => p.id === s) ?? i[0],
     c = r ? i : [a],
-    l = c.flatMap((p) => p.walls.flatMap((v) => [v.start, v.end])),
+    l = c.flatMap(floor => floor.walls.flatMap(wall => [wall.start, wall.end])),
     f = l.length ? Math.min(...l.map(([p]) => p)) : 0,
     u = l.length ? Math.max(...l.map(([p]) => p)) : 8,
     h = l.length ? Math.min(...l.map(([, p]) => p)) : 0,
     m = l.length ? Math.max(...l.map(([, p]) => p)) : 6,
     y = u - f,
     w = m - h,
-    b = o ? ks() : 1.15,
+    b = floorStackGap(c, o),
     j = (p) => (o ? Ct(p) : p),
     x = r
       ? c.reduce((p, v) => p + j(v.height), 0) + Math.max(0, c.length - 1) * b
@@ -11119,6 +10969,7 @@ const xi = {
 };
 function yi({
   enabled = true,
+  autoRotate = false,
   preset: e,
   frame: s,
   presentation: r,
@@ -11126,7 +10977,7 @@ function yi({
   viewportInsets: n,
   resetKey: i,
 }) {
-  const { camera: a, size: c, controls: l, invalidate: f } = tt(),
+  const { camera: a, size: c, controls: l, invalidate: f, gl: renderer } = tt(),
     u = L.useRef(!0),
     wasEnabled = L.useRef(enabled),
     h = L.useMemo(() => new fe(...s.target), [s.target]),
@@ -11160,26 +11011,17 @@ function yi({
           ? new fe(s.target[0], s.target[1] + x * 1.65, s.target[2] + 0.001)
           : e === "front"
             ? new fe(s.target[0], s.target[1] + x * 0.28, s.target[2] + x * 1.5)
-            : w
-              ? new fe(
-                  s.target[0] + x * 0.86,
-                  s.target[1] + x * 0.72,
-                  s.target[2] + x * 1.04,
-                )
-              : r
-                ? new fe(
-                    s.target[0] + x * 0.74,
-                    s.target[1] + x * 1.08,
-                    s.target[2] + x * 0.88,
-                  )
+            : r
+              ? new fe(...presentationCameraPosition(s.target, x, w))
                 : new fe(
                     s.target[0] + x * 0.86,
                     s.target[1] + x * 0.86,
                     s.target[2] + x * 1.04,
                   ),
-      [w, s.target, e, x],
+      [w, r, s.target, e, x],
     ),
     G = L.useMemo(() => {
+      if (r) return h.clone();
       const C = h.clone().sub(k).normalize(),
         O = e === "top" ? new fe(0, 0, -1) : new fe(0, 1, 0),
         N = C.clone().cross(O).normalize(),
@@ -11190,10 +11032,8 @@ function yi({
         .clone()
         .addScaledVector(N, -m.horizontalOffset * g)
         .addScaledVector(E, m.verticalOffset * g);
-    }, [h, a, e, x, c.height, k, m.horizontalOffset, m.verticalOffset]),
-    P = L.useMemo(() => e === "top"
-      ? new fe(...alignedTopCameraPosition(k.toArray(), h.toArray(), G.toArray()))
-      : k, [e, k, h, G]);
+    }, [r, h, a, e, x, c.height, k, m.horizontalOffset, m.verticalOffset]),
+    P = L.useMemo(() => new fe(...alignedTopCameraPosition(k.toArray(), h.toArray(), G.toArray())), [k, h, G]);
   return (
     L.useEffect(() => {
       if(!enabled)return;
@@ -11216,6 +11056,20 @@ function yi({
         f());
     }, [a, y, f, e, r]),
     L.useEffect(() => {
+      applyOrbitProjection(a, r && enabled, c.width, c.height, framingInsets);
+      f();
+    }, [a, r, enabled, c.width, c.height, framingInsets, f]),
+    L.useEffect(() => {
+      if (!r || !enabled || !autoRotate) return;
+      u.current = false;
+      anchorOrbitTarget(a, l, s.target);
+      l?.update();
+      f();
+    }, [a, l, r, enabled, autoRotate, h.x, h.y, h.z, f]),
+    L.useEffect(() => {
+      if (r && enabled) { anchorOrbitTarget(a, l, s.target); f(); }
+    }, [a, l, r, enabled, h.x, h.y, h.z, f]),
+    L.useEffect(() => {
       ((u.current = !0), f());
     }, [f, e, r, i, o, c.width, c.height, overlayRefitKey(n), n.fitScale]),
     L.useEffect(() => cancelFitOnOrbitStart(l, u), [l]),
@@ -11228,7 +11082,7 @@ function yi({
       const C = l;
       (C != null &&
         C.target &&
-        (C.target.lerp(G, 0.18), (O = C.update) == null || O.call(C)),
+        (r ? C.target.copy(G) : C.target.lerp(G, 0.18), (O = C.update) == null || O.call(C)),
         a.position.distanceTo(destination) < 0.035
           ? (a.position.copy(destination), (u.current = !1))
           : f());
@@ -11638,7 +11492,7 @@ function _a({
           floorId: r,
           showAllFloors: o,
           presentation: u,
-          focusedRoom: m,
+          focusedRoom: u ? undefined : m,
         }),
       [r, m, u, e, o],
     ),
@@ -11798,6 +11652,8 @@ function _a({
         }),
         t.jsx(pi, {
           project: e,
+          starfield: u && lightSettings.starfield,
+          wallOpacity: lightSettings.wallOpacity,
           roofOcclusion: lightSettings.roofOcclusion,
           walkthrough: walkthrough.mode === 'walking',
           entities: s,
@@ -11825,6 +11681,7 @@ function _a({
         t.jsx(yi, {
           enabled: walkthrough.mode === 'idle',
           preset: n,
+          autoRotate: d,
           frame: M,
           presentation: u,
           showAllFloors: o,
@@ -11835,11 +11692,13 @@ function _a({
         t.jsx(sr, {
           enabled: walkthrough.mode === 'idle',
           makeDefault: !0,
-          enableDamping: !0,
+          enableDamping: !u,
           dampingFactor: 0.085,
+          enablePan: true,
+          zoomToCursor: false,
           minDistance: 3,
           maxDistance: Math.max(26, M.distance * 3),
-          ...FLOOR_ORBIT_LIMITS,
+          ...presentationOrbitLimits(u, o, n),
         }),
         walkInput && t.jsx(FirstPersonController, {mode:walkthrough.mode,spawn:walkthrough.spawn,floor:e.floors.find(floor=>floor.id===r)??e.floors[0],entities:s,wallThicknessScale:h,input:walkInput,onSpawn:onWalkSpawn,onExit:onWalkExit,onNotice:onWalkNotice,onLocked:onWalkLocked}),
       ],

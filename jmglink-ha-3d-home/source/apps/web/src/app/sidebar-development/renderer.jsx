@@ -242,6 +242,8 @@ export function SidebarPanel({
   );
 }
 export function PublishedSidebar({
+  showAllFloors = false,
+  onShowAllFloors,
   hidden = false,
   projectId,
   floors = [],
@@ -289,7 +291,7 @@ export function PublishedSidebar({
       className={`sb-home-container ${floorOptions.length > 1 ? "has-floor-rail" : ""} ${collapsed ? "is-collapsed" : ""}`}
       style={{ "--sb-home-width": `${config.width}px` }}
     >
-      {floorOptions.length > 1 && <nav className="sb-floor-rail" aria-label="楼层选择"><div className="sb-floor-options">{[...floorOptions].reverse().map(floor => <button key={floor.id} aria-label={`切换楼层 ${floor.label} ${floor.name}`} aria-current={floor.id === activeFloorId ? "true" : undefined} title={floor.name} onClick={() => {if(floor.id !== activeFloorId)onFloorChange?.(floor.id);}}>{floor.label}</button>)}</div></nav>}
+      {floorOptions.length > 1 && <nav className="sb-floor-rail" aria-label="楼层选择"><div className="sb-floor-options">{[...floorOptions].reverse().map(floor => <button key={floor.id} aria-label={`切换楼层 ${floor.label} ${floor.name}`} aria-current={!showAllFloors && floor.id === activeFloorId ? "true" : undefined} title={floor.name} onClick={() => {if(showAllFloors || floor.id !== activeFloorId)onFloorChange?.(floor.id);}}>{floor.label}</button>)}{onShowAllFloors && <button aria-label="全部楼层堆叠总览" aria-current={showAllFloors ? "true" : undefined} title="全部楼层堆叠总览" onClick={onShowAllFloors}>ALL</button>}</div></nav>}
       {error && (
         <p role="status" className="sb-load-error">
           {error}

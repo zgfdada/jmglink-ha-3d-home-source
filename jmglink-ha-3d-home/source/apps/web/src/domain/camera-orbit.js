@@ -29,3 +29,33 @@ export function cancelFitOnOrbitStart(controls, fitting) {
   controls?.addEventListener('start', cancel);
   return () => controls?.removeEventListener('start', cancel);
 }
+
+// Reference-style presentation: fixed oblique pitch, unrestricted heading.
+export function presentationOrbitLimits(presentation, stacked, preset = 'iso') {
+  if (!presentation || preset === 'top' || preset === 'front') return FLOOR_ORBIT_LIMITS;
+  const polar = (stacked ? 62 : 48) * Math.PI / 180;
+  return {...FLOOR_ORBIT_LIMITS, minPolarAngle: polar, maxPolarAngle: polar, enablePan: true, zoomToCursor: false};
+}
+
+export function presentationCameraPosition(target, distance, stacked) {
+  const {minPolarAngle: polar} = presentationOrbitLimits(true, stacked);
+  const x = stacked ? .86 : .74;
+  const z = stacked ? 1.04 : .88;
+  const y = Math.hypot(x, z) / Math.tan(polar);
+  return [target[0] + x * distance, target[1] + y * distance, target[2] + z * distance];
+}
+
+// Move the lens composition, never the world-space rotation centre.
+export function applyOrbitProjection(camera, enabled, width, height, insets, verticalShift = 0) {
+  if (!enabled) { camera.clearViewOffset?.(); return; }
+  const horizontal = ((insets.left ?? 0) - (insets.right ?? 0)) / 2;
+  const vertical = ((insets.top ?? 0) - (insets.bottom ?? 0)) / 2;
+  camera.setViewOffset(width, height, -horizontal, -vertical - verticalShift, width, height);
+}
+
+export function anchorOrbitTarget(camera, controls, target) {
+  if (!controls?.target) return;
+  const delta = controls.target.clone().fromArray(target).sub(controls.target);
+  camera.position.add(delta);
+  controls.target.fromArray(target);
+}
