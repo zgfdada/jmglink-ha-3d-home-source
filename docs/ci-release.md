@@ -156,3 +156,18 @@ GitHub源码CI最长成功基线提高为2分16秒，发布保留3分13秒，成
 [源码CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42376851798) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42377114685) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.43)
 
 推广页完成同版前端、GPL源码、Skill下载、版本化安装内容及既有脱敏双端演示的本地交付；线上220容器未替换。知识库仅本地同步，不上传WeKnora；未升级真实HA主机，未发布个人户型或联动流程。
+
+
+## .44 正式发布验收与耗时
+
+正式源码：`44aa6867c748f1aad774baf1fb07818a790cab69`，包含导入增量解析、流式备份、模型请求释放、历史持久化与发布前审查；个人实例脚本不在Git标签中。457项业务测试、18项安装发布检查通过，正式AMD64／ARM64镜像与Ingress、匿名拉取通过，版本和latest索引一致，安装快照22文件逐项核对。
+
+北京时间2026-11-08：源码CI #42409794609，04:10:56–04:12:59，2分03秒；正式发布 #42410066864，首个job 04:14:12至最后job 04:17:30，3分18秒。成功流程区间累计5分21秒，CI开始至发布结束墙钟6分34秒；发布内部并行job累计5分08秒，无失败、取消或重跑。GitHub最长成功基线CI保留2分16秒，正式发布提高为3分18秒，关联墙钟保留7分23秒。首次终态查询仍至少3分钟／4分钟，仍运行再至少10分钟；旧Gitea基线独立保留。
+
+镜像索引：`sha256:658f1fa3a66e2389922c720f48b265836994075ea59395ff3ce8c095d1099dbe`。正式AMD64混淆镜像额外使用192 MiB堆、384 MiB容器、无额外swap、1核和已有实例副本，连续导入53,351,520字节备份两次，分别约2.93／3.09秒；历史、侧栏内容、控件、9个模型及重启校验通过。此测试未挂载源码，真实HAOS未在本次自动升级或恢复。
+
+加严边界：256 MiB容器的正式镜像第一次导入通过，但立即第二次触发cgroup内存终止（退出137、OOMKilled=true），不是V8堆耗尽。此前源码局部受限实验在256 MiB成功，不能当成所有正式镜像与备份组合均能在该容量运行的保证。当前发布说明、推广内容和知识库补充这个边界，不改写正式标签或镜像；建议为192 MiB堆留出原生内存与缓存预算。
+
+[源码CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42409794609) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42410066864) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.44)
+
+推广页同步同版前端、GPL源码、Skill下载与版本化内容，沿用既有脱敏快照与隔离适配层；知识库仅本机同步，不上传WeKnora。线上部署与文件校验在独立部署结果中记录，不把本地准备当作线上已更新。
