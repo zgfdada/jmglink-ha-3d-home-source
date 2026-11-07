@@ -682,7 +682,9 @@
 .sb-navigation{position:relative;padding:0 6px;justify-content:normal;overflow:hidden}
 .sb-navigation-pages{flex:1;min-height:0;box-sizing:border-box;display:flex;flex-direction:column;justify-content:safe center;gap:12px;overflow:auto;padding:58px 0;scrollbar-width:thin}
 .sb-navigation .sb-rail-toggle{position:absolute;bottom:8px;left:6px;right:6px;width:calc(100% - 12px);min-height:42px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:2px;border:1px solid #e5f1ff50;border-radius:12px;background:#e1edff14;color:inherit;cursor:pointer}
-.sb-navigation .sb-rail-toggle span{font-size:23px;line-height:22px}.sb-navigation .sb-rail-toggle small{font-size:9px;line-height:12px}.sb-panel-content[hidden]{display:none}
+.sb-panel .sb-navigation .sb-rail-toggle{gap:2px}
+.sb-rail-toggle svg{display:block;flex:none}
+.sb-navigation .sb-rail-toggle small{display:block;font-size:9px;line-height:11px}.sb-panel-content[hidden]{display:none}
 .sb-home-container{gap:0}.sb-home-container.is-collapsed{width:62px;max-width:62px}.sb-content-collapsed .sb-navigation{border-left:0}
 
 
@@ -990,3 +992,109 @@
 .home-action-bar{inset-inline-start:max(20px,env(safe-area-inset-left))}
 .home-action-bar .home-sidebar-toggle{margin-inline-end:auto;touch-action:manipulation}
 .home-action-bar .home-sidebar-toggle:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+
+.sb-home-container{touch-action:none}
+.sb-home-container [data-dock-scroll="none"]{touch-action:none}
+.sb-home-container [data-dock-scroll="horizontal"]{touch-action:pan-x}
+.sb-home-container [data-dock-scroll="vertical"]{touch-action:pan-y}
+.sb-home-container .sb-home-panel{position:relative}
+.sb-dock-surface{
+  position:absolute;z-index:1;inset-inline:12px;inset-block-start:0;
+  height:14px;touch-action:none;cursor:grab;
+}
+.sb-dock-surface:active{cursor:grabbing}
+.sb-home-container.dock-horizontal .sb-dock-surface{
+  inset-inline-start:auto;inset-inline-end:0;inset-block:10px;
+  width:12px;height:auto;
+}
+.sb-home-container:where(:hover){cursor:grab}
+.sb-home-container .sb-widget-instance{cursor:auto}
+.sb-dock-target{position:fixed;pointer-events:none;border-radius:8px;background:#83c6ff;box-shadow:0 0 12px #83c6ff}
+.sb-dock-target.edge-left,.sb-dock-target.edge-right{top:20%;bottom:20%;width:6px}
+.sb-dock-target.edge-left{left:4px}.sb-dock-target.edge-right{right:4px}
+.sb-dock-target.edge-top,.sb-dock-target.edge-bottom{left:20%;right:20%;height:6px}
+.sb-dock-target.edge-top{top:4px}.sb-dock-target.edge-bottom{bottom:4px}
+.sb-home-container.dock-right{left:auto;right:24px}
+.sb-home-container.dock-horizontal{
+  left:50%;right:auto;transform:translateX(-50%);
+  width:min(680px,calc(100% - 24px));max-width:none;
+  top:max(40px,env(safe-area-inset-top));
+  bottom:calc(68px + env(safe-area-inset-bottom));
+}
+.sb-home-container.dock-horizontal.is-collapsed,
+.sb-home-container.dock-horizontal.has-floor-rail.is-collapsed{
+  width:min(680px,calc(100% - 24px));max-width:none;height:auto;
+}
+.sb-home-container.dock-top.is-collapsed{bottom:auto}
+.sb-home-container.dock-bottom.is-collapsed{top:auto}
+.sb-home-container.dock-horizontal .sb-floor-rail{position:static;width:100%;height:auto;flex:none;border-radius:14px}
+.sb-home-container.dock-horizontal .sb-floor-options{flex-direction:row;justify-content:safe center;padding:3px 6px;gap:6px}
+.sb-home-container.dock-horizontal .sb-floor-options button{flex:0 0 auto;width:auto;min-width:44px;min-height:34px;padding:0 8px;font-size:14px}
+.sb-home-container.dock-horizontal .sb-panel{width:100%;height:100%;flex-direction:column;border-radius:16px}
+.sb-home-container.dock-horizontal.is-collapsed .sb-panel{height:auto}
+.sb-home-container.dock-horizontal .sb-panel-content{min-height:0;overflow:auto;overscroll-behavior:contain}
+.sb-home-container.dock-horizontal .sb-navigation{flex:none;width:auto;display:flex;flex-direction:row;align-items:center;gap:4px;padding:4px;border:0;border-top:1px solid #ffffff40;container-type:normal}
+.sb-home-container.dock-horizontal .sb-navigation-pages{flex-direction:row;justify-content:safe center;overflow:auto;padding:0;gap:4px}
+.sb-home-container.dock-horizontal .sb-navigation-pages>button{flex:0 0 auto;width:auto;min-width:54px;min-height:38px;height:auto;padding:4px 7px;white-space:nowrap}
+.sb-home-container.dock-horizontal .sb-navigation .sb-rail-toggle{flex:0 0 46px;width:46px;height:38px;min-height:38px}
+.sb-home-container.dock-horizontal .sb-skill-download{display:none}
+.sb-entity-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sb-entity-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:6px}
+.sb-entity-options .sb-entity-grid label{align-items:center;padding:8px;border:1px solid #c6d4e4;border-radius:9px;background:#f0f4fa}
+.sb-entity-options .sb-entity-grid label:has(input:checked){border-color:#397dc1;background:#e1eeff}
+.home-style-background{position:absolute;inset:0;pointer-events:none}
+.home-background-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.home-style-editor{position:fixed;inset:12px 12px 64px;z-index:45;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;color:#18324d}
+.home-style-editor header,.home-style-editor-settings{box-sizing:border-box;border:1px solid #c8d9eb;border-radius:14px;background:#f8fbff;box-shadow:0 6px 20px #142b4333;pointer-events:auto}
+.home-style-editor header{width:100%;display:flex;align-items:center;gap:8px;padding:8px 12px}
+.home-style-editor header span{flex:1;font-size:12px}
+.home-style-editor-settings{width:min(315px,100%);overflow:auto;min-height:0;padding:12px;display:grid;gap:9px}
+.home-style-editor button,.home-style-editor input:not([type=range]),.home-style-editor select{border:1px solid #bdcfe2;border-radius:7px;background:white;color:inherit;padding:5px 8px}
+.home-style-editor button[aria-pressed=true],.home-style-editor header button:last-child{background:#1769bc;color:white}
+.home-style-editor button:disabled{opacity:.45}
+.home-style-editor label{display:grid;gap:4px;font-size:12px}
+.home-style-editor fieldset{border:1px solid #d9e4ef;border-radius:8px;margin:0;min-width:0}
+.home-style-editor legend{font-size:13px}
+.home-style-base{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.home-light-settings label.home-ambient-toggle{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border:1px solid var(--control-border);border-radius:12px;
+  background:#ffffff12;cursor:pointer;
+}
+.home-ambient-toggle strong,.home-light-settings .home-background-controls strong{display:block;font-size:13px}
+.home-ambient-toggle small,.home-light-settings .home-background-controls small{display:block;margin-top:4px;font-size:11px;opacity:.8}
+.home-light-settings .home-ambient-toggle input[type=checkbox]{
+  appearance:none;display:flex;align-items:center;flex:0 0 38px;width:38px;height:22px;
+  box-sizing:border-box;margin:0;padding:2px;border:1px solid var(--control-border);
+  border-radius:999px;background:#10263f44;cursor:pointer;
+}
+.home-ambient-toggle input::before{content:"";width:16px;height:16px;border-radius:50%;background:#f6f9ff;transition:transform .15s}
+.home-light-settings .home-ambient-toggle input:checked{background:#a5c4fc;border-color:#a5c4fc}
+.home-ambient-toggle input:checked::before{transform:translateX(16px);background:#263e60}
+.home-ambient-toggle input:focus-visible,.home-background-picker:focus-within{outline:2px solid currentColor;outline-offset:2px}
+.home-background-controls{margin-block:12px}
+.home-light-settings label.home-background-picker{
+  position:relative;display:grid;place-items:center;margin:8px 0 0;padding:7px 8px;
+  border:1px solid var(--control-border);border-radius:10px;background:#ffffff12;cursor:pointer;
+}
+.home-light-settings .home-background-picker input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.home-background-controls>button{margin-top:6px}
+@media(max-width:760px){
+  .sb-home-container.dock-right{right:12px}
+  .sb-home-container.dock-horizontal .sb-navigation-pages>button{min-width:44px;padding-inline:4px}
+  .home-style-editor-settings{max-height:48dvh;margin-top:auto}
+}
+
+/* 风格编辑的标题、操作与设置共用右侧面板。 */
+.home-style-editor-settings{max-height:100%}
+.home-style-editor .home-style-editor-settings header{position:sticky;top:-12px;z-index:1;width:auto;flex-wrap:wrap;margin:-12px -12px 0;border:0;border-bottom:1px solid #d9e4ef;border-radius:14px 14px 0 0;box-shadow:none}
+.home-style-editor-settings small{font-size:12px;line-height:1.5}
+.home-style-section-title{font-size:13px}
+.home-custom-styles{display:flex;flex-wrap:wrap;gap:6px}
+.home-custom-styles button{max-width:100%;overflow-wrap:anywhere;white-space:normal}
+
+.home-mcp-guide{position:fixed;inset-block-start:12px;inset-inline-end:12px;z-index:90;box-sizing:border-box;width:min(380px,calc(100vw - 24px));max-height:calc(100dvh - 80px);overflow:auto;padding:16px;border:1px solid #c8d9eb;border-radius:14px;background:#f8fbff;color:#18324d;box-shadow:0 6px 20px #142b4333;font:14px/1.6 system-ui}.home-mcp-guide header{display:flex;align-items:center;justify-content:space-between;gap:12px}.home-mcp-guide button,.home-mcp-manage{display:inline-block;padding:6px 10px;border:1px solid #bdcfe2;border-radius:7px;background:white;color:inherit;cursor:pointer;text-decoration:none}.home-mcp-guide code{display:block;overflow-wrap:anywhere}.home-mcp-guide small{display:block;margin:12px 0}.home-mcp-guide ol{padding-inline-start:22px}.home-tools-item>span[aria-hidden]{flex:0 0 17px;text-align:center}
+
+.home-mcp-guide{pointer-events:auto}.home-mcp-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.home-mcp-status>span:last-child{flex-basis:100%;font-size:13px}.home-mcp-status-light{display:inline-block;width:10px;height:10px;border-radius:50%;background:#d34040;box-shadow:0 0 0 3px #d340401a;flex:0 0 10px}.home-mcp-status.state-ready .home-mcp-status-light{background:#17864e;box-shadow:0 0 0 3px #17864e1a}.home-mcp-status.state-checking .home-mcp-status-light{background:#7b8794;box-shadow:0 0 0 3px #7b87941a}
+
+.home-mcp-address input{box-sizing:border-box;width:100%;padding:8px;border:1px solid #bdcfe2;border-radius:7px;color:inherit;background:white}.home-mcp-address>div{display:flex;gap:8px;margin-top:8px}

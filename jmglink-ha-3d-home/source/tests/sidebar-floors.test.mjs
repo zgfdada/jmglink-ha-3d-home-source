@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import os from 'node:os';import path from 'node:path';
 import Fastify from 'fastify';
-import {sidebarFloorOptions,emptyFloorSidebar} from '../packages/schema/src/sidebar-floors.js';
+import {sidebarFloorOptions,emptyFloorSidebar,SIDEBAR_OVERVIEW_ID} from '../packages/schema/src/sidebar-floors.js';
 import {defaultSidebar,normalizeSidebar} from '../packages/schema/src/sidebar.js';
 import {SidebarStore,registerSidebarRoutes} from '../apps/server/src/sidebar/SidebarStore.js';
 import {registerSidebarServices} from '../apps/server/src/sidebar/SidebarServices.js';
@@ -31,11 +31,17 @@ test('legacy F1 persists, each floor drafts/publishes independently and invalid 
     assert.equal((await app.inject({url:'/api/sidebar/p?floorId=two'})).json().published.pages[0].name,'主页');
     assert.equal((await app.inject({...route,url:'/api/sidebar/p/publish?floorId=two',payload:{revision:1,draft:second}})).statusCode,200);
     assert.deepEqual((await app.inject({url:'/api/sidebar/p?floorId=one'})).json().published,legacy);
+    const overviewQuery = `?floorId=${encodeURIComponent(SIDEBAR_OVERVIEW_ID)}`;
+    assert.deepEqual((await app.inject({url:'/api/sidebar/p'+overviewQuery})).json().published,emptyFloorSidebar());
+    const overview = emptyFloorSidebar();
+    overview.pages[0].name = '总览专用';
+    assert.equal((await app.inject({method:'PUT',url:'/api/sidebar/p/publish'+overviewQuery,payload:{revision:0,draft:overview}})).statusCode,200);
     assert.equal((await app.inject({url:'/api/sidebar/p?floorId=nonexistent'})).statusCode,404);
     const restarted=await SidebarStore.create(dir);
     project.floors.reverse();
     assert.deepEqual(restarted.get(restarted.floorKey(project,'one')).published,legacy);
     assert.equal(restarted.get(restarted.floorKey(project,'two')).published.pages[0].name,'二楼专用');
+    assert.deepEqual(restarted.get(restarted.floorKey(project,SIDEBAR_OVERVIEW_ID)).published,overview);
     assert.equal(restarted.get(restarted.floorKey(project,'three')).draft.widgets.length,0);
   }finally{await app.close();await rm(dir,{recursive:true,force:true});}
 });

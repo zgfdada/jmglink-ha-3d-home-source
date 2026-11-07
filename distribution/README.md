@@ -10,7 +10,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.40`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.41`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://github.com/zgfdada/jmglink-ha-3d-home-custom/blob/main/docs/wiki/Home.md) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
@@ -143,3 +143,8 @@ docker compose -f docker-compose.release.yml up -d
 ## 开源许可
 
 本项目采用 **[GPL v3（GPL-3.0-only）](LICENSE)**。再分发 GPL 覆盖的软件时须遵守源码提供等要求；原作致谢、第三方素材许可范围及镜像对应源码入口见[版权与源码说明](NOTICE.md)。历史已发布镜像不因新增声明而重写，后续构建携带许可文件。
+
+
+## MCP与自定义风格
+
+App和Docker镜像均内置MCP，跟随3DHome安装／更新。默认不启用，按 [MCP部署与权限](docs/MCP本地部署与使用.md)启用和映射自选端口；连接浮窗支持状态、保存地址与外部点击收起。三种内置风格不可覆盖，自定义风格支持新建、修改和另存为。

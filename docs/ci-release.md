@@ -3,7 +3,7 @@
 ## 当前仓库与流程（.39 起）
 
 - [源码仓库](https://github.com/zgfdada/jmglink-ha-3d-home-source)：源码、测试与 `.github/workflows`。
-- [安装仓库](https://github.com/zgfdada/jmglink-ha-3d-home-custom)：只接收 distribution 白名单的 19 个安装配置与用户文档文件。
+- [安装仓库](https://github.com/zgfdada/jmglink-ha-3d-home-custom)：只接收 distribution 白名单的 22 个安装配置与用户文档文件。
 - 镜像：`ghcr.io/zgfdada/jmglink-ha-3d-home-custom`，正式标签和 latest 均提供 AMD64／ARM64。
 - 原 Gitea 远程保留备份；下方 .32–.38 的 Gitea 运行记录为历史证据，不作为 GitHub 当前入口。
 
@@ -108,3 +108,8 @@ GitHub 与旧 Gitea 分别记录最长成功基线。当前 GitHub CI 为2分04�
 镜像索引：`sha256:bfb304d612ad01c7369ce04d2a0ca44d61ff85fc9497f1a157456cd71f7ccde3`。GitHub最长成功基线保留CI 2分04秒（历史#41609373161）、正式发布3分13秒；关联墙钟提高为7分23秒。后续首次终态查询分别至少3分钟、4分钟，仍运行时至少再等10分钟。旧Gitea基线独立保留。
 
 Docker推广页按本次本地交付范围同步至.40；未替换220线上容器。后续每次发布继续执行推广页与知识库联动完成项。
+
+
+## .41 发布范围与验收
+
+纳入本地已完成的MCP、风格、侧栏、灯光、漫游和订阅修复。App和Docker镜像共用MCP实现，App配置新增可选启用／端口，默认关闭，持久配置随升级保留。发布冒烟显式启用独立监听并验证管理页、状态和health。安装快照22文件含MCP使用教程；真实HA／Node-RED写入不在验收范围。GitHub等待基线保留CI 2分04秒、发布3分13秒，首次终态查询分别至少3分钟／4分钟，未完成再至少10分钟。实际流水线耗时在完成后补记。

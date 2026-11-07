@@ -156,8 +156,9 @@ export class ProjectStore {
         onPhase("notify-done");
         return saved;
     }
-    deleteProject(id) { return this.enqueueWrite(() => this.deleteProjectNow(id)); }
-    async deleteProjectNow(id) {
+    deleteProject(id, options = {}) { return this.enqueueWrite(() => this.deleteProjectNow(id, options)); }
+    async deleteProjectNow(id, {expectedVersion} = {}) {
+        if(expectedVersion!==undefined&&this.projects.get(id)?.version!==expectedVersion)throw Object.assign(Error("户型版本已变化，拒绝删除"),{statusCode:409,code:"REVISION_CONFLICT"});
         if (!this.projects.has(id))
             return false;
         if (this.projects.size <= 1)

@@ -1,8 +1,22 @@
 # 开发说明
 
+## MCP 服务与管理
+
+v0.1.5-custom.41 将 MCP 实现纳入正式构建。apps/server/src/mcp 使用官方 SDK；私有配置／权限／计划存储复用 ProjectStore、SidebarStore 和 writeGate。默认 sharedAccess 共用身份，免密连接、免人工批准，保留同源、资源、修订、参数和幂等校验；旧独立客户端模式仅供兼容测试。
+
+浮窗检测同站点管理状态，不请求任意保存 URL。publicEndpoint 通过管理接口串行持久化，空值恢复默认，不修改监听器。Docker监听和映射由环境配置控制。Node-RED Basic／Bearer凭据加密，不回显。可信代码不是安全沙箱。
+
+当前指南见 [MCP部署和权限说明](docs/MCP本地部署与使用.md)；[早期设计](docs/MCP统一控制与权限设计.md)保留历史身份。生产Dockerfile按锁文件安装依赖并打包管理HTML，build-local-mcp.mjs仅用于本机开发容器。
+
 ## 第一人称漫游
 
-主页维护 idle/placing/walking 三种临时状态，`first-person-controller.jsx` 复用 R3F `useFrame` 和相机，不保存到项目。导航碰撞在 `first-person-navigation.js`，相机快照／恢复在 `first-person-camera.js`；漫游禁用原环绕和自动适配，壁面不透明并显示天花板。DOM 浮层只拦截自身区域，设备仍沿用原点选和浮动控制面板；门扇临时隐藏但不发真实指令。详见[操作、实现及限制](docs/第一人称室内漫游.md)，回归为 `first-person.test.mjs`。
+主页维护 idle/placing/walking 三种临时状态，`first-person-controller.jsx` 复用 R3F `useFrame` 和相机，不保存到项目。导航碰撞在 `first-person-navigation.js`，柜体复用 `normalizeCabinetSegments` 多边形、沙发使用实体组合轮廓，其余家具保留简化占地；相机快照／恢复与展示转角暂存／恢复在 `first-person-camera.js`。选点和行走统一使用未旋转楼层坐标，导航签名包含柜体轮廓变化；漫游禁用原环绕和自动适配，壁面不透明并显示天花板。DOM 浮层只拦截自身区域，设备仍沿用原点选和浮动控制面板；门扇临时隐藏但不发真实指令。详见[操作、实现及限制](docs/第一人称室内漫游.md)，回归为 `first-person.test.mjs`。
+
+场景日月光、目标和辅助光作为 `sceneLighting` 挂在 `pi` 的展示旋转根内、楼层居中平移之外；与房屋和星空一起旋转，不更改 HA 天体角度或北向配置。`scene-light-rotation.test.mjs` 验证光源与房屋的局部方向不变。
+
+## 单灯散射角控制
+
+`fixture-beam-control.jsx` 只在原灯具控制栈末尾追加散射角滑块和恢复按钮，复用原控制分组／滑块／按钮样式，不导入新样式表、不增加独立面板、示意图或徽标。环境光 `light-beam-settings.jsx` 只保留灯型默认值。3D 点击将实际摆放／关联灯具 ID 透传给主页面板，不能用 HA 实体 ID 作为覆盖键；同一开关关联多灯时，场景点选只调整被选灯，无具体点选时分别列出各灯。`resolvePanelBeamFixtures` 负责匹配，修改和恢复均读取 store 最新快照，保留其他灯具覆盖值；沿用 `ha3d.lightBeams`，不调用 HA 服务。
 
 ## 墙体与日光阴影
 
@@ -782,6 +796,10 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 
 展示模式保留固定俯角与 zoomToCursor=false，开启 OrbitControls 原生右键平移，交互期间允许 target 改变；取消右键投影位移监听。恢复自动旋转时 yi 通过 anchorOrbitTarget 同步平移相机和 target，将轴心归回 frame.target，保持相对观察方向和距离，并取消未完成的取景动画。侧栏构图继续使用 applyOrbitProjection/setViewOffset。
 
+后续恢复主页手动俯仰。48°／62° 只用于默认取景，OrbitControls 使用通用楼层角度范围，并在用户开始拖动时取消取景动画。
+
+主页的侧栏停靠、环境光手动值和风格预设由浏览器保存。侧栏通过手柄捕获指针，按拖拽终点最近的屏幕边缘停靠，并据停靠边调整相机的镜头构图留白。风格编辑使用主页场景做实时预览，完成后写入偏好，取消时回到已保存风格。墙体不透明度与环境光面板共用同一设置。侧边栏控件编辑继续使用现有实体绑定协议，复选卡片只改变实体列表的显示。
+
 默认自动旋转由 use-idle-rotation.js / idle-rotation.js 管理，根工作区捕获交互，窗口捕获指针释放／取消、焦点与可见性；单个可取消 8000ms 定时器按最后活动重新计时，焦点、按住指针、弹窗或不可见期间不计时。卸载清除监听和定时器，无后台轮询。HomeView 移除手动旋转状态与菜单，遮罩／漫游／详情作为 blocked 输入；主场景恢复首帧 delta 限制 50ms，避免停顿后角度跳变。idle-rotation.test.mjs 使用假时钟验证精确8秒、多指针、焦点、窗口失焦及清理。
 
 拖拽停止响应补修：主页 OrbitControls enableDamping=false，直接清除每次交互增量，避免自动旋转转为 demand 渲染后继续消耗惯性；编辑器 enableDamping=true、dampingFactor=0.085。idle-rotation 策略不变。
@@ -803,3 +821,18 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 
 
 光束使用开口 CylinderGeometry(top,bottom,length)，灯口半径按灯型设定，bottom=top+length*tan(angle/2)，保持散射边缘斜率；沿轴向UV与旧锥体一致，距离淡出和遮光shader无需更改。
+
+
+MCP 项目读取保留家具模型与柜体配置；完整项目权限可通过对象草稿摆放本地 procedural box 自定义模型，拒绝上传／远程模型来源。较长侧边栏脚本读取上限增至512000字符，避免已有控件被20k截断；新增脚本保留及模型权限回归测试。
+
+
+HomeStyleEditor 将内置模板与 stylePresets 分开；模板选择重置覆盖草稿，自定义风格通过按钮选择。新建保留当前草稿并清除选中 ID；更新只作用于自定义 ID，另存为生成新 ID。存储失败保留原列表并显示状态。标题与操作位于同一可滚动右侧面板。
+
+
+McpConnectionGuide 使用既有只读管理状态接口及5秒超时，清晰区分管理接口可达性与独立 MCP 端口连通性，不扫描端口、不自动部署或修改权限。
+
+
+POST /api/mcp-admin/endpoint 复用管理权限、串行持久化及审计，保存 publicEndpoint，空值恢复默认。状态接口优先返回保存地址。设置端点不执行任意网络请求、不改变监听器；Docker 的实际映射和环境端口使用同一变量。
+
+
+App入口addon-entry.js调用addonMcpEnvironment，将mcp_enabled／mcp_public_port转换为监听配置；内部固定8102，私有目录/config/mcp-private位于/data之外。Supervisor网络映射与公开地址选项需一致，更新镜像保留挂载和共用权限。旧App配置缺省关闭。正式镜像冒烟启用MCP并验证管理接口与独立health，覆盖AMD64／ARM64打包后的代码。

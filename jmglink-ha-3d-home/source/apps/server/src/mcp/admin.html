@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>3DHome · MCP 管理</title>
+  <style>
+    [hidden] {
+      display: none !important;
+    }
+    body {
+      font:
+        14px/1.6 "Microsoft YaHei",
+        sans-serif;
+      background: #eef2f7;
+      color: #182b40;
+      margin: 0;
+    }
+    main {
+      max-width: 1140px;
+      margin: 32px auto;
+      padding: 0 20px;
+    }
+    h1 {
+      font-size: 25px;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 0 0 12px;
+    }
+    section {
+      background: white;
+      border: 1px solid #dae2ee;
+      border-radius: 16px;
+      padding: 22px;
+      margin: 18px 0;
+    }
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="url"],
+    textarea {
+      width: 100%;
+    }
+    button {
+      cursor: pointer;
+      background: #edf4ff;
+      color: #174d83;
+      margin: 4px 8px 4px 0;
+    }
+    button.primary {
+      background: #2676cd;
+      color: white;
+      border-color: #2676cd;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    label {
+      display: block;
+      margin: 9px 0;
+    }
+    small,
+    .hint {
+      color: #607080;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .scope-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      font-size: 12px;
+    }
+    .scope-grid label {
+      margin: 3px;
+    }
+    pre {
+      background: #f2f5fa;
+      padding: 14px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 480px;
+      overflow: auto;
+      font-size: 12px;
+    }
+    .row {
+      border-top: 1px solid #e5ebf2;
+      padding: 12px 0;
+    }
+    .secret {
+      border: 1px solid #e5aa42;
+      background: #fff8e9;
+      padding: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .notice {
+      background: #e6f1ff;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    #message {
+      position: sticky;
+      top: 0;
+      padding: 10px;
+      background: #fff4d9;
+      white-space: pre-wrap;
+      z-index: 2;
+      display: none;
+    }
+    iframe {
+      width: 100%;
+      height: 330px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+    }
+    a {
+      color: #1765b7;
+    }
+    @media (max-width: 760px) {
+      .grid,
+      .scope-grid {
+        grid-template-columns: 1fr;
+      }
+      main {
+        margin: 15px auto;
+      }
+    }
+  </style>
+  <main>
+    <a href="/">← 返回 3DHome</a>
+    <h1>MCP 连接与权限管理</h1>
+    <p class="hint">
+      网页与 MCP 独立端口。所有 Agent 共用权限；连接和权限在此页管理，不向 MCP
+      工具开放。
+    </p>
+    <div id="message" role="status"></div>
+    <div id="workspace" hidden>
+      <section>
+        <h2>服务与三方连接</h2>
+        <p class="notice">
+          MCP 地址：<strong id="endpoint"></strong> · 免密直连 模式，无需
+          Authorization 请求头。未配置的上游会明确报告未支持。
+        </p>
+        <label><input type="checkbox" id="enabled" /> 启用 MCP</label>
+        <div class="grid">
+          <div>
+            <h3>Home Assistant</h3>
+            <label
+              ><input id="haEnabled" type="checkbox" /> 明确授权 MCP
+              复用项目已有 HA 连接</label
+            >
+            <p class="hint" id="haStatus"></p>
+            <button id="probeHa">只读检查连接</button>
+          </div>
+          <div>
+            <h3>Node-RED</h3>
+            <label
+              ><input id="nrEnabled" type="checkbox" /> 启用独立 Node-RED
+              连接</label
+            ><label
+              >Admin API 地址<input
+                id="nrUrl"
+                type="url"
+                placeholder="http://主机:1880" /></label
+            ><label
+              >认证方式<select id="nrAuthMode">
+                <option value="basic">账号密码（HA 加载项入口）</option>
+                <option value="bearer">访问令牌（Bearer）</option>
+              </select></label
+            >
+            <div id="nrBasicFields">
+              <label
+                >账号<input
+                  id="nrUsername"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="HA 加载项通常使用 HA 登录账号"
+              /></label>
+              <label
+                >密码<input
+                  id="nrPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="更新时账号密码同时填写；均留空保留已保存凭据"
+              /></label>
+              <p class="hint">
+                账号密码加密保存在服务端，不回显。HTTP 会以明文传输可解码的
+                Basic 凭据，请在可信内网使用或配置 HTTPS。
+              </p>
+            </div>
+            <label id="nrBearerFields"
+              >Node-RED 访问令牌<input
+                id="nrToken"
+                type="password"
+                autocomplete="off"
+                placeholder="首次配置必填；留空保留当前令牌"
+            /></label>
+            <p class="hint" id="nrStatus"></p>
+            <button id="probeNr">只读检查连接</button>
+          </div>
+        </div>
+        <button id="saveSettings" class="primary">保存连接设置</button
+        ><small>连接变更后，后续操作将使用新连接配置。</small>
+      </section>
+      <section>
+        <h2>所有 Agent 共用权限</h2>
+        <p class="hint">
+          所有 Agent 使用同一份权限和资源范围，不再创建单独客户端。Node-RED
+          可信代码编辑默认开启，流程可按共用权限直接应用。
+        </p>
+        <div>
+          <button data-profile="read">只读</button
+          ><button data-profile="project">3DHome 完整业务管理</button
+          ><button data-profile="nr">Node-RED 完整流程管理</button
+          ><button data-profile="all">三方完整业务管理</button>
+        </div>
+        <div id="scopes" class="scope-grid"></div>
+        <div class="grid">
+          <label
+            >允许的项目 ID（逗号分隔；完整管理可填 *）<input
+              id="projects"
+              type="text" /></label
+          ><label
+            >允许的 HA 实体 ID（逗号分隔，不支持通配符）<input
+              id="entities"
+              type="text"
+              placeholder="light.living_room" /></label
+          ><label
+            >允许的 Node-RED tab ID（逗号分隔；完整管理可填 *）<input
+              id="tabs"
+              type="text"
+          /></label>
+        </div>
+        <label
+          ><input id="trusted" type="checkbox" />
+          我明确授权可信代码编辑。Node-RED Function
+          可获得运行时权限，侧边栏代码也不构成对其它网页业务的隔离；本模式不能保证按
+          tab／实体隔离其实际执行后果。</label
+        >
+        <p class="hint">
+          完整管理覆盖授权对象的业务配置，不提供直接宿主机命令、凭据导出和自动扩权。写入无需人工审批，仍校验权限、版本和幂等键。
+        </p>
+        <button id="savePermissions" class="primary">保存共用权限</button>
+      </section>
+      <section>
+        <h2>草稿、预览与应用</h2>
+        <p class="hint">
+          先在 MCP
+          中生成计划，再在这里检查完整提案和基础版本。无需人工批准；客户端创建并校验计划后可直接调用
+          changes.apply，也可在此页应用。
+        </p>
+        <button id="refresh">刷新计划</button>
+        <div id="plans"></div>
+        <div id="preview" hidden>
+          <h3 id="previewTitle"></h3>
+          <p id="previewWarning" class="notice"></p>
+          <iframe
+            id="visual"
+            sandbox=""
+            title="隔离静态预览（不执行脚本或真实设备动作）"
+          ></iframe>
+          <pre id="planJson"></pre>
+          <button id="apply" class="primary">应用当前计划</button
+          ><button id="rollback">生成项目／侧边栏恢复计划</button>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    let state, chosen;
+    const $ = (id) => document.getElementById(id);
+    const message = (text) => {
+      $("message").textContent = text;
+      $("message").style.display = "block";
+    };
+    const split = (id) =>
+      $(id)
+        .value.split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    async function api(path, body) {
+      const r = await fetch("/api/mcp-admin/" + path, {
+        method: body === undefined ? "GET" : "POST",
+        headers: { "Content-Type": "application/json" },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw Error(data.error || data.message || "操作失败");
+      return data;
+    }
+    const safe = (fn) => async () => {
+      try {
+        await fn();
+      } catch (e) {
+        message(e.message);
+      }
+    };
+    function button(label, action, parent) {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.onclick = safe(action);
+      parent.append(b);
+      return b;
+    }
+    function setProfile(p) {
+      for (const input of $("scopes").querySelectorAll("input"))
+        input.checked =
+          p === "all" ||
+          (p === "read"
+            ? ["home3d.project.read", "home3d.catalog.read"].includes(
+                input.value,
+              )
+            : p === "project"
+              ? input.value.startsWith("home3d.")
+              : input.value.startsWith("nodered.") ||
+                ["ha.state.read", "ha.service.call"].includes(input.value));
+      $("projects").value =
+        p === "all" || p === "project"
+          ? "*"
+          : state.projects.map((x) => x.id).join(",");
+      $("tabs").value = p === "all" || p === "nr" ? "*" : "";
+      if (p === "read") $("trusted").checked = false;
+    }
+    async function refresh() {
+      state = await api("state");
+      $("workspace").hidden = false;
+      $("endpoint").textContent = state.endpoint;
+      $("enabled").checked = state.enabled;
+      $("haEnabled").checked = state.connections.ha.enabled;
+      $("nrEnabled").checked = state.connections.nodered.enabled;
+      $("nrUrl").value = state.connections.nodered.url;
+      $("nrAuthMode").value = state.connections.nodered.configured
+        ? state.connections.nodered.authMode
+        : "basic";
+      updateNrAuth();
+      $("haStatus").textContent =
+        "项目凭据：" +
+        (state.connections.ha.configured ? "已配置" : "未配置") +
+        "；实时连接：" +
+        (state.connections.ha.connected ? "正常" : "尚未连接");
+      $("nrStatus").textContent =
+        "连接凭据：" +
+        (state.connections.nodered.configured ? "已配置（不回显）" : "未配置");
+      if (!$("scopes").children.length) {
+        for (const s of state.scopes) {
+          const label = document.createElement("label"),
+            input = document.createElement("input");
+          input.type = "checkbox";
+          input.value = s;
+          input.checked = true;
+          label.append(input, document.createTextNode(" " + s));
+          $("scopes").append(label);
+        }
+      }
+      const c = state.sharedPolicy;
+      for (const input of $("scopes").querySelectorAll("input"))
+        input.checked = c.scopes.includes(input.value);
+      for (const key of ["projects", "entities", "tabs"])
+        $(key).value = c.resources[key].join(",");
+      $("trusted").checked = c.scopes.some((scope) =>
+        ["home3d.code.write", "nodered.trusted"].includes(scope),
+      );
+      $("plans").replaceChildren();
+      for (const p of state.plans) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.textContent =
+          p.kind + " · " + p.status + " · " + "无需审批" + " · " + p.id;
+        button("差异与预览", () => selectPlan(p.id), row);
+        $("plans").append(row);
+      }
+    }
+    async function selectPlan(id) {
+      chosen = await api("plans/" + encodeURIComponent(id));
+      $("preview").hidden = false;
+      $("previewTitle").textContent = chosen.kind + " · " + chosen.id;
+      $("previewWarning").textContent =
+        chosen.kind === "nodered"
+          ? "流程部署可能停止、启动节点并产生实际动作；可信代码不受按tab的运行隔离。"
+          : chosen.kind.startsWith("ha-")
+            ? "这会向真实HA发出配置或设备动作；辅助实体创建／自动化保存可能触发重载。"
+            : "此提案会修改指定项目或资源。请核对变更前后配置。";
+      $("planJson").textContent = JSON.stringify(chosen, null, 2);
+      const p = chosen.fullPreview || {};
+      let html =
+        "<p>此类型以右侧／下方结构化差异为准；不执行任何真实动作。</p>";
+      if (chosen.kind === "sidebar") {
+        html =
+          (p.draft?.widgets ?? [])
+            .map(
+              (w) =>
+                "<article><h3>" +
+                escapeHtml(w.name || "控件") +
+                "</h3><style>" +
+                (w.css || "") +
+                "</style>" +
+                (w.html || "") +
+                "</article>",
+            )
+            .join("") || "<p>空侧边栏</p>";
+      }
+      if (chosen.kind === "model")
+        html =
+          '<div style="margin:50px auto;width:130px;height:130px;background:' +
+          p.model.color +
+          ';transform:skewY(-12deg);box-shadow:20px 20px 0 #6682a0"></div><p>程序化盒体示意；尺寸以提案为准。</p>';
+      $("visual").srcdoc =
+        '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; img-src &#39;none&#39;"><body style="font:14px sans-serif;color:#18314d;background:#edf2f7;padding:18px">' +
+        html;
+      $("apply").disabled = chosen.status !== "draft";
+      $("rollback").disabled =
+        chosen.status !== "applied" ||
+        !["project", "project-full", "sidebar"].includes(chosen.kind);
+    }
+    function escapeHtml(s) {
+      return String(s).replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[c],
+      );
+    }
+    function updateNrAuth() {
+      $("nrBasicFields").hidden = $("nrAuthMode").value !== "basic";
+      $("nrBearerFields").hidden = $("nrAuthMode").value !== "bearer";
+    }
+    $("nrAuthMode").onchange = updateNrAuth;
+    $("saveSettings").onclick = safe(async () => {
+      await api("settings", {
+        enabled: $("enabled").checked,
+        haEnabled: $("haEnabled").checked,
+        nodeRedEnabled: $("nrEnabled").checked,
+        nodeRedUrl: $("nrUrl").value,
+        nodeRedToken: $("nrToken").value,
+        nodeRedAuthMode: $("nrAuthMode").value,
+        nodeRedUsername: $("nrUsername").value,
+        nodeRedPassword: $("nrPassword").value,
+      });
+      $("nrToken").value = "";
+      $("nrUsername").value = "";
+      $("nrPassword").value = "";
+      await refresh();
+      message("已保存；未执行任何设备动作。");
+    });
+    $("probeHa").onclick = safe(async () =>
+      message(JSON.stringify(await api("probe", { target: "ha" }))),
+    );
+    $("probeNr").onclick = safe(async () =>
+      message(JSON.stringify(await api("probe", { target: "nodered" }))),
+    );
+    for (const b of document.querySelectorAll("[data-profile]"))
+      b.onclick = () => setProfile(b.dataset.profile);
+    $("savePermissions").onclick = safe(async () => {
+      await api("permissions", {
+        scopes: [...$("scopes").querySelectorAll("input:checked")].map(
+          (x) => x.value,
+        ),
+        resources: {
+          projects: split("projects"),
+          entities: split("entities"),
+          tabs: split("tabs"),
+        },
+        revision: state.sharedPolicy.revision,
+        trustedCode: $("trusted").checked,
+      });
+      await refresh();
+      message(
+        "共用权限已保存，所有 Agent 后续请求立即生效；后续应用按当前权限执行。",
+      );
+    });
+    $("refresh").onclick = safe(refresh);
+    $("apply").onclick = safe(async () => {
+      const result = await api(
+        "plans/" + encodeURIComponent(chosen.id) + "/apply",
+        { idempotencyKey: crypto.randomUUID() },
+      );
+      message("操作状态：" + result.status);
+      await selectPlan(chosen.id);
+      await refresh();
+    });
+    $("rollback").onclick = safe(async () => {
+      const result = await api(
+        "plans/" + encodeURIComponent(chosen.id) + "/rollback",
+        {},
+      );
+      await selectPlan(result.id);
+      await refresh();
+      message("已生成恢复计划，可核对后直接应用。");
+    });
+    safe(refresh)();
+  </script>
+</html>

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 const dir=await mkdtemp('/tmp/ha3d-release-');
 const child=spawn(process.execPath,['apps/server/src/main.js'],{env:{...process.env,
-  HA3D_MODE:'standalone',PORT:'18124',HA3D_DATA_DIR:dir+'/data',HA3D_ASSET_DIR:dir+'/assets',
+  HA3D_MODE:'standalone',PORT:'18124',HA3D_MCP_ENABLED:'true',HA3D_MCP_PORT:'18125',HA3D_MCP_PUBLIC_PORT:'18126',HA3D_MCP_PRIVATE_DIR:dir+'/private',HA3D_DATA_DIR:dir+'/data',HA3D_ASSET_DIR:dir+'/assets',
 },stdio:['ignore','ignore','ignore']});
 let exited=false; child.on('exit',()=>{exited=true;});
 const base='http://127.0.0.1:18124';
@@ -20,6 +20,10 @@ try {
   assert.ok(ready,'Obfuscated standalone runtime must start');
   for(const route of ['/api/health','/api/projects','/api/voice-assistant/config','/'])
     assert.equal((await fetch(base+route)).status,200,route);
+  const mcpState=await(await fetch(base+'/api/mcp-admin/state')).json();
+  assert.equal(typeof mcpState.enabled,'boolean');assert.ok(mcpState.endpoint.endsWith(':18126/mcp'));
+  assert.equal((await fetch('http://127.0.0.1:18125/health')).status,200);
+  assert.equal((await fetch(base+'/mcp-admin')).status,200);
   const html=await(await fetch(base+'/')).text();
   const script=html.match(/<script[^>]+src="([^"]+)"/)[1];
   const asset=new URL(script,base+'/');

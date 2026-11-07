@@ -1,3 +1,4 @@
+import {startMcp} from './mcp/server.js';
 import {createAccessPolicy,registerAccessPolicy} from "./config/access-policy.js";
 import {createInstanceWriteGate,registerInstanceWriteGate} from "./instance-write-gate.js";
 import {collectInstanceLiveEntityIds} from "./ha/liveSubscriptions.js";
@@ -197,6 +198,11 @@ ha.on("entity_updated", onHaEntityUpdated);
 ha.on("entity_updates", onHaEntityUpdates);
 ha.on("entities_synced", onHaEntitiesSynced);
 ha.on("ha_error", onHaError);
+let mcp;
+if(process.env.HA3D_MCP_ENABLED==='true'){
+ try{if(!process.env.HA3D_MCP_PRIVATE_DIR||path.resolve(process.env.HA3D_MCP_PRIVATE_DIR)===path.resolve(config.dataDir)||path.resolve(process.env.HA3D_MCP_PRIVATE_DIR).startsWith(path.resolve(config.dataDir)+path.sep))throw Object.assign(Error('MCP私有目录必须位于普通实例数据目录之外'),{code:'MCP_PRIVATE_DIR_REQUIRED'});mcp=await startMcp({app,config,projects:projectStore,sidebars:sidebarStore,platform:devicePlatformStore,ha,writeGate,gateway,onSidebarChanged:()=>sidebarChanged(),directory:process.env.HA3D_MCP_PRIVATE_DIR,port:Number(process.env.HA3D_MCP_PORT||8102),publicPort:Number(process.env.HA3D_MCP_PUBLIC_PORT||process.env.HA3D_MCP_PORT||8102),host:process.env.HA3D_MCP_HOST||'0.0.0.0'});app.log.info({port:Number(process.env.HA3D_MCP_PORT||8102)},'MCP listener ready; credentials stored in private directory');}
+ catch(error){app.log.error({code:error.code||'MCP_INIT_FAILED'},'MCP启动失败，网页继续运行');}
+}
 let address;
 try {
   address = await app.listen({ host: "0.0.0.0", port: config.port });
@@ -249,6 +255,7 @@ const shutdown = () => {
     return shutdownPromise;
   shutdownPromise = (async () => {
     resourceMonitor.stop();
+    if(mcp)await mcp.close();
     unsubscribeProjectSaved();
     ha.off("status", onHaStatus);
     ha.off("entity_updated", onHaEntityUpdated);

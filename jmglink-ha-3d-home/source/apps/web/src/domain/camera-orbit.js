@@ -30,15 +30,8 @@ export function cancelFitOnOrbitStart(controls, fitting) {
   return () => controls?.removeEventListener('start', cancel);
 }
 
-// Reference-style presentation: fixed oblique pitch, unrestricted heading.
-export function presentationOrbitLimits(presentation, stacked, preset = 'iso') {
-  if (!presentation || preset === 'top' || preset === 'front') return FLOOR_ORBIT_LIMITS;
-  const polar = (stacked ? 62 : 48) * Math.PI / 180;
-  return {...FLOOR_ORBIT_LIMITS, minPolarAngle: polar, maxPolarAngle: polar, enablePan: true, zoomToCursor: false};
-}
-
 export function presentationCameraPosition(target, distance, stacked) {
-  const {minPolarAngle: polar} = presentationOrbitLimits(true, stacked);
+  const polar = (stacked ? 62 : 48) * Math.PI / 180;
   const x = stacked ? .86 : .74;
   const z = stacked ? 1.04 : .88;
   const y = Math.hypot(x, z) / Math.tan(polar);

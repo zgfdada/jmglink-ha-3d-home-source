@@ -1,7 +1,7 @@
 import {CylinderGeometry} from 'three';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createBeamSettingsStore,resolveBeamAngle,beamRadius,beamFrustum,normalizeBeamSettings,LIGHT_BEAM_TYPES} from '../apps/web/src/domain/light-beam-settings.js';
+import {createBeamSettingsStore,resolveBeamAngle,beamRadius,beamFrustum,normalizeBeamSettings,LIGHT_BEAM_TYPES,resolvePanelBeamFixtures,setFixtureBeamAngle,resetFixtureBeamAngle} from '../apps/web/src/domain/light-beam-settings.js';
 import {wallLightBlockers,lightPathBlocked,beamOcclusionShader,beamDistanceFade} from '../apps/web/src/domain/light-occlusion.js';
 
 test('每个灯型独立默认值，单灯覆盖、恢复继承与持久化',()=>{
@@ -75,4 +75,24 @@ test('光束由非零灯口截面展开为截锥，散射斜率和距离淡出UV
   assert.ok(topVertices>0&&bottomVertices>0);geometry.dispose();
  }
  assert.ok(beamFrustum(1,40,'ceiling').top>beamFrustum(1,40,'downlight').top);
+});
+
+test('控制面板使用实际灯具ID，支持同一开关下单独点选，不误改其他灯',()=>{
+ const project={floors:[{devices:[{id:'direct',entityId:'light.a',kind:'light',modelId:'light.ceiling_round'},
+ {id:'switch',entityId:'switch.a',controlledLightFixtures:[{id:'spot-1',modelId:'light.downlight'},{id:'spot-2',modelId:'light.wall_sconce'}]},
+ {id:'socket',entityId:'switch.socket'}]}]};
+ assert.deepEqual(resolvePanelBeamFixtures(project,'light.a').map(x=>x.id),['direct']);
+ assert.deepEqual(resolvePanelBeamFixtures(project,'switch.a',{entityId:'switch.a',id:'spot-2'}).map(x=>x.id),['spot-2']);
+ assert.equal(resolvePanelBeamFixtures(project,'switch.a').length,2);
+ assert.equal(resolvePanelBeamFixtures(project,'switch.socket').length,0);
+ assert.equal(resolvePanelBeamFixtures(project,'switch.a',{entityId:'switch.a',id:'deleted'}).length,0);
+ assert.deepEqual(resolvePanelBeamFixtures(project,'light.a',{entityId:'switch.a',id:'spot-1'}).map(x=>x.id),['direct']);
+ const memory=new Map(),storage=()=>({getItem:k=>memory.get(k),setItem:(k,v)=>memory.set(k,v)}),store=createBeamSettingsStore(storage);
+ store.update({types:{'light.downlight':45},fixtures:{'spot-2':80}});
+ setFixtureBeamAngle('spot-1',60,store);assert.equal(resolveBeamAngle(store.getSnapshot(),'light.downlight','spot-1'),60);
+ assert.equal(store.getSnapshot().fixtures['spot-2'],80);
+ resetFixtureBeamAngle('spot-1',store);assert.equal(resolveBeamAngle(store.getSnapshot(),'light.downlight','spot-1'),45);
+ store.update({types:{'light.downlight':70}});assert.equal(resolveBeamAngle(store.getSnapshot(),'light.downlight','spot-1'),70);
+ const restored=createBeamSettingsStore(storage);assert.equal(restored.getSnapshot().fixtures['spot-2'],80);
+ assert.equal(restored.getSnapshot().fixtures['spot-1'],undefined);
 });

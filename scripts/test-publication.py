@@ -104,5 +104,21 @@ class WorkspaceVersions(unittest.TestCase):
                 self.assertEqual(lock["packages"][name]["dependencies"]["@ha3d/schema"], dependency)
 
 
+class McpAppPublication(unittest.TestCase):
+    def test_app_includes_optional_mcp_and_persistent_private_directory(self):
+        config = (M.ROOT / "jmglink-ha-3d-home/config.yaml").read_text(encoding="utf-8")
+        entry = (M.ROOT / "jmglink-ha-3d-home/addon-entry.js").read_text(encoding="utf-8")
+        self.assertIn("8102/tcp: null", config)
+        self.assertIn("mcp_enabled: false", config)
+        self.assertIn("mcp_public_port: port", config)
+        self.assertIn("addonMcpEnvironment(addonOptions)", entry)
+        helper = (M.ROOT / "jmglink-ha-3d-home/source/apps/server/src/config/addonMcpOptions.js").read_text(encoding="utf-8")
+        self.assertIn('/config/mcp-private', helper)
+    def test_public_snapshot_contains_mcp_installation_guide(self):
+        files, _ = M.snapshot()
+        self.assertIn("docs/MCP本地部署与使用.md", files)
+        self.assertIn(b"HA3D_MCP_PUBLIC_PORT", files["docker-compose.release.yml"])
+
+
 if __name__ == "__main__":
     unittest.main()

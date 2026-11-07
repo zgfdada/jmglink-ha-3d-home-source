@@ -1,3 +1,5 @@
+import FixtureBeamControl from '../components/fixture-beam-control.jsx';
+import {syncWalkSceneRotation} from '../domain/first-person-camera.js';
 import FixtureLight,{FloorLightOcclusion} from "../components/fixture-light.jsx";
 import {useBeamSettings} from "../components/light-beam-settings.jsx";
 import {resolveBeamAngle} from "../domain/light-beam-settings.js";
@@ -23,7 +25,7 @@ import {CAMERA_MODELS,cameraModelDefinition} from '../../../../packages/schema/s
 import {resolveLightChromaticity, mixLightColors} from "../domain/light-color.js";
 import { DEFAULT_OUTLINE_SCALE, outlineThickness, updateOutlineThickness } from "../domain/outline-settings.js";
 import { overlayRefitKey } from "../domain/camera-refit.js";
-import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, presentationOrbitLimits, presentationCameraPosition, applyOrbitProjection, anchorOrbitTarget, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
+import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, presentationCameraPosition, applyOrbitProjection, anchorOrbitTarget, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
 import DevicePanel from "../components/device-panel.jsx";
 import { boundPanelStates } from "../domain/device-panel.js";
 /**
@@ -3023,8 +3025,19 @@ function mn(e, s, r, o) {
   return s === "floor" ? [n, Ms(kt(i, 0, 0.08)), a] : [n, gn(i, o), a];
 }
 const Ss = L.createContext("glass"),
+  HomeStyleOverrides = L.createContext(null),
+  FurnitureOpacity = L.createContext(1),
   ue = () => L.useContext(Ss),
-  ge = (e, s) => at(e, s, ue()),
+  ge = (e, s) => {
+    const palette = at(e, s, ue());
+    const style = L.useContext(HomeStyleOverrides);
+    return style ? {
+      ...palette,
+      wallColor: style.wall ?? palette.wallColor,
+      foundation: style.floor ?? palette.foundation,
+      furnitureMain: style.furniture ?? palette.furnitureMain,
+    } : palette;
+  },
   Te = (e, s, r) => {
     var o;
     return (
@@ -3657,6 +3670,8 @@ function Rn({
     }, [e]),
     w = Ps(e),
     b = ue(),
+    style = L.useContext(HomeStyleOverrides),
+    floorOpacity = n ? style?.floorOpacity ?? 1 : 1,
     j = b === "cartoon" && n,
     x = b === "cream" && n,
     k = ge(o, i),
@@ -3671,7 +3686,7 @@ function Rn({
             : Te(s, e.floorMaterialId, "#c9a675"),
     O = Qe(u ?? 0, 0, 1),
     N = f ?? k.glow,
-    E = n && l ? $(C, N, a ? 0.16 : 0.4 + O * 0.16) : C,
+    E = n && style?.floor && !a && !c ? style.floor : n && l ? $(C, N, a ? 0.16 : 0.4 + O * 0.16) : C,
     d = j
       ? a
         ? 0.44
@@ -3729,6 +3744,9 @@ function Rn({
           j
             ? t.jsx("meshToonMaterial", {
                 color: E,
+                transparent: floorOpacity < 1,
+                opacity: floorOpacity,
+                depthWrite: floorOpacity === 1,
                 emissive: _,
                 emissiveIntensity: M * 0.58,
                 polygonOffset: !0,
@@ -3737,6 +3755,9 @@ function Rn({
               })
             : t.jsx("meshPhysicalMaterial", {
                 color: E,
+                transparent: floorOpacity < 1,
+                opacity: floorOpacity,
+                depthWrite: floorOpacity === 1,
                 roughness: n ? (l ? 0.5 : 0.46) : 0.72,
                 metalness: n ? 0.02 : 0.015,
                 clearcoat: n ? (l ? 0.18 : 0.2) : 0,
@@ -3798,6 +3819,7 @@ function H({
   roughness: o = 0.72,
   presentation: n = !1,
 }) {
+  const opacity = L.useContext(FurnitureOpacity);
   const roundedGeometry = L.useMemo(
     () => n ? createStableRoundedBoxGeometry(s) : null,
     [n, s[0], s[1], s[2]],
@@ -3814,15 +3836,16 @@ function H({
           ? $(qe(r), "#eef5ff", 0.24)
           : qe(r),
     f = a
-      ? t.jsx("meshToonMaterial", { color: l })
+      ? t.jsx("meshToonMaterial", { color: l, transparent: opacity < 1, opacity, depthWrite: opacity === 1 })
       : t.jsx("meshPhysicalMaterial", {
           color: l,
           roughness: c ? 0.64 : n ? Math.min(o, 0.44) : o,
           metalness: c ? 0.006 : 0.018,
           clearcoat: c ? 0.08 : n ? 0.34 : 0.16,
           clearcoatRoughness: c ? 0.82 : n ? 0.56 : 0.82,
-          transparent: !1,
-          opacity: 1,
+          transparent: opacity < 1,
+          opacity,
+          depthWrite: opacity === 1,
         });
   if (n) {
     const h = dt(a, c);
@@ -3836,7 +3859,7 @@ function H({
         t.jsx(Y, {
           color: h.color,
           threshold: h.threshold,
-          opacity: h.opacity,
+          opacity: h.opacity * opacity,
           transparent: !0,
         }),
       ],
@@ -4235,7 +4258,8 @@ function Bn({
     E = O === "cream" && n,
     d = ge(i, a),
     tintBlend = wallTintBlend(wallOpacity, n, walkthrough),
-    wallSurfaceColor = tintBlend ? $(s, "#f4f1e9", tintBlend) : s,
+    style = L.useContext(HomeStyleOverrides),
+    wallSurfaceColor = n && !walkthrough && style?.wall ? style.wall : tintBlend ? $(s, "#f4f1e9", tintBlend) : s,
     g = n ? $(d.wallEdgeColor, "#fffaf0", tintBlend) : "#8d8982",
     _ = n
       ? N
@@ -8369,7 +8393,7 @@ const ii = L.memo(function ({
         (ae.stopPropagation(),
           Xt(),
           f(s.entityId),
-          c == null || c(s.entityId),
+          c == null || c(s.entityId, {entityId:s.entityId,id:s.id}),
           l == null || l(s.id, s.entityId));
       },
       onPointerOver: () => {
@@ -8530,7 +8554,7 @@ const ii = L.memo(function ({
       E = () => {
         (Xt(),
           f(r.entityId),
-          c == null || c(r.entityId),
+          c == null || c(r.entityId, {entityId:r.entityId,id:s.id}),
           l == null || l(r.id, r.entityId));
       };
     return t.jsxs("group", {
@@ -9016,13 +9040,18 @@ function ToiletFixture({ item, theme }) {
   });
 }
 
-function ci({
+function ci(props) {
+  const style = L.useContext(HomeStyleOverrides);
+  return t.jsx(FurnitureOpacity.Provider, { value: props.presentation ? style?.furnitureOpacity ?? 1 : 1, children: t.jsx(Furniture, props) });
+}
+function Furniture({
   item: e,
   theme: s,
   presentation: r,
   presentationMode: o,
   baseElevation,
 }) {
+  const furnitureOpacity = L.useContext(FurnitureOpacity);
   const n = ue(),
     i = n === "cartoon" && r,
     a = n === "cream" && r,
@@ -9630,6 +9659,9 @@ function ci({
                         }),
                         t.jsx("meshStandardMaterial", {
                           color: cabinetBodyColor,
+                          transparent: furnitureOpacity < 1,
+                          opacity: furnitureOpacity,
+                          depthWrite: furnitureOpacity === 1,
                           roughness: a ? 0.64 : r ? 0.44 : 0.58,
                           metalness: a ? 0.006 : 0.018,
                           side: Xa.DoubleSide,
@@ -10773,6 +10805,8 @@ function fi({
 function pi({
   project: e,
   starfield = false,
+  lighting,
+  navigationActive = false,
   wallOpacity = 0.55,
   roofOcclusion = true,
   walkthrough = false,
@@ -10787,6 +10821,7 @@ function pi({
   presentation: f = !1,
   presentationMode: u = "overview",
   visualStyle: h = "glass",
+  styleOverrides,
   wallThicknessScale: m = 1,
   focusedRoom: y,
   showRoomBadges: w = !1,
@@ -10803,19 +10838,21 @@ function pi({
     d = o ? N : [E],
     [g, _] = L.useState(),
     M = L.useRef(null),
+    walkRotation = L.useRef({rotation:null}),
     { invalidate: p } = tt(),
     { minX: v, maxX: P, minZ: T, maxZ: z } = Rs(d),
     I = -(v + P) / 2,
     F = -(T + z) / 2;
+  L.useLayoutEffect(()=>{syncWalkSceneRotation(M.current,navigationActive,walkRotation.current);p();},[navigationActive]);
   let S = 0;
   const B = new Map();
   for (const R of d)
     (B.set(R.id, S), (S += f ? Ct(R.height) + floorStackGap(d) : R.height + 1.15));
   return (
     re((R, W) => {
-      !O || !M.current || ((M.current.rotation.y += Math.min(W, 0.05) * 0.18), p());
+      navigationActive || !O || !M.current || ((M.current.rotation.y += Math.min(W, 0.05) * 0.18), p());
     }),
-    t.jsxs(Ss.Provider, {
+    t.jsx(HomeStyleOverrides.Provider, { value: styleOverrides, children: t.jsxs(Ss.Provider, {
       value: h,
       children: [
         t.jsx(Wn, {}),
@@ -10823,6 +10860,7 @@ function pi({
           ref: M,
           onDoubleClick: () => (b == null ? void 0 : b(void 0)),
           children: [
+            lighting,
             f && starfield && t.jsx(OrbitStarfield, {}),
             c &&
               t.jsx("gridHelper", {
@@ -10869,7 +10907,7 @@ function pi({
           ],
         }),
       ],
-    })
+    }) })
   );
 }
 function gi({
@@ -10976,6 +11014,8 @@ function yi({
   showAllFloors: o,
   viewportInsets: n,
   resetKey: i,
+  savedViewAngle,
+  viewAngleRef,
 }) {
   const { camera: a, size: c, controls: l, invalidate: f, gl: renderer } = tt(),
     u = L.useRef(!0),
@@ -11020,6 +11060,12 @@ function yi({
                   ),
       [w, r, s.target, e, x],
     ),
+    fittedPosition = L.useMemo(() => {
+      if (!r || e !== "iso" || !savedViewAngle?.every(Number.isFinite) || savedViewAngle.length !== 3) return k;
+      const offset = new fe(...savedViewAngle);
+      if (offset.lengthSq() < .001 || offset.y < 0) return k;
+      return h.clone().add(offset.setLength(k.distanceTo(h)));
+    }, [e, r, k, h, savedViewAngle]),
     G = L.useMemo(() => {
       if (r) return h.clone();
       const C = h.clone().sub(k).normalize(),
@@ -11033,8 +11079,13 @@ function yi({
         .addScaledVector(N, -m.horizontalOffset * g)
         .addScaledVector(E, m.verticalOffset * g);
     }, [r, h, a, e, x, c.height, k, m.horizontalOffset, m.verticalOffset]),
-    P = L.useMemo(() => new fe(...alignedTopCameraPosition(k.toArray(), h.toArray(), G.toArray())), [k, h, G]);
+    P = L.useMemo(() => new fe(...alignedTopCameraPosition(fittedPosition.toArray(), h.toArray(), G.toArray())), [fittedPosition, h, G]);
   return (
+    L.useEffect(() => {
+      if (!viewAngleRef || !l || !enabled) return;
+      viewAngleRef.current = () => a.position.clone().sub(l.target).normalize().toArray();
+      return () => { viewAngleRef.current = null; };
+    }, [viewAngleRef, a, l, enabled]),
     L.useEffect(() => {
       if(!enabled)return;
       (a.up.fromArray(FLOOR_CAMERA_UP),
@@ -11472,6 +11523,9 @@ function _a({
   showRoomBadges: y = !1,
   presentationMode: w = "overview",
   visualStyle: b = "glass",
+  styleOverrides,
+  savedViewAngle,
+  viewAngleRef,
   outlineScale = DEFAULT_OUTLINE_SCALE,
   onRoomFocus: j,
   onRoomLightingAction: x,
@@ -11536,39 +11590,8 @@ function _a({
     X = M.distance * (v ? 11.2 : P ? 12.4 : u ? 8.4 : 5.8),
     te = !!(u && _ && _.kind !== "clear" && _.intensity > 0),
     Q = d || te ? "always" : "demand";
-  return t.jsxs(
-    RecoverableSceneCanvas,
-    {
-      Canvas: er,
-      camera: { position: [8.4, 9.6, 10.2], fov: 36, near: 0.1, far: 150 },
-      shadows: R.shadows,
-      frameloop: Q,
-      dpr: R.dpr,
-      gl: {
-        alpha: u,
-        antialias: R.antialias,
-        toneMapping: tr,
-        toneMappingExposure: v
-          ? 1.08
-          : P
-            ? 1.02
-            : I
-              ? w === "security"
-                ? 0.9
-                : 1.02
-              : u
-                ? 1
-                : 1.05,
-        powerPreference: "high-performance",
-      },
-      onCreated: ({ gl: Z }) => {
-        ((Z.shadowMap.enabled = R.shadows),
-          (Z.shadowMap.type = rr),
-          (Z.outputColorSpace = Zt));
-      },
-      children: [
-        !u && t.jsx("color", { attach: "background", args: [z] }),
-        t.jsx("fog", { attach: "fog", args: [u ? T.fog : z, K, X] }),
+  const sunTarget = L.useMemo(()=>new Xa.Object3D(),[]);
+  const sceneLighting = [
         t.jsx("ambientLight", {
           intensity: (v ? 0.72 : P ? 0.54 : I ? 0.56 : u ? 0.58 : 0.76) * S * ambientScale,
           color: v ? "#fff2df" : P ? "#fff4e4" : I ? "#a8b5dc" : "#edf4ff",
@@ -11582,6 +11605,7 @@ function _a({
         }),
         t.jsx("directionalLight", {
           position: sunPosition,
+          target: sunTarget,
           color: moonActive ? "#b8ccff" : v ? "#fff0cc" : P ? "#fff2d8" : I ? "#e4eaff" : "#ffffff",
           intensity: celestialIntensity((solarActive && !solar.aboveHorizon ? 0 : 1) * (v ? 1.44 : P ? 1.28 : I ? 0.96 : u ? 0.88 : 1.8) * F * directScale, moon.intensity, moonActive, lightSettings),
           castShadow: R.shadows && (moonActive || !solarActive || solar.aboveHorizon),
@@ -11643,6 +11667,41 @@ function _a({
             intensity: w === "security" ? 1.7 : 2.15,
             distance: 10,
           }),
+        t.jsx("primitive",{object:sunTarget}),
+  ];
+  return t.jsxs(
+    RecoverableSceneCanvas,
+    {
+      Canvas: er,
+      camera: { position: [8.4, 9.6, 10.2], fov: 36, near: 0.1, far: 150 },
+      shadows: R.shadows,
+      frameloop: Q,
+      dpr: R.dpr,
+      gl: {
+        alpha: u,
+        antialias: R.antialias,
+        toneMapping: tr,
+        toneMappingExposure: v
+          ? 1.08
+          : P
+            ? 1.02
+            : I
+              ? w === "security"
+                ? 0.9
+                : 1.02
+              : u
+                ? 1
+                : 1.05,
+        powerPreference: "high-performance",
+      },
+      onCreated: ({ gl: Z }) => {
+        ((Z.shadowMap.enabled = R.shadows),
+          (Z.shadowMap.type = rr),
+          (Z.outputColorSpace = Zt));
+      },
+      children: [
+        !u && t.jsx("color", { attach: "background", args: [z] }),
+        t.jsx("fog", { attach: "fog", args: [u ? T.fog : z, K, X] }),
         t.jsx(ki, {
           frame: M,
           presentation: u,
@@ -11652,8 +11711,10 @@ function _a({
         }),
         t.jsx(pi, {
           project: e,
+          lighting: sceneLighting,
+          navigationActive: walkthrough.mode !== 'idle',
           starfield: u && lightSettings.starfield,
-          wallOpacity: lightSettings.wallOpacity,
+          wallOpacity: styleOverrides?.wallOpacity ?? lightSettings.wallOpacity,
           roofOcclusion: lightSettings.roofOcclusion,
           walkthrough: walkthrough.mode === 'walking',
           entities: s,
@@ -11670,6 +11731,7 @@ function _a({
           showRoomBadges: y,
           presentationMode: w,
           visualStyle: b,
+          styleOverrides: u ? styleOverrides : undefined,
           onRoomFocus: walkthrough.mode === 'idle' ? j : undefined,
           onRoomLightingAction: x,
           onRoomShadeAction: k,
@@ -11687,6 +11749,8 @@ function _a({
           showAllFloors: o,
           viewportInsets: N,
           resetKey: g,
+          savedViewAngle,
+          viewAngleRef,
         }),
         v && t.jsx(ji, { enabled: v, scale: outlineScale }),
         t.jsx(sr, {
@@ -11698,7 +11762,7 @@ function _a({
           zoomToCursor: false,
           minDistance: 3,
           maxDistance: Math.max(26, M.distance * 3),
-          ...presentationOrbitLimits(u, o, n),
+          ...FLOOR_ORBIT_LIMITS,
         }),
         walkInput && t.jsx(FirstPersonController, {mode:walkthrough.mode,spawn:walkthrough.spawn,floor:e.floors.find(floor=>floor.id===r)??e.floors[0],entities:s,wallThicknessScale:h,input:walkInput,onSpawn:onWalkSpawn,onExit:onWalkExit,onNotice:onWalkNotice,onLocked:onWalkLocked}),
       ],
@@ -12099,7 +12163,7 @@ function Ue({
     ],
   });
 }
-function Bi({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
+function Bi({ active: e, busy: s, compact: r = !1, entity: o, run: n, beamSelection }) {
   const i = Ii(o),
     a = Fi(o),
     c = [
@@ -12268,6 +12332,7 @@ function Bi({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
           children:
             "这个灯在 HA 数据中只暴露开关能力，因此隐藏亮度、色温和颜色控件。",
         }),
+      t.jsx(BeamControlsBridge,{entity:o,selection:beamSelection}),
     ],
   });
 }
@@ -12731,7 +12796,7 @@ function Ki({ compact: e = !1, entity: s, autoPlay = false }) {
     ],
   });
 }
-function Ui({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
+function Ui({ active: e, busy: s, compact: r = !1, entity: o, run: n, beamSelection }) {
   return Pi.has(o.domain)
     ? t.jsxs("div", {
         className: "typed-control-stack typed-control-generic",
@@ -12742,14 +12807,16 @@ function Ui({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
             hint: r ? void 0 : e ? "运行中" : "待机",
             children: t.jsx(Ue, { active: e, busy: s, entity: o, run: n }),
           }),
+          t.jsx(BeamControlsBridge,{entity:o,selection:beamSelection}),
         ],
       })
     : t.jsx(Vs, { compact: r, entity: o });
 }
+function BeamControlsBridge({entity,selection}){const project=Ie(state=>state.project);return t.jsx(FixtureBeamControl,{project,entityId:entity.entityId,selection});}
 function CameraControlsBridge({entity}){const project=Ie(state=>state.project);const entities=Ie(state=>state.entities);return t.jsx(CameraControlPanel,{entity,project,entities,renderLive:(active,key)=>t.jsx(Ki,{entity:active,compact:true,autoPlay:true},key)});}
-function qi({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
+function qi({ active: e, busy: s, compact: r = !1, entity: o, run: n, beamSelection }) {
   return o.domain === "light"
-    ? t.jsx(Bi, { active: e, busy: s, compact: r, entity: o, run: n })
+    ? t.jsx(Bi, { active: e, busy: s, compact: r, entity: o, run: n, beamSelection })
     : o.domain === "cover"
       ? t.jsx(Ai, { active: e, busy: s, compact: r, entity: o, run: n })
       : o.domain === "climate"
@@ -12766,6 +12833,7 @@ function qi({ active: e, busy: s, compact: r = !1, entity: o, run: n }) {
                   compact: r,
                   entity: o,
                   run: n,
+                  beamSelection,
                 });
 }
 function CustomDeviceControls({ busy, compact, entity, run }) {
@@ -12806,7 +12874,7 @@ function CustomDeviceControls({ busy, compact, entity, run }) {
   };
   return t.jsxs(t.Fragment,{children:[error && t.jsx("p",{className:"control-error",children:error}),panel ? t.jsx(DevicePanel,{panel,states,interactive:!busy,onAction:act}) : t.jsx("p",{className:"control-hint",children:"绑定的控制面板不存在"})]});
 }
-function Ma({ compact: e = !1, entity: s }) {
+function Ma({ compact: e = !1, entity: s, beamSelection }) {
   const r = Ie((j) => j.act),
     [o, n] = L.useState(!1),
     [i, a] = L.useState();
@@ -12914,6 +12982,7 @@ function Ma({ compact: e = !1, entity: s }) {
             compact: e,
             entity: s,
             run: w,
+            beamSelection,
           }),
       i &&
         t.jsx("p", { className: "control-error", role: "status", children: i }),

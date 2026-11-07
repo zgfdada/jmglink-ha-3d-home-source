@@ -30,6 +30,7 @@ services:
         condition: service_healthy
     ports:
       - "8101:8099"
+      - "${HA3D_MCP_PUBLIC_PORT:-8112}:${HA3D_MCP_PORT:-8102}"
     extra_hosts:
       - "gitea-host-proxy:172.30.73.1"
     networks:
@@ -37,8 +38,14 @@ services:
     volumes:
       - ./docker-runtime-source/data:/data
       - ./docker-runtime-source/assets:/assets
+      - ./docker-runtime-source/mcp-private:/mcp-private
     environment:
       NODE_OPTIONS: --max-old-space-size=${HA3D_NODE_MAX_OLD_SPACE_MB:-384}
+      HA3D_MCP_ENABLED: "true"
+      HA3D_MCP_HOST: "0.0.0.0"
+      HA3D_MCP_PORT: "${HA3D_MCP_PORT:-8102}"
+      HA3D_MCP_PUBLIC_PORT: "${HA3D_MCP_PUBLIC_PORT:-8112}"
+      HA3D_MCP_PRIVATE_DIR: /mcp-private
       HA3D_MODE: standalone
       PORT: 8099
       HA3D_DATA_DIR: /data

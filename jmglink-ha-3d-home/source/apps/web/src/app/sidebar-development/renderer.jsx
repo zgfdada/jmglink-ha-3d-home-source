@@ -1,5 +1,6 @@
 import { createWidgetPictureCache } from "./widget-images.js";
-import { sidebarFloorOptions, emptyFloorSidebar } from "../../../../../packages/schema/src/sidebar-floors.js";
+import { nearestSidebarEdge } from "../../domain/home-preferences.js";
+import { sidebarFloorOptions, emptyFloorSidebar, SIDEBAR_OVERVIEW_ID } from "../../../../../packages/schema/src/sidebar-floors.js";
 import { widgetSdkSource } from "./widget-sdk.js";
 import { resolveSidebarEntities } from "../../../../../packages/schema/src/sidebar-bindings.js";
 import { r as getReactDom } from "../../vendor/three.js";
@@ -136,8 +137,10 @@ export function SidebarPanel({
   designer = false,
   collapsed = false,
   onToggleCollapse,
+  dock = "left",
   theme,
 }) {
+  const expandAngle = { left: 0, right: 180, top: 90, bottom: -90 }[dock];
   const contentId = React.useId();
   const contentRef=React.useRef(null),itemElements=React.useRef(new Map());
   React.useEffect(()=>{
@@ -236,7 +239,12 @@ export function SidebarPanel({
           </button>
         ))}
         </div>
-        <button className="sb-rail-toggle" title={collapsed ? "展开侧栏" : "收起侧栏"} aria-label={collapsed ? "展开侧栏" : "收起侧栏"} aria-controls={contentId} aria-expanded={!collapsed} disabled={!onToggleCollapse} onClick={onToggleCollapse}><span aria-hidden="true">{collapsed ? "›" : "‹"}</span><small>{collapsed ? "展开" : "收起"}</small></button>
+        <button className="sb-rail-toggle" title={collapsed ? "展开侧栏" : "收起侧栏"} aria-label={collapsed ? "展开侧栏" : "收起侧栏"} aria-controls={contentId} aria-expanded={!collapsed} disabled={!onToggleCollapse} onClick={onToggleCollapse}>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" style={{transform: `rotate(${expandAngle + (collapsed ? 0 : 180)}deg)`}}>
+            <path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <small>{collapsed ? "展开" : "收起"}</small>
+        </button>
       </nav>
     </section>
   );
@@ -255,9 +263,61 @@ export function PublishedSidebar({
   onWidthChange,
   onCollapsedChange,
   theme,
+  dock = "left",
+  onDockChange,
 }) {
+  const dragStart = React.useRef(null);
+  const suppressDockClick = React.useRef(false);
+  const dockRef = React.useRef(null);
+  const [dropEdge, setDropEdge] = React.useState(null);
+  const horizontal = dock === "top" || dock === "bottom";
+  React.useLayoutEffect(() => {
+    const rails = dockRef.current.querySelectorAll(".sb-floor-options, .sb-navigation-pages");
+    const update = () => {
+      for (const rail of rails) {
+        const scrollable = horizontal
+          ? rail.scrollWidth > rail.clientWidth
+          : rail.scrollHeight > rail.clientHeight;
+        rail.dataset.dockScroll = scrollable ? (horizontal ? "horizontal" : "vertical") : "none";
+      }
+    };
+    const observer = new ResizeObserver(update);
+    for (const rail of rails) {
+      observer.observe(rail);
+      for (const button of rail.children) observer.observe(button);
+    }
+    update();
+    return () => observer.disconnect();
+  });
+  const stopDrag = () => { dragStart.current = null; setDropEdge(null); };
+  const edgeAt = event => nearestSidebarEdge(event.clientX, event.clientY, window.innerWidth, window.innerHeight);
+  const beginDockDrag = event => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    suppressDockClick.current = false;
+    const control = event.target.closest("button, a, input, select, textarea, iframe, [contenteditable], .sb-widget-instance");
+    const railButton = control?.matches("[data-dock-scroll='none'] > button");
+    if (control && !railButton) return;
+    if (!control && event.pointerType === "mouse") event.preventDefault();
+    dragStart.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    (control ?? event.currentTarget).setPointerCapture(event.pointerId);
+  };
+  const moveDockDrag = event => {
+    const start = dragStart.current;
+    if (start?.pointerId === event.pointerId && Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 8) {
+      setDropEdge(edgeAt(event));
+    }
+  };
+  const endDockDrag = event => {
+    const start = dragStart.current;
+    if (start?.pointerId !== event.pointerId) return;
+    stopDrag();
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 8) {
+      suppressDockClick.current = true;
+      onDockChange?.(edgeAt(event));
+    }
+  };
   const floorOptions = sidebarFloorOptions(floors);
-  const activeFloorId = floorOptions.some(f => f.id === floorId) ? floorId : floorOptions[0]?.id;
+  const activeFloorId = showAllFloors ? SIDEBAR_OVERVIEW_ID : floorOptions.some(f => f.id === floorId) ? floorId : floorOptions[0]?.id;
   const initialConfig = () => activeFloorId && activeFloorId !== floors[0]?.id ? emptyFloorSidebar() : defaultSidebar();
   const [config, setConfig] = React.useState(initialConfig);
   const [collapsed, setCollapsed] = React.useState(() => {try {return localStorage.getItem("ha3d.sidebar.collapsed") === "1";} catch {return false;}});
@@ -286,11 +346,24 @@ export function PublishedSidebar({
   return (
     <>
     <aside
+      ref={dockRef}
       id="home-sidebar-shell"
       hidden={hidden}
-      className={`sb-home-container ${floorOptions.length > 1 ? "has-floor-rail" : ""} ${collapsed ? "is-collapsed" : ""}`}
+      className={`sb-home-container dock-${dock} ${horizontal ? "dock-horizontal" : ""} ${floorOptions.length > 1 ? "has-floor-rail" : ""} ${collapsed ? "is-collapsed" : ""}`}
       style={{ "--sb-home-width": `${config.width}px` }}
+      onPointerDown={beginDockDrag}
+      onPointerMove={moveDockDrag}
+      onPointerUp={endDockDrag}
+      onPointerCancel={stopDrag}
+      onLostPointerCapture={stopDrag}
+      onClickCapture={event => {
+        if (event.detail && suppressDockClick.current) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
     >
+      {dropEdge && <div className={`sb-dock-target edge-${dropEdge}`} aria-hidden="true" />}
       {floorOptions.length > 1 && <nav className="sb-floor-rail" aria-label="楼层选择"><div className="sb-floor-options">{[...floorOptions].reverse().map(floor => <button key={floor.id} aria-label={`切换楼层 ${floor.label} ${floor.name}`} aria-current={!showAllFloors && floor.id === activeFloorId ? "true" : undefined} title={floor.name} onClick={() => {if(showAllFloors || floor.id !== activeFloorId)onFloorChange?.(floor.id);}}>{floor.label}</button>)}{onShowAllFloors && <button aria-label="全部楼层堆叠总览" aria-current={showAllFloors ? "true" : undefined} title="全部楼层堆叠总览" onClick={onShowAllFloors}>ALL</button>}</div></nav>}
       {error && (
         <p role="status" className="sb-load-error">
@@ -298,7 +371,8 @@ export function PublishedSidebar({
         </p>
       )}
       <div id="home-sidebar-panel" className="sb-home-panel">
-        <SidebarPanel key={activeFloorId} floorId={activeFloorId} config={config} projectId={projectId} workspace="published" entities={entities} title={title} theme={theme} collapsed={collapsed} onToggleCollapse={() => toggleCollapsed()} onPageChange={() => {if(collapsed)toggleCollapsed(false);}} />
+        <div className="sb-dock-surface" aria-hidden="true" title="拖动侧栏到屏幕边缘" />
+        <SidebarPanel key={activeFloorId} floorId={activeFloorId} config={config} projectId={projectId} workspace="published" entities={entities} title={title} theme={theme} dock={dock} collapsed={collapsed} onToggleCollapse={() => toggleCollapsed()} onPageChange={() => {if(collapsed)toggleCollapsed(false);}} />
       </div>
       {!collapsed && <a className="sb-skill-download" href="agent-skills/ha3d-sidebar-widget-design.zip" download>下载侧边栏控件设计 Skill</a>}
     </aside>

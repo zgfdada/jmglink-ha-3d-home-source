@@ -19,5 +19,6 @@
   "repository.yaml",
   "jmglink-ha-3d-home/CHANGELOG.md",
   "LICENSE",
-  "NOTICE.md"
+  "NOTICE.md",
+  "docs/MCP本地部署与使用.md"
 ]

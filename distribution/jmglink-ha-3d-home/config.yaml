@@ -1,7 +1,7 @@
 name: JMGLink HA 3D Home Custom
-version: 0.1.5-custom.40
+version: 0.1.5-custom.41
 slug: jmglink_ha_3d_home_custom
-description: 由恢复源码构建，支持设备平台、在线模型库和可配置控制面板的 3D 户型图可视化与控制中心
+description: 由恢复源码构建，支持设备平台、本地模型库和可配置控制面板的 3D 户型图可视化与控制中心
 url: https://github.com/zgfdada/jmglink-ha-3d-home-custom
 arch:
   - aarch64
@@ -19,6 +19,10 @@ panel_admin: false
 homeassistant_api: true
 ports:
   8099/tcp: null
+  8102/tcp: null
+ports_description:
+  8099/tcp: "网页直连（可选，Ingress无需开放）"
+  8102/tcp: "MCP独立接口（启用后映射至可用宿主端口）"
 map:
   - type: addon_config
     read_only: false
@@ -27,12 +31,16 @@ map:
   - type: share
     read_only: false
 options:
+  mcp_enabled: false
+  mcp_public_port: 8112
   log_level: info
   external_access: false
   node_max_old_space_mb: 256
   nice_level: 10
   resource_log_interval_minutes: 5
 schema:
+  mcp_enabled: bool
+  mcp_public_port: port
   log_level: list(trace|debug|info|warning|error)
   external_access: bool
   node_max_old_space_mb: int(128,512)

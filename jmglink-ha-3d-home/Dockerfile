@@ -32,7 +32,7 @@ FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a55
 WORKDIR /
 RUN rm -rf /app && mkdir -p /app
 
-ARG BUILD_VERSION=0.1.5-custom.40
+ARG BUILD_VERSION=0.1.5-custom.41
 ARG BUILD_ARCH
 
 LABEL \
@@ -60,6 +60,6 @@ COPY LICENSE NOTICE.md ./
 COPY addon-entry.js addon-runtime-options.mjs addon-run.sh ./
 RUN chmod +x /app/addon-run.sh
 
-EXPOSE 8099
+EXPOSE 8099 8102
 
 CMD ["/app/addon-run.sh"]

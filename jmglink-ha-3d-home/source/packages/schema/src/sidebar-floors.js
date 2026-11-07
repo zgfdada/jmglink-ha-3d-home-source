@@ -1,3 +1,5 @@
+export const SIDEBAR_OVERVIEW_ID = '@overview';
+
 export function sidebarFloorOptions(floors = []) {
   return floors.map((floor, index) => ({ id: floor.id, label: `F${index + 1}`, name: floor.name || `F${index + 1}` }));
 }
@@ -7,6 +9,6 @@ export function emptyFloorSidebar() {
 export function resolveSidebarFloor(project, requested) {
   const floors = project?.floors || [];
   const floorId = requested || floors[0]?.id;
-  if (floorId && !floors.some(floor => floor.id === floorId)) throw Object.assign(new Error('楼层不存在'), {statusCode:404});
+  if (floorId && floorId !== SIDEBAR_OVERVIEW_ID && !floors.some(floor => floor.id === floorId)) throw Object.assign(new Error('楼层不存在'), {statusCode:404});
   return floorId;
 }

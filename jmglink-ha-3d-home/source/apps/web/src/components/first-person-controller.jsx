@@ -8,7 +8,7 @@ import {resolveFloorVerticalElevations} from '../domain/vertical-reference.js';
 export default function FirstPersonController({mode,spawn,floor,entities,wallThicknessScale,input,onSpawn,onExit,onNotice,onLocked}) {
   const {camera,gl,controls,invalidate}=useThree();
   const elevations=resolveFloorVerticalElevations(floor,entities,{presentation:true});
-  const geometryKey=JSON.stringify([floor.height,floor.walls,floor.rooms?.map(room=>room.polygon),floor.openings,floor.furniture?.map(item=>[item.id,item.position,item.width,item.depth,item.height,item.rotation,elevations.get(`furniture:${item.id}`)])]);
+  const geometryKey=JSON.stringify([floor.height,floor.walls,floor.rooms?.map(room=>room.polygon),floor.openings,floor.furniture?.map(item=>[item.id,item.position,item.width,item.depth,item.height,item.rotation,item.kind,item.cabinetSegments,item.customModel?.source,elevations.get(`furniture:${item.id}`)])]);
   const nav=React.useMemo(()=>createWalkNavigation(floor,{wallThicknessScale,elevations}),[geometryKey,wallThicknessScale]);
   const saved=React.useRef(null),keys=React.useRef(new Set()),pose=React.useRef({point:[0,0],yaw:0,pitch:0});
   const callbacks=React.useRef({onSpawn,onExit,onNotice,onLocked});callbacks.current={onSpawn,onExit,onNotice,onLocked};

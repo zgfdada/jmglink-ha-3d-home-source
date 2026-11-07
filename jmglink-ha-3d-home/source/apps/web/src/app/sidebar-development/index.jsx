@@ -1,7 +1,7 @@
 import {reorderSidebarPages} from "../../../../../packages/schema/src/sidebar-order.js";
 import CodeEditor from "./code-editor.jsx";
 import { exportSidebarPart, importSidebarPart } from "../../../../../packages/schema/src/sidebar-transfer.js";
-import { sidebarFloorOptions } from "../../../../../packages/schema/src/sidebar-floors.js";
+import { sidebarFloorOptions, SIDEBAR_OVERVIEW_ID } from "../../../../../packages/schema/src/sidebar-floors.js";
 import { ActionEditor } from "./action-editor.jsx";
 import { resolveSidebarEntities, sidebarEntityName } from "../../../../../packages/schema/src/sidebar-bindings.js";
 import { a as React } from "../../vendor/react.js";
@@ -41,10 +41,14 @@ function EntityPicker({entities, widget, override, onChange, emptyLabel}) {
     <input type="search" aria-label="搜索实体名称或 ID" placeholder="输入名称或实体 ID 的任意片段" value={query} onChange={e=>{setQuery(e.target.value);setOpen(true);}} />
     <button type="button" aria-expanded={open} onClick={()=>setOpen(!open)}>选择实体（{binding.ids.length}）{open?" ▴":" ▾"}</button>
     {open && <div className="sb-entity-options" role="group" aria-label="实体多选列表">
-      <button type="button" onClick={()=>onChange(null)}>{emptyLabel}</button>
-      <button type="button" onClick={()=>onChange([])}>清空绑定</button>
-      <small>匹配 {matches.length} 个实体{matches.length>100?"，显示前 100 个，请搜索缩小范围":""}</small>
-      {matches.slice(0,100).map(e=><label key={e.entityId}><input type="checkbox" checked={binding.ids.includes(e.entityId)} onChange={()=>toggle(e.entityId)}/><span>{sidebarEntityName(e,widget)}<small>{e.entityId}</small></span></label>)}
+      <div className="sb-entity-actions">
+        <button type="button" onClick={()=>onChange(null)}>{emptyLabel}</button>
+        <button type="button" onClick={()=>onChange([])}>清空绑定</button>
+        <small>匹配 {matches.length} 个实体{matches.length>100?"，显示前 100 个，请搜索缩小范围":""}</small>
+      </div>
+      <div className="sb-entity-grid">
+        {matches.slice(0,100).map(e=><label key={e.entityId}><input type="checkbox" checked={binding.ids.includes(e.entityId)} onChange={()=>toggle(e.entityId)}/><span>{sidebarEntityName(e,widget)}<small>{e.entityId}</small></span></label>)}
+      </div>
     </div>}
     <div className="sb-effective-entities" aria-live="polite"><strong>实际生效实体 · {binding.source}（{binding.entities.length}）</strong>
       {binding.entities.map(e=><div key={e.entityId}>{sidebarEntityName(e,widget)}<small>{e.entityId}</small></div>)}
@@ -71,7 +75,9 @@ export default function SidebarDevelopmentCenter({
   onClose,
 }) {
   const floors = sidebarFloorOptions(project.floors);
-  const [floorId,setFloorId] = React.useState(project.floors?.some(floor=>floor.id===initialFloorId) ? initialFloorId : project.floors?.[0]?.id);
+  const workspaces = [...floors].reverse();
+  if (floors.length > 1) workspaces.push({ id: SIDEBAR_OVERVIEW_ID, label: "ALL", name: "多楼层总览" });
+  const [floorId,setFloorId] = React.useState(workspaces.some(floor=>floor.id===initialFloorId) ? initialFloorId : project.floors?.[0]?.id);
   const [workspace, setWorkspace] = React.useState(null),
     [deleteTarget,setDeleteTarget]=React.useState(null),
     [draft, setDraft] = React.useState(defaultSidebar),
@@ -311,7 +317,7 @@ export default function SidebarDevelopmentCenter({
           </div>
         ) : (
           <div className="sb-dev-body" inert={busy ? "" : undefined}>
-            {tab==='pages'&&<nav className="sb-design-floor-rail" aria-label="设计楼层">{[...floors].reverse().map(floor=><button key={floor.id} title={floor.name} aria-label={`设计楼层 ${floor.label} ${floor.name}`} aria-current={floor.id===floorId?'page':undefined} className={floor.id===floorId?'active':''} onClick={()=>{if(dirty&&!window.confirm('当前楼层有未保存修改，放弃并切换楼层？'))return;setWorkspace(null);setFloorId(floor.id);}}>{floor.label}</button>)}</nav>}
+            {tab==='pages'&&<nav className="sb-design-floor-rail" aria-label="设计楼层">{workspaces.map(floor=><button key={floor.id} title={floor.name} aria-label={`设计楼层 ${floor.label} ${floor.name}`} aria-current={floor.id===floorId?'page':undefined} className={floor.id===floorId?'active':''} onClick={()=>{if(dirty&&!window.confirm('当前楼层有未保存修改，放弃并切换楼层？'))return;setWorkspace(null);setFloorId(floor.id);}}>{floor.label}</button>)}</nav>}
             <aside className="sb-dev-library">
               {tab === "widgets" ? (
                 <>

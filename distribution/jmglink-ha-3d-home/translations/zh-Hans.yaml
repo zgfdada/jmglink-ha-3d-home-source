@@ -1,4 +1,10 @@
 configuration:
+  mcp_enabled:
+    name: 启用 MCP 服务
+    description: 随App镜像提供，升级时一同更新；默认关闭。启用后在网络设置映射8102/tcp，仅供可信客户端免密连接。
+  mcp_public_port:
+    name: MCP 对外端口
+    description: 填写网络设置中8102/tcp映射的宿主端口（默认建议8112，可修改）。本选项生成连接地址，不自动改变Supervisor端口映射。
   log_level:
     name: 日志级别
     description: 控制服务日志输出详细程度。

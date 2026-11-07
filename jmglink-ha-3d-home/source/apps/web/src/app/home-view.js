@@ -1,3 +1,4 @@
+import { McpConnectionGuide } from "./mcp-connection-guide.jsx";
 import LightBeamSettings from "../components/light-beam-settings.jsx";
 import {useIdleRotation} from "../components/use-idle-rotation.js";
 import { bindFloatingPanelDismiss } from "../domain/floating-panel-dismiss.js";
@@ -15,6 +16,9 @@ import MoonlightStatus from '../components/moonlight-status.jsx';
 import FirstPersonOverlay from '../components/first-person-overlay.jsx';
 import {readCelestialSettings,storeCelestialSettings} from '../domain/celestial-light-settings.js';
 import { PublishedSidebar, SidebarVisibilityToggle } from "./sidebar-development/renderer.jsx";
+import { SIDEBAR_OVERVIEW_ID } from "../../../../packages/schema/src/sidebar-floors.js";
+import { HomeStyleEditor } from "./home-style-editor.jsx";
+import { defaultAmbientLight, readHomePreference, sidebarEdges, writeHomePreference } from "../domain/home-preferences.js";
 /**
  * Recovered application module from official 0.1.5 Vite artifact: HomeView-BFS1nsev.js
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.
@@ -2661,17 +2665,53 @@ function Qn({
   const [cameraMonitorId,setCameraMonitorId] = l.useState(null);
   const [transferOpen, setTransferOpen] = l.useState(false);
   const [sidebarWidth, setSidebarWidth] = l.useState(380);
+  const [sidebarDock, setSidebarDock] = l.useState(() => {
+    const edge = readHomePreference("sidebarDock", "left");
+    return Object.hasOwn(sidebarEdges, edge) ? edge : "left";
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = l.useState(false);
   const [sidebarHidden, setSidebarHidden] = l.useState(() => {try{return localStorage.getItem("ha3d.sidebar.hidden") === "1";}catch{return false;}});
   const toggleSidebarVisibility = () => setSidebarHidden(previous => {const next = !previous;try{localStorage.setItem("ha3d.sidebar.hidden",next ? "1" : "0");}catch{}return next;});
   const [showAllFloors, setShowAllFloors] = l.useState(false);
-  const [manualLight, setManualLight] = l.useState(null);
+  const [ambientLight, setAmbientLight] = l.useState(() => readHomePreference("ambientLight", defaultAmbientLight));
+  const changeAmbientLight = patch => setAmbientLight(previous => {
+    const next = { ...previous, ...patch };
+    writeHomePreference("ambientLight", next);
+    return next;
+  });
+  const manualLight = ambientLight.automatic ? null : ambientLight.manual;
+  const setManualLight = manual => changeAmbientLight({ automatic: false, manual });
+  const [savedStyle, setSavedStyle] = l.useState(() => readHomePreference("sceneStyleOverrides", {}));
+  const [styleDraft, setStyleDraft] = l.useState(null);
+  const [mcpGuideOpen, setMcpGuideOpen] = l.useState(false);
+  const sceneAngle = l.useRef(null);
   const [shadowIntensity, setShadowIntensity] = l.useState(readShadowIntensity);
   const [celestialSettings,setCelestialSettings] = l.useState(readCelestialSettings);
   const changeCelestialSettings = patch => setCelestialSettings(previous=>{const next={...previous,...patch};storeCelestialSettings(next);return next;});
   const [northPreview,setNorthPreview] = l.useState(null);
   const northAngle = northPreview?.projectId === t.id ? northPreview.value : (t.northAngle ?? 0);
   const [lightSettingsOpen, setLightSettingsOpen] = l.useState(false);
+  const [backgroundImage, setBackgroundImage] = l.useState(() => readHomePreference("backgroundImage", ""));
+  const [backgroundNotice, setBackgroundNotice] = l.useState("");
+  const importBackground = file => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setBackgroundNotice("请选择 2 MB 以内的 JPG、PNG 或 WebP 图片。");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!writeHomePreference("backgroundImage", reader.result)) {
+        setBackgroundNotice("浏览器空间不足，无法保存背景图片。");
+        return;
+      }
+      setBackgroundImage(reader.result);
+      setBackgroundNotice("");
+    };
+    reader.onerror = () => setBackgroundNotice("无法读取这张图片。");
+    reader.readAsDataURL(file);
+  };
+  const [beamSelection,setBeamSelection] = l.useState(null);
   const [walkthrough,setWalkthrough]=l.useState({mode:'idle',spawn:null});
   const [walkNotice,setWalkNotice]=l.useState('');
   const [walkLocked,setWalkLocked]=l.useState(false);
@@ -2835,16 +2875,10 @@ function Qn({
     jt = de[(De >= 0 ? De + 1 : 1) % de.length],
     Fe = ue.findIndex((n) => n.key === S),
     Re = ue[Fe >= 0 ? Fe : 0],
-    wt = ue[(Fe >= 0 ? Fe + 1 : 1) % ue.length],
     gs = () =>
       M((n) => {
         const m = de.findIndex((_) => _.key === n);
         return de[(m >= 0 ? m + 1 : 1) % de.length].key;
-      }),
-    js = () =>
-      d((n) => {
-        const m = ue.findIndex((_) => _.key === n);
-        return ue[(m >= 0 ? m + 1 : 0) % ue.length].key;
       }),
     ws = async (n) => {
       await P({
@@ -3021,14 +3055,24 @@ function Qn({
       [k, ze],
     ),
     Fs = l.useCallback(
-      (n) => {
+      (n,selection) => {
+        setBeamSelection(selection??null);
         if(F[n]?.domain === "camera"){setCameraMonitorId(n);k(void 0);G(false);return;}
         (ie(void 0), k(n), G(Q <= 960));
       },
       [k, Q, F],
     );
-  const {rootRef:rotationRootRef,autoRotate:idleAutoRotate}=useIdleRotation(sceneSuspended || walkthrough.mode!=='idle' || lightSettingsOpen || transferOpen || developmentMenuOpen || ee || E || !!v || !!L || !!q || !!cameraMonitorId);
+  const {rootRef:rotationRootRef,autoRotate:idleAutoRotate}=useIdleRotation(sceneSuspended || walkthrough.mode!=='idle' || lightSettingsOpen || !!styleDraft || transferOpen || developmentMenuOpen || ee || E || !!v || !!L || !!q || !!cameraMonitorId);
   const sidebarRef = useFloatingPanelDismiss(Ve, () => {G(false);k(undefined);ie(undefined);});
+  const style = styleDraft ?? savedStyle;
+  const sidebarVisible = !sidebarHidden && !styleDraft && walkthrough.mode === "idle";
+  const dockInsets = { ...$s };
+  if (!sidebarVisible || sidebarDock !== "left") {
+    dockInsets.left = 24;
+    if (Q <= 760) dockInsets.top = 12;
+    if (sidebarVisible && sidebarDock === "right") dockInsets.right = Math.max(dockInsets.right, Math.min(Q * .5, sidebarCollapsed ? 104 : sidebarWidth + 108));
+    if (sidebarVisible && (sidebarDock === "top" || sidebarDock === "bottom")) dockInsets[sidebarDock] = Math.max(dockInsets[sidebarDock], sidebarCollapsed ? 112 : Math.round(Me * .36));
+  }
   return e.jsxs("section", {
     ref: rotationRootRef,
     className: `home-workspace ${t.floors.length > 1 && !sidebarHidden ? "has-floor-selector" : ""} theme-${C} scene-mode-${T} visual-style-${S} render-quality-${g} ${bt ? "weather-forecast-visible" : ""}`,
@@ -3038,6 +3082,11 @@ function Qn({
         className: "home-scene",
         style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[219,217,207,207,209,201]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},
         children: [
+          backgroundImage && e.jsx("img", { className: "home-background-image", src: backgroundImage, alt: "" }),
+          (style.background || style.backgroundOpacity !== undefined) && e.jsx("div", {
+            className: "home-style-background",
+            style: { backgroundColor: style.background ?? "#e8f4fb", opacity: style.backgroundOpacity ?? 1 },
+          }),
           haConnectionNotice(i) && e.jsx("div", {className:"ha-connection-notice", role:"status", "aria-live":"polite", style:{position:"absolute",right:24,top:24,zIndex:60,maxWidth:280,padding:"12px 18px",borderRadius:14,background:"rgba(40,51,69,.92)",color:"#fff",border:"1px solid rgba(255,207,124,.65)",pointerEvents:"none",boxShadow:"0 6px 24px #0003"},children:haConnectionNotice(i)}),
           e.jsx("div", {className: "sb-scene-viewport", children: !sceneSuspended && e.jsx(Qs, {
             key: sceneResumeKey,
@@ -3063,9 +3112,12 @@ function Qn({
             presentation: !0,
             cameraPreset: "iso",
             quality: g,
-            visualStyle: S,
+            visualStyle: styleDraft?.base ?? S,
+            styleOverrides: style,
+            savedViewAngle: savedStyle.angle,
+            viewAngleRef: sceneAngle,
             weather: U,
-            viewportInsets: { ...$s, fitScale: 1.16, fitAvailable: true, preserveViewOnPanelChange: true },
+            viewportInsets: { ...dockInsets, fitScale: 1.16, fitAvailable: true, preserveViewOnPanelChange: true },
             focusedRoom: q,
             showDevices: A,
             showRoomBadges: walkthrough.mode === 'idle' && A && T !== "overview" && Q > 560,
@@ -3079,7 +3131,9 @@ function Qn({
             onEntitySelect: Fs,
           })}),
           walkthrough.mode !== 'idle' && e.jsx(FirstPersonOverlay,{mode:walkthrough.mode,input:walkInput,onExit:exitWalk,notice:walkNotice,locked:walkLocked}),
-          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, hidden: sidebarHidden || walkthrough.mode !== 'idle', key: $, floors: t.floors, floorId: $, showAllFloors, onShowAllFloors: () => {exitWalk();setShowAllFloors(true);ke(void 0);k(void 0);ie(void 0);}, onFloorChange: (id) => {exitWalk();setShowAllFloors(false);x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
+          e.jsx(PublishedSidebar, { projectId: t.id, entities: F, hidden: !sidebarVisible, dock: sidebarDock,
+            onDockChange: edge => { setSidebarDock(edge); writeHomePreference("sidebarDock", edge); },
+            key: showAllFloors ? SIDEBAR_OVERVIEW_ID : $, floors: t.floors, floorId: $, showAllFloors, onShowAllFloors: () => {exitWalk();setShowAllFloors(true);ke(void 0);k(void 0);ie(void 0);}, onFloorChange: (id) => {exitWalk();setShowAllFloors(false);x(id);ke(void 0);k(void 0);ie(void 0);}, title: t.name, refreshKey: sceneResumeKey, theme: C, onWidthChange: setSidebarWidth, onCollapsedChange: setSidebarCollapsed }),
           !A &&
             e.jsxs("div", {
               className: "scene-data-empty",
@@ -3138,6 +3192,7 @@ function Qn({
                 role: "menu",
                 children: [
                   e.jsx("button", {className: "home-tools-item", role: "menuitem", onClick: () => {I(false);setLightSettingsOpen(true);}, children: "☀ 环境光"}),
+                  e.jsx("button", {className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setMcpGuideOpen(true);},children:[e.jsx("span",{"aria-hidden":true,children:"⇄"}),"MCP 连接与权限"]}),
                   e.jsx("button", {className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setLightSettingsOpen(false);if(walkthrough.mode!=='idle'){exitWalk();return;}k(void 0);ie(void 0);setWalkNotice('');setShowAllFloors(false);setWalkthrough({mode:'placing',spawn:null});},children:walkthrough.mode==='idle'?'🚶 室内漫游':'退出室内漫游'}),
                   e.jsxs("button", {
                     className: `home-tools-item quality-dock-action quality-${g}`,
@@ -3153,22 +3208,21 @@ function Qn({
                   }),
                   e.jsxs("button", {
                     className: `home-tools-item style-dock-action style-${S}`,
-                    onClick: js,
-                    title: `风格：${Re.label} · 点击切换到${wt.label}`,
-                    "aria-label": `当前 3D 风格为${Re.label}，点击切换到${wt.label}`,
-                    "aria-pressed": S !== "glass",
+                    onClick: () => { I(false); setStyleDraft({ wallOpacity: celestialSettings.wallOpacity, ...savedStyle, base: S }); },
+                    title: `风格设定 · 当前 ${Re.label}`,
+                    "aria-label": "风格设定",
                     role: "menuitem",
                     children: [
                       e.jsx(et, { size: 17 }),
                       e.jsx("b", { children: Re.short }),
-                      e.jsx("span", { children: Re.label }),
+                      e.jsx("span", { children: "风格设定" }),
                     ],
                   }),
                   e.jsx("button", {className:"home-tools-item home-development-entry",role:"menuitem","aria-expanded":developmentMenuOpen,onClick:()=>setDevelopmentMenuOpen(v=>!v),children:developmentMenuOpen?"开发与编辑 ▴":"开发与编辑 ▾"}),
                   developmentMenuOpen && e.jsxs("div", {className:"home-development-submenu",children:[
                     e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);c?.();},children:"房间布局编辑"}),
                     e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);nextCenterOpen?.();},children:"设备开发中心"}),
-                    e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);onOpenSidebarDevelopmentCenter?.($);},children:"侧边栏开发中心"})
+                    e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);onOpenSidebarDevelopmentCenter?.(showAllFloors ? SIDEBAR_OVERVIEW_ID : $);},children:"侧边栏开发中心"})
                   ]}),
                   e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setTransferOpen(true);},children:"导入导出"}),
                   Xe &&
@@ -3189,11 +3243,35 @@ function Qn({
                 ],
               }),
             ],
+          }), mcpGuideOpen && e.jsx(McpConnectionGuide,{onClose:()=>setMcpGuideOpen(false)}), styleDraft && e.jsx(HomeStyleEditor, {
+            draft: styleDraft, styles: ue, onChange: setStyleDraft, onCancel: () => setStyleDraft(null),
+            onCaptureAngle: () => sceneAngle.current?.(),
+            onApply: () => {
+              const { wallOpacity, ...nextStyle } = styleDraft;
+              if (wallOpacity !== undefined) changeCelestialSettings({ wallOpacity });
+              d(nextStyle.base);
+              setSavedStyle(nextStyle);
+              writeHomePreference("sceneStyleOverrides", nextStyle);
+              setStyleDraft(null);
+            },
           }), transferOpen && e.jsx(InstanceTransfer,{onClose:()=>setTransferOpen(false)}), lightSettingsOpen && e.jsxs("section", {className: "home-light-settings", role: "dialog", "aria-label": "环境光调节", children: [
             e.jsxs("header", {children: [e.jsx("strong", {children: manualLight === null ? "环境光 · 自动" : "环境光 · 手动"})]}),
             e.jsxs("label", {children: [`环境光强度 · ${Math.round(lightLevel * 100)}%`, e.jsx("input", {type: "range", min: 0, max: 100, step: 1, "aria-label": "环境光强度", value: Math.round(lightLevel * 100), onChange: event => setManualLight(Number(event.target.value) / 100)})]}),
             e.jsx("div", {className: "light-presets", children: [["夜间", 0], ["黄昏", 0.35], ["白天", 1]].map(([name,value]) => e.jsx("button", {onClick: () => setManualLight(value), children: name}, name))}),
-            e.jsx("button", {className: "auto-light", onClick: () => setManualLight(null), children: "恢复自动环境光"}),
+            e.jsxs("label", { className: "home-ambient-toggle", children: [
+              e.jsxs("span", { children: [e.jsx("strong", { children: "自动环境光" }), e.jsx("small", { children: "关闭时恢复上次手动强度" })] }),
+              e.jsx("input", { type: "checkbox", role: "switch", "aria-label": "自动环境光", checked: ambientLight.automatic, onChange: event => changeAmbientLight({ automatic: event.target.checked }) }),
+            ] }),
+            e.jsxs("div", { className: "home-background-controls", children: [
+              e.jsx("strong", { children: "场景背景图片" }),
+              e.jsx("small", { children: "替换户型模型后面的背景。仅保存在当前浏览器。" }),
+              e.jsxs("label", { className: "home-background-picker", children: [
+                "选择背景图片",
+                e.jsx("input", { type: "file", "aria-label": "选择背景图片", accept: "image/jpeg,image/png,image/webp", onChange: event => { importBackground(event.target.files?.[0]); event.target.value = ""; } }),
+              ] }),
+              backgroundImage && e.jsx("button", { onClick: () => { setBackgroundImage(""); writeHomePreference("backgroundImage", ""); setBackgroundNotice(""); }, children: "恢复默认背景" }),
+            ] }),
+            backgroundNotice && e.jsx("p", { role: "status", children: backgroundNotice }),
             ...[["日光强度","sunIntensity",300],["月光强度","moonIntensity",2000]].map(([label,key,max])=>e.jsxs("label",{style:{marginTop:14},children:[`${label} · ${Math.round(celestialSettings[key]*100)}%`,e.jsx("input",{type:"range",min:0,max,step:10,"aria-label":label,value:Math.round(celestialSettings[key]*100),onChange:event=>changeCelestialSettings({[key]:Number(event.target.value)/100})})]},key)),
             e.jsx("p",{children:"100% 为默认强度；月光可增强至 20 倍。日光只在白天、月光只在夜间且月亮升起时生效。"}),
             e.jsxs("label", {style:{marginTop:14}, children:[`墙体透明度 · ${Math.round((1-celestialSettings.wallOpacity)*100)}%`, e.jsx("input", {type:"range",min:0,max:100,step:1,"aria-label":"墙体透明度",value:Math.round((1-celestialSettings.wallOpacity)*100),onChange:event=>changeCelestialSettings({wallOpacity:1-Number(event.target.value)/100})})]}),
@@ -3296,7 +3374,7 @@ function Qn({
               ],
             }),
             B
-              ? e.jsx(ot, { compact: !0, entity: B })
+              ? e.jsx(ot, { compact: !0, entity: B, beamSelection })
               : L
                 ? e.jsx("div", {
                     className: "entity-browser room-camera-browser",

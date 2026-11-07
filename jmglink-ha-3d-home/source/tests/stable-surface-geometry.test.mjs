@@ -33,7 +33,7 @@ test("cabinet material and shadow behavior remain unchanged after reverting inef
   const source=readFileSync(new URL('../apps/web/src/app/scene.js',import.meta.url),'utf8');
   const detail=source.slice(source.indexOf('function H({'),source.indexOf('function Fn('));
   assert.doesNotMatch(detail,/surfaceDetail/);
-  assert.match(detail,/f = a\s*\? t.jsx\("meshToonMaterial", \{ color: l \}\)/);
+  assert.match(detail,/f = a\s*\? t.jsx\("meshToonMaterial", \{ color: l, transparent: opacity < 1, opacity, depthWrite: opacity === 1 \}\)/);
   assert.match(detail,/roughness: c \? 0.64 : n \? Math.min\(o, 0.44\) : o/);
   assert.match(detail,/castShadow: !0/);
   assert.match(detail,/receiveShadow: !0/);

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PerspectiveCamera, Spherical, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, presentationOrbitLimits, presentationCameraPosition, applyOrbitProjection, anchorOrbitTarget, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from '../apps/web/src/domain/camera-orbit.js';
+import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, presentationCameraPosition, applyOrbitProjection, anchorOrbitTarget, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from '../apps/web/src/domain/camera-orbit.js';
 
 test('floor orbit keeps the camera above the foundation across a full horizontal revolution',()=>{
   const camera=new PerspectiveCamera();camera.up.fromArray(FLOOR_CAMERA_UP);
@@ -60,34 +60,30 @@ test('portrait fit finishes within orbit limits and manual tilt persists',()=>{
  cleanup();fitting.current=true;orbit.dispatchEvent({type:'start'});assert.equal(fitting.current,true);
 });
 
-test('参考式展示固定斜俯角，360度旋转和平移不改变轴线，编辑器保留自由俯仰',()=>{
+test('主页保留默认取景俯角，取景后可从接近俯视拖到接近水平',()=>{
  for(const stacked of [false,true]){
-  const limits=presentationOrbitLimits(true,stacked);
   const camera=new PerspectiveCamera();camera.up.fromArray(FLOOR_CAMERA_UP);
-  const orbit=new OrbitControls(camera,null);Object.assign(orbit,limits);
+  const orbit=new OrbitControls(camera,null);Object.assign(orbit,FLOOR_ORBIT_LIMITS);
   orbit.target.set(3,4,5);
   const fitted=alignedTopCameraPosition(presentationCameraPosition([0,1,0],20,stacked),[0,1,0],orbit.target.toArray());
   camera.position.fromArray(fitted);const initial=camera.position.clone();orbit.update();
-  assert.ok(camera.position.distanceTo(initial)<1e-6,'取景目标在固定俯角约束内可达');
-  for(let degrees=0;degrees<=360;degrees+=15){
-   camera.position.copy(orbit.target).add(new Vector3().setFromSpherical(new Spherical(20,.2,degrees*Math.PI/180)));
+  assert.ok(camera.position.distanceTo(initial)<1e-6,'默认取景在轨道范围内');
+  assert.ok(Math.abs(orbit.getPolarAngle()-(stacked?62:48)*Math.PI/180)<1e-8);
+  for(const pitch of [.2,1.5]){
+   camera.position.copy(orbit.target).add(new Vector3().setFromSpherical(new Spherical(20,pitch,.7)));
    orbit.update();
-   const actual=new Spherical().setFromVector3(camera.position.clone().sub(orbit.target));
-   assert.ok(Math.abs(actual.phi-limits.minPolarAngle)<1e-8);
+   assert.ok(Math.abs(orbit.getPolarAngle()-pitch)<1e-8);
    assert.ok(camera.position.y>orbit.target.y);
    assert.deepEqual(camera.up.toArray(),[0,1,0]);
   }
-  // No DOM is attached in this numerical OrbitControls fixture.
  }
- assert.equal(presentationOrbitLimits(false,true),FLOOR_ORBIT_LIMITS);
- assert.equal(presentationOrbitLimits(true,false,'top'),FLOOR_ORBIT_LIMITS);
 });
 
 test('侧栏投影偏移下旋转和缩放始终围绕户型轴心，提前中断取景也不留下漂移轴心',()=>{
  const target=[0,4,0];
  for(const insets of [{left:420,right:24,top:32,bottom:80},{left:24,right:400,top:60,bottom:20}]){
   const camera=new PerspectiveCamera(36,1280/720,.1,200);
-  const orbit=new OrbitControls(camera,null);Object.assign(orbit,presentationOrbitLimits(true,true));
+  const orbit=new OrbitControls(camera,null);Object.assign(orbit,FLOOR_ORBIT_LIMITS,{enablePan:true,zoomToCursor:false});
   orbit.target.set(5,1,-2);camera.position.set(20,20,20);
   const beforeOffset=camera.position.clone().sub(orbit.target);
   anchorOrbitTarget(camera,orbit,target);

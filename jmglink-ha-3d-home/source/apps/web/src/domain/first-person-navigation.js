@@ -1,3 +1,4 @@
+import {normalizeCabinetSegments} from './cabinet-layout.js';
 import {isVirtualWall} from './walls.js';
 export const WALK_RADIUS=.18;
 export function segmentDistance(point,a,b) {
@@ -34,7 +35,7 @@ export function createWalkNavigation(floor,{wallThicknessScale=1,elevations=new 
   const obstacles=(floor.furniture??[]).filter(item=>{
     const bottom=elevations.get(`furniture:${item.id}`)??item.elevation??0;
     return bottom<eyeHeight+.15 && bottom+item.height>.12 && item.width>0 && item.depth>0;
-  }).map(item=>({center:item.position,rotation:item.rotation??0,width:item.width,depth:item.depth}));
+  }).map(item=>({center:item.position,rotation:item.rotation??0,width:item.width,depth:item.depth,polygons:furnitureWalkPolygons(item)}));
   return {segments,obstacles,polygons:(floor.rooms??[]).filter(room=>room.polygon.length>=3).map(room=>room.polygon),bounds:[minX,maxX,minZ,maxZ],center:hasWalls?[(minX+maxX)/2,(minZ+maxZ)/2]:[4,3],eyeHeight};
 }
 export function canWalkAt(nav,point,radius=WALK_RADIUS) {
@@ -46,6 +47,7 @@ export function canWalkAt(nav,point,radius=WALK_RADIUS) {
   return !nav.obstacles.some(o=>{
     const dx=x-o.center[0],dz=z-o.center[1],c=Math.cos(o.rotation),s=Math.sin(o.rotation);
     const localX=c*dx+s*dz,localZ=-s*dx+c*dz;
+    if(o.polygons)return o.polygons.some(poly=>inside([localX,localZ],poly)||poly.some((a,i)=>segmentDistance([localX,localZ],a,poly[(i+1)%poly.length])<radius));
     const qx=Math.max(0,Math.abs(localX)-o.width/2),qz=Math.max(0,Math.abs(localZ)-o.depth/2);
     return Math.hypot(qx,qz)<radius;
   });
@@ -67,4 +69,16 @@ export function walkingDelta(forward,right,yaw,seconds,speed=1.4) {
   if(!forward&&!right)return [0,0];
   const length=Math.max(1,Math.hypot(forward,right)),step=Math.max(0,Math.min(.05,seconds))*speed/length;
   return [(Math.cos(yaw)*right-Math.sin(yaw)*forward)*step,(-Math.cos(yaw)*forward-Math.sin(yaw)*right)*step];
+}
+
+export function furnitureWalkPolygons(item) {
+  if(item.customModel?.source)return null; // Custom models retain the documented conservative fallback.
+  if(item.kind==='cabinet')return [normalizeCabinetSegments(item.cabinetSegments,item.width,item.depth).map(segment=>segment.start)];
+  if(item.kind==='sofa'){
+    const w=item.width,d=item.depth;
+    // Same seat/back/arm extents as the rendered built-in sofa.
+    const box=(x,z,width,depth)=>[[x-width/2,z-depth/2],[x+width/2,z-depth/2],[x+width/2,z+depth/2],[x-width/2,z+depth/2]];
+    return [box(0,.14*d,w,.58*d),box(0,.34*d,w,.16*d),box(-.45*w,.02*d,.12*w,.58*d),box(.45*w,.02*d,.12*w,.58*d)];
+  }
+  return null;
 }

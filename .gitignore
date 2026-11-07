@@ -24,3 +24,5 @@ docs/tutorials/
 jmglink-ha-3d-home/source/apps/web/public/concept/
 jmglink-ha-3d-home/source/apps/web/src/concept/
 jmglink-ha-3d-home/source/apps/web/scripts/build-concept-scene.mjs
+
+/docker-runtime-source/mcp-private/

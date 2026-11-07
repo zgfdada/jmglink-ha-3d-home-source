@@ -28,3 +28,19 @@ export function createBeamSettingsStore(storage=()=>globalThis.localStorage) {
  }};
 }
 export const beamSettingsStore=createBeamSettingsStore();
+
+// Resolve placed lights, never use an HA entity id as a per-fixture storage key.
+export function resolvePanelBeamFixtures(project,entityId,selection) {
+ const fixtures=(project?.floors??[]).flatMap(floor=>(floor.devices??[]).filter(device=>device.entityId===entityId).flatMap(device=>[
+  ...((device.kind==='light'||device.modelId?.startsWith('light.')||device.modelId?.startsWith('switch.light.'))?[{id:device.id,modelId:lightBeamType(device.modelId),label:device.label||device.name||'灯具'}]:[]),
+  ...(device.controlledLightFixtures??[]).map((fixture,index)=>({id:fixture.id,modelId:lightBeamType(fixture.modelId??'light.downlight'),label:fixture.label||`灯具 ${index+1}`})),
+ ]));
+ if(selection?.entityId===entityId){return fixtures.filter(fixture=>fixture.id===selection.id);}
+ return fixtures;
+}
+export function setFixtureBeamAngle(id,angle,store=beamSettingsStore) {
+ store.update({fixtures:{...store.getSnapshot().fixtures,[id]:normalizeBeamAngle(angle)}});
+}
+export function resetFixtureBeamAngle(id,store=beamSettingsStore) {
+ const fixtures={...store.getSnapshot().fixtures};delete fixtures[id];store.update({fixtures});
+}

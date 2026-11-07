@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PerspectiveCamera,Vector3} from 'three';
+import {PerspectiveCamera,Vector3,Group} from 'three';
 import {readFile} from 'node:fs/promises';
 import {createWalkNavigation,canWalkAt,walkStep,walkingDelta,segmentDistance} from '../apps/web/src/domain/first-person-navigation.js';
-import {captureWalkCamera,restoreWalkCamera,applyWalkPose} from '../apps/web/src/domain/first-person-camera.js';
+import {captureWalkCamera,restoreWalkCamera,applyWalkPose,syncWalkSceneRotation} from '../apps/web/src/domain/first-person-camera.js';
 
 function floor(){return {height:2.8,walls:[
   {id:'north',start:[0,0],end:[8,0],height:2.8,thickness:.12},
@@ -68,4 +68,34 @@ test('漫游接入、清理与设备点击保护不回归',async()=>{
   assert.match(controller,/abort.abort\(\);clear\(\)/);assert.match(controller,/visibilitychange/);
   assert.match(controller,/input,textarea,select/);assert.match(controller,/callbacks.current.onSpawn/);
   assert.match(scene,/onEntitySelect: C/);assert.match(controller,/restoreWalkCamera\(camera,controls,old\)/);
+});
+
+test('任意自动旋转角进入选点和行走时模型与碰撞同坐标，退出恢复原角度',()=>{
+  for(const angle of [.3,Math.PI/2,2.7,5.8]){
+    const root=new Group(),state={rotation:null};root.rotation.y=angle;
+    syncWalkSceneRotation(root,true,state);
+    const nav=createWalkNavigation(floor()),camera=new PerspectiveCamera();
+    const point=[4,3];applyWalkPose(camera,point,nav.center,nav.eyeHeight,0,0);
+    const rendered=root.localToWorld(new Vector3(point[0]-nav.center[0],nav.eyeHeight,point[1]-nav.center[1]));
+    assert.ok(camera.position.distanceTo(rendered)<1e-9);
+    assert.equal(canWalkAt(nav,point),true);assert.ok(walkStep(nav,[3,3],[2,0])[0]>4);
+    syncWalkSceneRotation(root,true,state);assert.equal(state.rotation,angle);
+    syncWalkSceneRotation(root,false,state);assert.equal(root.rotation.y,angle);assert.equal(state.rotation,null);
+  }
+});
+test('偏心凹形柜体按实际轮廓阻挡，凹槽和柜体外通道可行走，旋转后仍一致',()=>{
+  const polygon=[[-2,-.4],[1,-.4],[1,.1],[-.4,.1],[-.4,1.4],[-2,1.4]];
+  for(const rotation of [0,.73,Math.PI/2,Math.PI]){
+    const f=floor();f.walls.pop();f.furniture=[{id:'shaped',kind:'cabinet',position:[2.5,3],rotation,width:3,depth:1.8,height:2,
+      cabinetSegments:polygon.map((start,i)=>({start,end:polygon[(i+1)%polygon.length],isDoorFront:i===0}))}];
+    const nav=createWalkNavigation(f),world=([x,z])=>[2.5+Math.cos(rotation)*x-Math.sin(rotation)*z,3+Math.sin(rotation)*x+Math.cos(rotation)*z];
+    assert.equal(canWalkAt(nav,world([.5,.7])),true,'凹槽不填成矩形');
+    assert.equal(canWalkAt(nav,world([-1,1])),false,'偏心的真实柜体仍阻挡');
+    const path=walkStep(nav,world([.5,.7]),[Math.cos(rotation)*.3,Math.sin(rotation)*.3]);
+    assert.ok(Math.hypot(path[0]-world([.5,.7])[0],path[1]-world([.5,.7])[1])>.29);
+  }
+});
+test('沙发前方编辑占地空白不误挡，实体座面和扶手仍阻挡',()=>{
+  const f=floor();f.furniture=[{id:'sofa',kind:'sofa',position:[2,3],width:2.4,depth:1,height:.8}];
+  const nav=createWalkNavigation(f);assert.equal(canWalkAt(nav,[2,2.6]),true);assert.equal(canWalkAt(nav,[2,3.2]),false);
 });

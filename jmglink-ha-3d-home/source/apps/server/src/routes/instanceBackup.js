@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeSidebar } from "../../../../packages/schema/src/sidebar.js";
+import { SIDEBAR_OVERVIEW_ID } from "../../../../packages/schema/src/sidebar-floors.js";
 import { validateFloorplanProject } from "@ha3d/schema";
 import {normalizeMotionLibraryPackage} from '../../../../packages/schema/src/motion-library.js';
 
@@ -75,7 +76,7 @@ export function validateInstanceBackup(value) {
       }
     }
     const project = projects.find((p) => p.id === projectId);
-    if (!project || (floorId && !project.floors.some((f) => f.id === floorId)))
+    if (!project || (floorId && floorId !== SIDEBAR_OVERVIEW_ID && !project.floors.some((f) => f.id === floorId)))
       throw bad("侧栏引用了不存在的户型或楼层");
     sidebars[key] = {
       ...entry,

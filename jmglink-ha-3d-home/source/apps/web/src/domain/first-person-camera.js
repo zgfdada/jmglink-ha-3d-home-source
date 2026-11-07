@@ -10,3 +10,12 @@ export function applyWalkPose(camera,point,center,eyeHeight,yaw,pitch) {
   camera.position.set(point[0]-center[0],eyeHeight,point[1]-center[1]);
   camera.quaternion.setFromEuler(new Euler(pitch,yaw,0,'YXZ'));
 }
+
+// Navigation uses unrotated floor coordinates during both spawn picking and walking.
+// Keep the presentation turn so leaving navigation restores the same overview.
+export function syncWalkSceneRotation(root,active,state) {
+  if(!root)return;
+  if(active){if(state.rotation===null)state.rotation=root.rotation.y;root.rotation.y=0;}
+  else if(state.rotation!==null){root.rotation.y=state.rotation;state.rotation=null;}
+  root.updateMatrixWorld(true);
+}

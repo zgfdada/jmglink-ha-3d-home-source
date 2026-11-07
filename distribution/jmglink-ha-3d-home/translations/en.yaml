@@ -1,4 +1,10 @@
 configuration:
+  mcp_enabled:
+    name: Enable MCP service
+    description: Bundled and updated with the App. Disabled by default. Map 8102/tcp in Network settings; only expose to trusted clients.
+  mcp_public_port:
+    name: MCP public port
+    description: The host port mapped to 8102/tcp in Network settings. Defaults to 8112; this value advertises the address and does not change Supervisor port mapping.
   log_level:
     name: Log level
     description: Controls server log verbosity.
