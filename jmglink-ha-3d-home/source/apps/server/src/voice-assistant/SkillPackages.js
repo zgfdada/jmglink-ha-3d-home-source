@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateRawSync } from "node:zlib";
 
-export const skillNames = ["ha3d-ha-assistant", "ha3d-hermes-telegram", "ha3d-sidebar-widget-design"];
+export const skillNames = ["ha3d-ha-assistant", "ha3d-hermes-telegram", "ha3d-sidebar-widget-design", "ha3d-mcp-workflow"];
 const resourceRoot = fileURLToPath(new URL("../../resources/agent-skills/", import.meta.url));
 const crcTable = Array.from({ length: 256 }, (_, value) => {
   for (let i = 0; i < 8; i++) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;

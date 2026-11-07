@@ -1,5 +1,15 @@
 # 开发说明
 
+Home3D MCP 使用 Skill v1.0.0 维护于 `apps/server/resources/agent-skills/ha3d-mcp-workflow/SKILL.md`，`SkillPackages.js` 按 manifest 动态打包，侧栏链接指向 `agent-skills/ha3d-mcp-workflow.zip`。本包只包含使用规范，不包含运行配置或凭据。
+
+MCP 的 HA 实体资源范围支持显式 `*`，表示全部当前及后续实体；实体列表和服务资源校验统一识别该值，具体服务能力及 scope 校验仍生效。管理页保存共用权限后立即生效，不自动把既有实体白名单扩为全范围。
+
+## 影院模型与实体状态
+
+builtinModelTemplates 提供四个影院资源模板，程序化 shape 使用 cinema_projector、cinema_screen、cinema_speaker；预览器和主场景分别提供模型细节，schema 保存时保留专用形状与尺寸。场景设备按绑定实体 on/off 驱动幕布伸缩和投影柔光，禁用其通用运行流光以避免包围盒光框。材质透明度仅墙体可调，设备离线仅调整颜色与发光，保留原玻璃材质属性。
+
+情景控件可同时显式绑定 scene 与 Node-RED button 实体，调用各自已配置服务；无状态按钮 unknown 可用而 unavailable 禁用。个人楼层配置、实体与 Node-RED 流程属于实例数据，不编入发布镜像。
+
 ## MCP 服务与管理
 
 v0.1.5-custom.42 将 MCP 实现纳入正式构建。apps/server/src/mcp 使用官方 SDK；私有配置／权限／计划存储复用 ProjectStore、SidebarStore 和 writeGate。默认 sharedAccess 共用身份，免密连接、免人工批准，保留同源、资源、修订、参数和幂等校验；旧独立客户端模式仅供兼容测试。
@@ -226,7 +236,7 @@ N5/N6 分别使用 `PUT /api/device-platform/projects/:id/runtime-display` 和 `
 
 N6 在设备项目保存 `modelTemplateId` 与项目专属 `appearance`（尺寸、缩放、摆放、锚点、材质、能力驱动动画），不修改资源库共享模型；已绑定设备的模型引用同步更新。`HomeAssistantClient.getEntities()` 将项目外观投影到场景实体，场景继续消费同一运行能力与文案来源；动画状态可与浮窗运行状态分别配置。3D 预览复用模型资源库的加载器，支持旋转、平移、缩放和适应视图，外观编辑会话维护最近 30 步撤销/重做。上传文件缺失由只读校验接口阻止后续发布。N7 控制面板已开放，N8 联调与 N9 本地发布已接入新版项目详情，视觉验收仍由用户完成。
 
-3D 场景中的自定义设备模型也消费 HA 离线状态：`scene.js` 仅向设备实例传递 `unavailable`，`domain/model-availability.js` 按材质保存原始颜色、发光、透明度，并在离线时去饱和及半透明，恢复在线时复原。上传模型先为实例克隆材质，避免离线效果污染同一资源库模型或家具实例；独立摆放的家具不传入设备状态。
+3D 场景中的自定义设备模型也消费 HA 离线状态：`scene.js` 仅向设备实例传递 `unavailable`，`domain/model-availability.js` 按材质保存原始颜色和发光，离线时去饱和但保持原有不透明度与透明材质属性，恢复在线时复原颜色。上传模型先为实例克隆材质，避免离线效果污染同一资源库模型或家具实例；独立摆放的家具不传入设备状态。场景透明度设置仅作用于墙体，旧浏览器预设中的家具、地面和背景透明度不再参与渲染。
 
 通用运行光效由 `domain/runtime-model-glow.js` 提供：对模型的主要网格添加薄蓝色背面描边和弱点光，并随时间缓慢呼吸。`scene.js` 仅在设备运行且在线时挂载，卸载时清理效果材质；N5/N6 的 `ModelPreview` 复用该逻辑，替换原先的运行图标和通用模型自转。波轮洗衣机原有的局部波轮动作仍保留。
 

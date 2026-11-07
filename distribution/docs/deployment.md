@@ -34,6 +34,6 @@ Compose 通过独立入口运行已发布的同一多架构镜像。`./ha3d-data
 App 运行数据位于 /data，素材位于 /config/assets；运行密钥属于受保护数据。
 
 
-## MCP安装和更新（v0.1.5-custom.42）
+## MCP安装和更新（v0.1.5-custom.43）
 
 MCP随同App／Docker镜像提供和更新，无需单独安装。App配置mcp_enabled启用，网络设置8102/tcp映射至空闲宿主端口，并配置mcp_public_port匹配。默认关闭；权限和连接保存于独立持久目录，普通业务导出不包含这些私有数据。详细步骤见 [MCP部署与权限](MCP本地部署与使用.md)。

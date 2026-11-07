@@ -48,7 +48,8 @@ export function allow(client, scope, kind, id) {
     !(
       ((kind === "projects" &&
         client.scopes.includes("home3d.project.replace")) ||
-        (kind === "tabs" && client.scopes.includes("nodered.trusted"))) &&
+        (kind === "tabs" && client.scopes.includes("nodered.trusted")) ||
+        kind === "entities") &&
       client.resources[kind]?.includes("*")
     )
   )

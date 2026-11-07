@@ -87,7 +87,7 @@ export class HaAdapter {
     this.enabled();
     return this.ha
       .getEntities()
-      .filter((e) => client.resources.entities.includes(e.entityId))
+      .filter((e) => client.resources.entities.includes("*") || client.resources.entities.includes(e.entityId))
       .map((e) => ({
         entityId: e.entityId,
         name: e.name,
@@ -398,6 +398,7 @@ export class NodeRedAdapter {
   async read(client, tabId) {
     allow(client, "nodered.flow.read", "tabs", tabId);
     const { rev, flows } = await this.flows();
+    if (tabId === "*") return { rev, nodes: clean(flows.filter(n => n.type === "tab")) };
     const selected = flows.filter((n) => n.id === tabId || n.z === tabId);
     const nodes = client.scopes.includes("nodered.trusted")
       ? selected

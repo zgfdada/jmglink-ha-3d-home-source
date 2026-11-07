@@ -1,5 +1,7 @@
 # JMGLink HA 3D Home Custom
 
+本版新增影院资源模型、实体状态驱动的投影与幕布效果、MCP 使用 Skill 下载和显式全部 HA 实体授权；修复家具／设备整体透明。个人设备绑定和 Node-RED 情景由用户配置。
+
 > 致敬并感谢原作 [JMGLink HA 3D Home](https://gitee.com/tuotuo4ever/jmglink-ha-3d-home) 的原作者及所有贡献者。
 >
 > 本项目是基于原作的**二次开发作品**，在原有 3D 家居可视化与 Home Assistant 控制能力上继续扩展和维护。
@@ -10,7 +12,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.42`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.43`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://github.com/zgfdada/jmglink-ha-3d-home-custom/blob/main/docs/wiki/Home.md) · [RELEASE_NOTES](RELEASE_NOTES.md)
 

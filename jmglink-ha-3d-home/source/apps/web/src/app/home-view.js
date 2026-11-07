@@ -3083,9 +3083,9 @@ function Qn({
         style: {background: (()=>{const stops=[[16,29,47,35,57,80],[242,190,151,179,166,173],[219,217,207,207,209,201]];const x=Math.max(0,Math.min(1,lightLevel));const a=x<=.35?stops[0]:stops[1],b=x<=.35?stops[1]:stops[2],t=x<=.35?x/.35:(x-.35)/.65;const v=a.map((n,i)=>Math.round(n+(b[i]-n)*t));return `radial-gradient(ellipse at 80% 8%,rgba(255,215,159,${Math.max(0,1-Math.abs(x-.35)/.35)*.55}),transparent 65%),linear-gradient(145deg,rgb(${v.slice(0,3)}),rgb(${v.slice(3)}))`;})()},
         children: [
           backgroundImage && e.jsx("img", { className: "home-background-image", src: backgroundImage, alt: "" }),
-          (style.background || style.backgroundOpacity !== undefined) && e.jsx("div", {
+          style.background && e.jsx("div", {
             className: "home-style-background",
-            style: { backgroundColor: style.background ?? "#e8f4fb", opacity: style.backgroundOpacity ?? 1 },
+            style: { backgroundColor: style.background },
           }),
           haConnectionNotice(i) && e.jsx("div", {className:"ha-connection-notice", role:"status", "aria-live":"polite", style:{position:"absolute",right:24,top:24,zIndex:60,maxWidth:280,padding:"12px 18px",borderRadius:14,background:"rgba(40,51,69,.92)",color:"#fff",border:"1px solid rgba(255,207,124,.65)",pointerEvents:"none",boxShadow:"0 6px 24px #0003"},children:haConnectionNotice(i)}),
           e.jsx("div", {className: "sb-scene-viewport", children: !sceneSuspended && e.jsx(Qs, {
@@ -3247,7 +3247,7 @@ function Qn({
             draft: styleDraft, styles: ue, onChange: setStyleDraft, onCancel: () => setStyleDraft(null),
             onCaptureAngle: () => sceneAngle.current?.(),
             onApply: () => {
-              const { wallOpacity, ...nextStyle } = styleDraft;
+              const { wallOpacity, backgroundOpacity, floorOpacity, furnitureOpacity, ...nextStyle } = styleDraft;
               if (wallOpacity !== undefined) changeCelestialSettings({ wallOpacity });
               d(nextStyle.base);
               setSavedStyle(nextStyle);

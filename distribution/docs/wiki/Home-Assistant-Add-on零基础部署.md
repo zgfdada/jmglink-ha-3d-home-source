@@ -24,6 +24,6 @@ Add-on 使用 Supervisor 提供的凭据自动连接当前 Home Assistant，不�
 官方版和 Custom 版 slug 不同，数据不会自动共用。Custom 版 slug 为 `jmglink_ha_3d_home_custom`，不要修改。
 
 
-## v0.1.5-custom.42 MCP
+## v0.1.5-custom.43 MCP
 
 MCP随App与Docker一同安装、更新；启用方式、自定义端口、共用权限和私有目录备份见 [MCP部署与权限](../MCP本地部署与使用.md)。管理绿灯不代表独立端口连通。

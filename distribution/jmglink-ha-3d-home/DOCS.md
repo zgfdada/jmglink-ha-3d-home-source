@@ -131,6 +131,6 @@ Add-on 模式使用 Supervisor 提供的 `SUPERVISOR_TOKEN` 连接当前 Home As
 - 原始项目：<https://gitee.com/tuotuo4ever/jmglink-ha-3d-home.git>
 
 
-## MCP安装和更新（v0.1.5-custom.42）
+## MCP安装和更新（v0.1.5-custom.43）
 
 MCP随同App／Docker镜像提供和更新，无需单独安装。App配置mcp_enabled启用，网络设置8102/tcp映射至空闲宿主端口，并配置mcp_public_port匹配。默认关闭；权限和连接保存于独立持久目录，普通业务导出不包含这些私有数据。详细步骤见 [MCP部署与权限](../docs/MCP本地部署与使用.md)。

@@ -729,6 +729,12 @@ export function builtinDeviceTemplates() {
 
 export function builtinModelTemplates() {
   return [
+    ...[
+      ['projector','浅色壁装投影仪','cinema_projector',.36,.16,.36,'wall'],
+      ['screen','电动投影幕布','cinema_screen',2.55,1.48,.12,'wall'],
+      ['speaker','浅色左右声道音响','cinema_speaker',.18,.28,.19,'surface'],
+      ['subwoofer','浅色低音炮','cinema_speaker',.34,.36,.27,'surface'],
+    ].map(([id,name,shape,width,height,depth,placement])=>normalizeModelTemplate({id:`builtin.cinema.${id}`,name,source:{type:'procedural',shape},dimensions:{width,height,depth},placement,color:'#e8e3d9',tags:['家庭影院','投影音响'],furnitureEnabled:true},{builtin:true})),
     ...CAMERA_MODELS.map(model=>normalizeModelTemplate({id:`builtin.${model.id}`,name:model.name,source:{type:"procedural",shape:model.shape},dimensions:model.dimensions,placement:model.placement,color:"#eef2f5",tags:["摄像头","camera"],furnitureEnabled:true},{builtin:true})),
     normalizeModelTemplate(
       {

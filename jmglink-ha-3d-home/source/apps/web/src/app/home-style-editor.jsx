@@ -54,9 +54,9 @@ export function HomeStyleEditor({ draft, styles, onChange, onCancel, onApply, on
         <div className="home-style-base"><input type="color" aria-label={`${label}颜色`} value={draft[key] ?? fallback}
           onChange={event => update({ [key]: event.target.value })} />
           <button disabled={!draft[key]} onClick={() => update({ [key]: null })}>沿用风格颜色</button></div>
-        <label>{label}不透明度 · {Math.round((draft[key + "Opacity"] ?? 1) * 100)}%
+        {key === "wall" && <label>{label}不透明度 · {Math.round((draft.wallOpacity ?? 1) * 100)}%
           <input type="range" min="0" max="100" value={Math.round((draft[key + "Opacity"] ?? 1) * 100)}
-            onChange={event => update({ [key + "Opacity"]: Number(event.target.value) / 100 })} /></label>
+            onChange={event => update({ wallOpacity: Number(event.target.value) / 100 })} /></label>}
       </fieldset>)}
       <div className="home-style-base">
         <button onClick={() => {

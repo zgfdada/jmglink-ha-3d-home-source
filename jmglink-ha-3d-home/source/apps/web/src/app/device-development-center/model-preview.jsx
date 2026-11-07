@@ -5,6 +5,7 @@ import {reportClientError} from '../../domain/browser-recovery.js';
 import { a as React } from "../../vendor/react.js";
 import * as THREE from "three";
 import {createCameraModel} from "../../domain/camera-model.js";
+import {createCinemaModelPreview} from "../../domain/cinema-model-preview.js";
 import {cameraModelDefinition} from "../../../../../packages/schema/src/camera-models.js";
 import {loadModelAsset} from "../../domain/model-assets.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -176,7 +177,7 @@ export default function ModelPreview({
         new THREE.BoxGeometry(width, height, depth),
         material,
       );
-      if(cameraModelDefinition(source.shape)){body.geometry.dispose();material.dispose();root.add(createCameraModel(source.shape,{dimensions:model.dimensions,color:model.color}));}else root.add(body);
+      if(source.shape?.startsWith('cinema_')){body.geometry.dispose();material.dispose();root.add(createCinemaModelPreview(source.shape,{width,height,depth}));}else if(cameraModelDefinition(source.shape)){body.geometry.dispose();material.dispose();root.add(createCameraModel(source.shape,{dimensions:model.dimensions,color:model.color}));}else root.add(body);
       if (source.shape === "washing-machine") {
         const door = new THREE.Mesh(
           new THREE.TorusGeometry(width * 0.23, width * 0.035, 12, 48),

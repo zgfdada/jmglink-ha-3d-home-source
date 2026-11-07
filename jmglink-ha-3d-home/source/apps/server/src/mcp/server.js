@@ -519,7 +519,7 @@ export async function startMcp({
     scopes: z.array(z.enum(SCOPES)).min(1).max(SCOPES.length),
     resources: object({
       projects: z.array(id).max(100),
-      entities: z.array(entity).max(500),
+      entities: z.array(z.union([entity, z.literal("*")])).max(500),
       tabs: z.array(id).max(100),
     }),
     expiresAt: z.string().datetime(),

@@ -41,7 +41,7 @@ export function entitySnapshot(entity) {
 export function customDocument(widget, entity, entities = [], viewContext = {}) {
   const encode = (value) => JSON.stringify(value).replace(/</g, "\\u003c");
   const lifecycle = `const rootStyle=document.createElement('style');document.head.append(rootStyle);
-function applyTheme(theme){rootStyle.textContent=':root{--widget-text:'+(theme==='day'?'#f5f9ff':'#14283f')+';--widget-muted:'+(theme==='day'?'#dbe9f1':'#31485e')+';--widget-line:'+(theme==='day'?'#e6f4ff40':'#ffffff70')+'}html,body,#view{background:transparent!important;box-shadow:none!important;border:0;filter:none}body{color:var(--widget-text);margin:0;overflow:hidden}';}
+function applyTheme(theme){rootStyle.textContent=':root{--widget-text:'+(theme==='day'?'#f5f9ff':'#14283f')+';--widget-muted:'+(theme==='day'?'#dbe9f1':'#31485e')+';--widget-line:'+(theme==='day'?'#e6f4ff40':'#ffffff70')+';--widget-scene-fill:'+(theme==='day'?'rgba(57,94,116,.82)':'rgba(223,227,232,.88)')+';--widget-scene-hover:'+(theme==='day'?'rgba(57,94,116,.94)':'rgba(236,240,244,.96)')+';--widget-scene-play:'+(theme==='day'?'#eaf6fd':'#31485e')+'}html,body,#view{background:transparent!important;box-shadow:none!important;border:0;filter:none}body{color:var(--widget-text);margin:0;overflow:hidden}';}
 applyTheme(${encode(viewContext.theme || 'day')});
 window.addEventListener('message',event=>{if(event.source===parent && event.data?.type==='ha3d-theme')applyTheme(event.data.theme);});
 let lastHeight=0;const report=()=>{const view=document.getElementById('view');if(!view)return;const h=Math.ceil(view.getBoundingClientRect().height+parseFloat(getComputedStyle(document.body).paddingTop||0)+parseFloat(getComputedStyle(document.body).paddingBottom||0));if(h>0 && h!==lastHeight){lastHeight=h;parent.postMessage({type:'ha3d-widget-height',height:h},'*');}};
@@ -107,7 +107,7 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, bin
     [widget, boundId, presentation, widget.scriptMode === "dom" ? null : JSON.stringify(binding.entities)],
   );
   return (<>
-    <div className="sb-widget-surface" data-theme={theme} data-expanded={presentation ? "true" : undefined}><iframe
+    <div className="sb-widget-surface" data-widget-id={widget.id} data-theme={theme} data-expanded={presentation ? "true" : undefined}><iframe
       style={{height:naturalHeight, flex:"0 0 auto"}}
       scrolling="no"
       ref={frame}
@@ -163,6 +163,7 @@ export function SidebarPanel({
   return (
     <section
       className={`sb-panel ${(theme ?? resolveDaylight(entities).theme) === "night" ? "sb-night" : ""} ${designer ? "sb-design-preview" : ""} ${collapsed ? "sb-content-collapsed" : ""}`}
+      data-page-id={page?.id}
       style={{ "--sb-width": `${config.width}px` }}
       aria-label="自定义侧边栏"
     >
@@ -374,7 +375,7 @@ export function PublishedSidebar({
         <div className="sb-dock-surface" aria-hidden="true" title="拖动侧栏到屏幕边缘" />
         <SidebarPanel key={activeFloorId} floorId={activeFloorId} config={config} projectId={projectId} workspace="published" entities={entities} title={title} theme={theme} dock={dock} collapsed={collapsed} onToggleCollapse={() => toggleCollapsed()} onPageChange={() => {if(collapsed)toggleCollapsed(false);}} />
       </div>
-      {!collapsed && <a className="sb-skill-download" href="agent-skills/ha3d-sidebar-widget-design.zip" download>下载侧边栏控件设计 Skill</a>}
+      {!collapsed && <a className="sb-skill-download" href="agent-skills/ha3d-mcp-workflow.zip" download>下载 Home3D MCP 使用 Skill v1.0</a>}
     </aside>
 
     </>

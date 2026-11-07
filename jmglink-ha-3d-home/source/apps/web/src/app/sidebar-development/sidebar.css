@@ -745,6 +745,7 @@
 /* The same surface owns paint in homepage, standalone preview and page designer. */
 .sb-widget-surface{box-sizing:border-box;width:100%;overflow:hidden;border-radius:17px;border:1px solid #ffffff55;background:rgba(57,94,116,.72);color:#f5f9ff}
 .sb-widget-surface[data-theme="night"]{background:rgba(223,227,232,.80);color:#14283f}
+.sb-widget-surface[data-widget-id="scene-modes"]{background:transparent;border:0;border-radius:0;box-shadow:none}
 .sb-panel .sb-widget-instance,.sb-home-container .sb-widget-instance{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
 .sb-widget-live-preview{height:auto!important;min-height:0!important;background:transparent!important;padding:0!important;overflow:visible!important}
 .sb-widget-surface[data-expanded="true"]{border:0;border-radius:0;background:transparent}
@@ -803,6 +804,11 @@
 .sb-home-container .sb-home-panel .sb-panel,
 .theme-night .sb-home-container .sb-home-panel .sb-panel{
  background:var(--sb-shell-fill);border-color:var(--sb-shell-line);box-shadow:var(--sb-shell-shadow);
+ backdrop-filter:blur(20px) saturate(135%);-webkit-backdrop-filter:blur(20px) saturate(135%);
+}
+.sb-home-container .sb-home-panel .sb-panel[data-page-id="scenes"],
+.theme-night .sb-home-container .sb-home-panel .sb-panel[data-page-id="scenes"]{
+ background:transparent;border-color:transparent;box-shadow:none;
  backdrop-filter:blur(20px) saturate(135%);-webkit-backdrop-filter:blur(20px) saturate(135%);
 }
 

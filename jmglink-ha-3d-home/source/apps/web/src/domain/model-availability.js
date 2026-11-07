@@ -14,8 +14,6 @@ export function applyModelAvailability(root, unavailable) {
           color: material.color?.clone(),
           emissive: material.emissive?.clone(),
           emissiveIntensity: material.emissiveIntensity,
-          opacity: material.opacity,
-          transparent: material.transparent,
         };
         originalMaterials.set(material, original);
       }
@@ -38,9 +36,6 @@ export function applyModelAvailability(root, unavailable) {
         material.emissiveIntensity = unavailable
           ? original.emissiveIntensity * 0.25
           : original.emissiveIntensity;
-      material.opacity = unavailable ? original.opacity * 0.5 : original.opacity;
-      material.transparent = unavailable || original.transparent;
-      material.needsUpdate = true;
     }
   });
 }

@@ -76,7 +76,7 @@ function normalizeCustomDeviceModel(value) {
                 ? { type: "upload", url, fileName: optionalText(value.source.fileName), mimeType: optionalText(value.source.mimeType) }
                 : undefined;
         })()
-        : { type: "procedural", shape: ["box", "washing-machine", "pipeline-water-dispenser", "water-purifier", "gas-water-heater", "wifi-router"].includes(value.source.shape) ? value.source.shape : "box" };
+        : { type: "procedural", shape: ["box", "washing-machine", "pipeline-water-dispenser", "water-purifier", "gas-water-heater", "wifi-router", "cinema_projector", "cinema_screen", "cinema_speaker"].includes(value.source.shape) ? value.source.shape : "box" };
     if (!source)
         return undefined;
     const dimensions = isRecord(value.dimensions) ? value.dimensions : {};
@@ -159,7 +159,7 @@ export function normalizeOpening(value) {
 export function normalizeFurniture(value, floorId) {
     const source = isRecord(value) ? value : {};
     const legacyCabinetKinds = new Set(["wardrobe", "cabinet", "tv_stand", "bookshelf", "sideboard", "shoe_cabinet", "nightstand"]);
-    const supportedKinds = ["sofa", "bed", "dining_table", "desk", "wardrobe", "cabinet", "tv_stand", "kitchen_island", "coffee_table", "bookshelf", "sideboard", "shoe_cabinet", "nightstand", "side_table", "wash_basin", "vanity_mirror_cabinet", "shower_diamond", "shower_enclosure", "shower_fixture", "toilet", "water_heater", "squat_toilet", "gas_stove", "custom_model"];
+    const supportedKinds = ["sofa", "bed", "dining_table", "desk", "wardrobe", "cabinet", "tv_stand", "kitchen_island", "coffee_table", "bookshelf", "sideboard", "shoe_cabinet", "nightstand", "side_table", "wash_basin", "vanity_mirror_cabinet", "shower_diamond", "shower_enclosure", "shower_fixture", "toilet", "water_heater", "squat_toilet", "gas_stove", "custom_model", "cinema_projector", "cinema_screen", "cinema_speaker"];
     const sourceKind = supportedKinds.includes(source.kind) ? source.kind : "sofa";
     const kind = legacyCabinetKinds.has(sourceKind) ? "cabinet" : sourceKind === "shower_diamond" ? "shower_enclosure" : sourceKind;
     const legacyCabinetStyles = { wardrobe: "tall", cabinet: "base", tv_stand: "tv", bookshelf: "shelf", sideboard: "sideboard", shoe_cabinet: "shoe", nightstand: "bedside" };
@@ -192,6 +192,9 @@ export function normalizeFurniture(value, floorId) {
         squat_toilet: { width: 0.62, depth: 0.82, height: 0.16 },
         gas_stove: { width: 0.72, depth: 0.52, height: 0.12 },
         custom_model: { width: 0.6, depth: 0.6, height: 0.6 },
+        cinema_projector: { width: 0.36, depth: 0.35, height: 0.16 },
+        cinema_screen: { width: 2.55, depth: 0.12, height: 1.5 },
+        cinema_speaker: { width: 0.18, depth: 0.2, height: 0.28 },
     };
     const sourceSize = fallbackSize[sourceKind];
     const size = fallbackSize[kind];
@@ -206,8 +209,8 @@ export function normalizeFurniture(value, floorId) {
     const cabinetSectionOneHeight = kind === "cabinet" && cabinetStyle === "segmented" ? finite(source.cabinetSectionOneHeight, cabinetHeight * 0.38, 0.1, Math.max(0.1, cabinetHeight - 0.1)) : undefined;
     const cabinetHollowHeight = kind === "cabinet" && cabinetStyle === "segmented" ? finite(source.cabinetHollowHeight, cabinetHeight * 0.24, 0, Math.max(0, cabinetHeight - cabinetSectionOneHeight - 0.1)) : undefined;
     const cabinetUpperDepth = kind === "cabinet" && cabinetStyle === "segmented" ? finite(source.cabinetUpperDepth, cabinetDepth, 0.1, 4) : undefined;
-    const width = vanityDimensions?.width ?? cabinetBounds?.width ?? finite(legacyToiletDefault ? undefined : source.width, size.width, 0.2, 20);
-    const depth = vanityDimensions?.depth ?? cabinetBounds?.depth ?? finite(legacyToiletDefault ? undefined : source.depth, size.depth, 0.2, 20);
+    const width = vanityDimensions?.width ?? cabinetBounds?.width ?? finite(legacyToiletDefault ? undefined : source.width, size.width, kind.startsWith("cinema_") ? 0.05 : 0.2, 20);
+    const depth = vanityDimensions?.depth ?? cabinetBounds?.depth ?? finite(legacyToiletDefault ? undefined : source.depth, size.depth, kind.startsWith("cinema_") ? 0.05 : 0.2, 20);
     const showerStyle = kind === "shower_enclosure" && ["diamond", "rectangular", "curved"].includes(source.showerStyle)
         ? source.showerStyle : "diamond";
     const showerCornerCut = kind === "shower_enclosure"
@@ -229,6 +232,7 @@ export function normalizeFurniture(value, floorId) {
         elevation: finite(source.elevation, 0, 0, 12),
         modelId: typeof source.modelId === "string" && source.modelId ? source.modelId : undefined,
         name: optionalText(source.name),
+        ...(kind.startsWith("cinema_") && typeof source.entityId === "string" && source.entityId.startsWith("input_boolean.") ? { entityId: source.entityId } : {}),
         customModel: normalizeCustomDeviceModel(source.customModel),
         verticalReference: normalizeVerticalReference(source.verticalReference),
     };

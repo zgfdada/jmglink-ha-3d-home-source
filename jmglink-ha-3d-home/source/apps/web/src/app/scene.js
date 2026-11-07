@@ -3026,7 +3026,6 @@ function mn(e, s, r, o) {
 }
 const Ss = L.createContext("glass"),
   HomeStyleOverrides = L.createContext(null),
-  FurnitureOpacity = L.createContext(1),
   ue = () => L.useContext(Ss),
   ge = (e, s) => {
     const palette = at(e, s, ue());
@@ -3671,7 +3670,6 @@ function Rn({
     w = Ps(e),
     b = ue(),
     style = L.useContext(HomeStyleOverrides),
-    floorOpacity = n ? style?.floorOpacity ?? 1 : 1,
     j = b === "cartoon" && n,
     x = b === "cream" && n,
     k = ge(o, i),
@@ -3744,9 +3742,6 @@ function Rn({
           j
             ? t.jsx("meshToonMaterial", {
                 color: E,
-                transparent: floorOpacity < 1,
-                opacity: floorOpacity,
-                depthWrite: floorOpacity === 1,
                 emissive: _,
                 emissiveIntensity: M * 0.58,
                 polygonOffset: !0,
@@ -3755,9 +3750,6 @@ function Rn({
               })
             : t.jsx("meshPhysicalMaterial", {
                 color: E,
-                transparent: floorOpacity < 1,
-                opacity: floorOpacity,
-                depthWrite: floorOpacity === 1,
                 roughness: n ? (l ? 0.5 : 0.46) : 0.72,
                 metalness: n ? 0.02 : 0.015,
                 clearcoat: n ? (l ? 0.18 : 0.2) : 0,
@@ -3819,7 +3811,6 @@ function H({
   roughness: o = 0.72,
   presentation: n = !1,
 }) {
-  const opacity = L.useContext(FurnitureOpacity);
   const roundedGeometry = L.useMemo(
     () => n ? createStableRoundedBoxGeometry(s) : null,
     [n, s[0], s[1], s[2]],
@@ -3836,16 +3827,13 @@ function H({
           ? $(qe(r), "#eef5ff", 0.24)
           : qe(r),
     f = a
-      ? t.jsx("meshToonMaterial", { color: l, transparent: opacity < 1, opacity, depthWrite: opacity === 1 })
+      ? t.jsx("meshToonMaterial", { color: l })
       : t.jsx("meshPhysicalMaterial", {
           color: l,
           roughness: c ? 0.64 : n ? Math.min(o, 0.44) : o,
           metalness: c ? 0.006 : 0.018,
           clearcoat: c ? 0.08 : n ? 0.34 : 0.16,
           clearcoatRoughness: c ? 0.82 : n ? 0.56 : 0.82,
-          transparent: opacity < 1,
-          opacity,
-          depthWrite: opacity === 1,
         });
   if (n) {
     const h = dt(a, c);
@@ -3859,7 +3847,7 @@ function H({
         t.jsx(Y, {
           color: h.color,
           threshold: h.threshold,
-          opacity: h.opacity * opacity,
+          opacity: h.opacity,
           transparent: !0,
         }),
       ],
@@ -5717,7 +5705,7 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
 function ProceduralDeviceModel({ config: e, unavailable = false, running = false }) {
   const model = L.useRef(null);
   const { invalidate } = tt();
-  useRuntimeModelGlow(model, running && !unavailable, e);
+  useRuntimeModelGlow(model, running && !unavailable && !e.source?.shape?.startsWith('cinema_'), e);
   L.useLayoutEffect(() => {
     applyModelAvailability(model.current, unavailable);
     invalidate();
@@ -5735,6 +5723,7 @@ function ProceduralDeviceModel({ config: e, unavailable = false, running = false
       roughness: 0.28,
       metalness: 0.35,
     });
+  if (shape.startsWith('cinema_')) return t.jsx('group', { ref:model, position:[r.x,(e.elevation ?? 0)+r.y,r.z],scale:[i,i,i],children:shape==='cinema_projector'?t.jsx(CinemaProjector,{active:running&&!unavailable}):shape==='cinema_screen'?t.jsx('group',{position:[0,-.94,0],children:t.jsx(CinemaScreen,{item:{width:s.width,height:s.height},active:running&&!unavailable})}):t.jsx(CinemaSpeaker,{item:s,active:running&&!unavailable}) });
   return t.jsxs("group", {
     ref: model,
     position: [r.x, (e.elevation ?? 0) + r.y, r.z],
@@ -8405,6 +8394,7 @@ const ii = L.memo(function ({
       children: [
         F &&
           !O &&
+          !configuredModel?.source?.shape?.startsWith('cinema_') &&
           !C.startsWith("cover.") &&
           t.jsx("pointLight", {
             color: i === "lighting" ? "#ffd08a" : _,
@@ -8417,7 +8407,7 @@ const ii = L.memo(function ({
                 config: configuredModel,
                 motionEntity: r,
                 unavailable: m,
-                running: washerRuntime?.running ?? false,
+                running: configuredModel.source?.shape?.startsWith('cinema_') ? h === 'on' && !m : washerRuntime?.running ?? false,
                 runtime: washerRuntime
                   ? {
                       ...washerRuntime,
@@ -9041,8 +9031,76 @@ function ToiletFixture({ item, theme }) {
 }
 
 function ci(props) {
-  const style = L.useContext(HomeStyleOverrides);
-  return t.jsx(FurnitureOpacity.Provider, { value: props.presentation ? style?.furnitureOpacity ?? 1 : 1, children: t.jsx(Furniture, props) });
+  return t.jsx(Furniture, props);
+}
+function useCinemaMotion(active, speed = 2) {
+  const progress = L.useRef(0);
+  const { invalidate } = tt();
+  L.useEffect(() => { invalidate(); }, [active, invalidate]);
+  re((_, delta) => {
+    const target = active ? 1 : 0;
+    const next = Xa.MathUtils.damp(progress.current, target, speed, Math.min(delta, 0.08));
+    progress.current = Math.abs(next - target) < 0.002 ? target : next;
+    if (progress.current !== target) invalidate();
+  });
+  return progress;
+}
+function CinemaProjector({ active }) {
+  const beam = L.useRef();
+  const lens = L.useRef();
+  const motion = useCinemaMotion(active, 3);
+  re(() => {
+    if (beam.current) { beam.current.visible = motion.current > 0.005; beam.current.material.opacity = motion.current * 0.065; }
+    if (lens.current) lens.current.emissiveIntensity = motion.current * 2.2;
+  });
+  return t.jsxs("group", { children: [
+    t.jsx(H, { position: [0, 0.08, 0.2], size: [0.28, 0.18, 0.04], color: "#d9d5cc", roughness: 0.48 }),
+    t.jsx(H, { position: [0, 0.08, 0], size: [0.36, 0.15, 0.36], color: "#eeeae1", roughness: 0.38 }),
+    t.jsx(H, { position: [0, 0.01, -0.185], size: [0.31, 0.045, 0.02], color: "#d6d2c9", roughness: 0.3 }),
+    t.jsxs("mesh", { position: [0, 0.078, -0.194], rotation: [Math.PI / 2, 0, 0], children: [
+      t.jsx("cylinderGeometry", { args: [0.044, 0.044, 0.014, 32] }),
+      t.jsx("meshPhysicalMaterial", { ref: lens, color: "#a5b9c9", emissive: "#b9d9ff", emissiveIntensity: 0, roughness: 0.12, clearcoat: 0.9 }),
+    ] }),
+    t.jsxs("mesh", { ref: beam, position: [0, -0.28, -1.75], rotation: [Math.PI / 2, 0, 0], raycast: () => null, visible: false, children: [
+      t.jsx("cylinderGeometry", { args: [0.035, 0.64, 3.09, 32, 1, true] }),
+      t.jsx("meshBasicMaterial", { color: "#d6e9ff", transparent: true, opacity: 0, depthWrite: false, side: Xa.DoubleSide }),
+    ] }),
+    t.jsx("pointLight", { position: [0, 0.075, -0.23], color: "#c8e3ff", intensity: active ? 0.38 : 0, distance: 2.4 }),
+  ] });
+}
+function CinemaScreen({ item, active }) {
+  const sheet = L.useRef();
+  const sheen = L.useRef();
+  const motion = useCinemaMotion(active, 2.2);
+  const width = item.width;
+  const height = item.height;
+  re(() => {
+    if (sheet.current) { sheet.current.scale.y = Math.max(0.004, motion.current); sheet.current.visible = motion.current > 0.005; }
+    if (sheen.current) sheen.current.emissiveIntensity = motion.current * 0.19;
+  });
+  return t.jsxs("group", { children: [
+    t.jsx(H, { position: [0, 2.47, 0], size: [width + 0.14, 0.105, 0.12], color: "#e8e4da", roughness: 0.35 }),
+    t.jsx(H, { position: [0, 2.49, -0.066], size: [width + 0.08, 0.016, 0.014], color: "#c9c7bf", roughness: 0.27 }),
+    t.jsxs("group", { ref: sheet, position: [0, 2.42, -0.08], visible: false, children: [
+      t.jsxs("mesh", { position: [0, -height / 2, 0], raycast: () => null, children: [
+        t.jsx("planeGeometry", { args: [width, height] }),
+        t.jsx("meshPhysicalMaterial", { ref: sheen, color: "#f1f4f0", emissive: "#d6e9fa", emissiveIntensity: 0, roughness: 0.27, clearcoat: 0.65, side: Xa.DoubleSide }),
+      ] }),
+      t.jsx(H, { position: [0, -height, 0], size: [width + 0.055, 0.028, 0.035], color: "#d5d5cf", roughness: 0.32 }),
+    ] }),
+  ] });
+}
+function CinemaSpeaker({ item, active }) {
+  const subwoofer = item.width > 0.25;
+  return t.jsxs("group", { children: [
+    t.jsx(H, { position: [0, item.height / 2, 0], size: [item.width, item.height, item.depth], color: "#e8e3d9", roughness: 0.48 }),
+    t.jsx(H, { position: [0, item.height / 2, -item.depth / 2 - 0.008], size: [item.width * 0.84, item.height * 0.82, 0.012], color: "#c3c8c4", roughness: 0.82 }),
+    t.jsxs("mesh", { position: [0, item.height * (subwoofer ? 0.53 : 0.58), -item.depth / 2 - 0.018], rotation: [Math.PI / 2, 0, 0], children: [
+      t.jsx("cylinderGeometry", { args: [item.width * (subwoofer ? 0.32 : 0.22), item.width * (subwoofer ? 0.32 : 0.22), 0.01, 32] }),
+      t.jsx("meshStandardMaterial", { color: active ? "#849aa6" : "#a4aaa8", roughness: 0.72 }),
+    ] }),
+    t.jsx(H, { position: [0, item.height - 0.023, -item.depth / 2 - 0.014], size: [0.026, 0.008, 0.008], color: active ? "#94c8e9" : "#aab5b4", roughness: 0.25 }),
+  ] });
 }
 function Furniture({
   item: e,
@@ -9050,8 +9108,8 @@ function Furniture({
   presentation: r,
   presentationMode: o,
   baseElevation,
+  cinemaActive = false,
 }) {
-  const furnitureOpacity = L.useContext(FurnitureOpacity);
   const n = ue(),
     i = n === "cartoon" && r,
     a = n === "cream" && r,
@@ -9102,6 +9160,9 @@ function Furniture({
     scale: [1, 1, 1],
     children: t.jsxs(Gt, {
       children: [
+        e.kind === "cinema_projector" && t.jsx(CinemaProjector, { active: cinemaActive }),
+        e.kind === "cinema_screen" && t.jsx(CinemaScreen, { item: e, active: cinemaActive }),
+        e.kind === "cinema_speaker" && t.jsx(CinemaSpeaker, { item: e, active: cinemaActive }),
         e.customModel?.source &&
           t.jsx(ConfiguredDeviceModel, { config: e.customModel }),
         e.kind === "sofa" &&
@@ -9659,9 +9720,6 @@ function Furniture({
                         }),
                         t.jsx("meshStandardMaterial", {
                           color: cabinetBodyColor,
-                          transparent: furnitureOpacity < 1,
-                          opacity: furnitureOpacity,
-                          depthWrite: furnitureOpacity === 1,
                           roughness: a ? 0.64 : r ? 0.44 : 0.58,
                           metalness: a ? 0.006 : 0.018,
                           side: Xa.DoubleSide,
@@ -10559,6 +10617,7 @@ function fi({
   walkthrough = false,
   project: s,
   entities: r,
+  cinemaPreview = false,
   wallMode: o,
   showDevices: n,
   showLabels: i,
@@ -10740,6 +10799,7 @@ function fi({
             presentation: l,
             presentationMode: f,
             baseElevation: verticalElevations.get(`furniture:${S.id}`),
+            cinemaActive: S.entityId && r?.[S.entityId] ? r[S.entityId].state === "on" : cinemaPreview,
           },
           S.id,
         ),
@@ -10811,6 +10871,7 @@ function pi({
   roofOcclusion = true,
   walkthrough = false,
   entities: s,
+  cinemaPreview = false,
   floorId: r,
   showAllFloors: o,
   wallMode: n,
@@ -10896,6 +10957,7 @@ function pi({
                       onRoomSecuritySelect: k,
                       onEntitySelect: G,
                       onDeviceSelect: C,
+                      cinemaPreview,
                       hoveredRoomKey: g,
                       setHoveredRoomKey: _,
                     },
@@ -11504,6 +11566,7 @@ function _a({
   onWalkNotice,
   onWalkLocked,
   entities: s,
+  cinemaPreview = false,
   floorId: r,
   showAllFloors: o = !1,
   cameraPreset: n = "iso",
@@ -11718,6 +11781,7 @@ function _a({
           roofOcclusion: lightSettings.roofOcclusion,
           walkthrough: walkthrough.mode === 'walking',
           entities: s,
+          cinemaPreview,
           floorId: r,
           showAllFloors: o,
           wallMode: i,

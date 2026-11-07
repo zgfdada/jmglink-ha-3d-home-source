@@ -23,6 +23,10 @@ test("平台文档与脚本在服务内可读，ZIP 包含当前澄清和播报�
   for (const name of skillNames) {
     const files = unzipLocal(await createSkillArchive(name));
     assert.match(files.get(name + "/SKILL.md"), /^---/);
+    if(name === 'ha3d-mcp-workflow'){
+      assert.deepEqual([...files.keys()],[name+'/SKILL.md']);
+      continue;
+    }
     if(name === 'ha3d-sidebar-widget-design'){
       const {normalizeSidebar,defaultSidebar}=await import('../packages/schema/src/sidebar.js');
       const example=JSON.parse(files.get(name+'/assets/sidebar-example.json'));
