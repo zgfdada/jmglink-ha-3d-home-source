@@ -131,3 +131,16 @@ GitHub源码CI最长成功基线提高为2分16秒，发布保留3分13秒，成
 [源码CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42335212867) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42335469617) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.42)
 
 推广页仅做本地同版交付，保留既有脱敏快照与隔离适配层；未替换220线上容器。知识库同步仅在本机，不上传WeKnora。本次未升级真实HA主机，App能力由配置、生产镜像及隔离回归验证。
+
+
+## .43 正式发布验收与耗时
+
+源码提交：`be77f78b54271c4bdc4e2ef11a2487edf3258578`。453项业务测试、18项安装发布检查通过；AMD64／ARM64镜像、Ingress及匿名拉取验收成功。公开安装库22文件逐项哈希核对，当前权限文档已消除旧通配符描述；版本标签未改写。
+
+北京时间2026-11-07：源码CI #42376851798，21:24:56–21:26:22，1分26秒；正式发布 #42377114685，首个job 21:28:31至最后job 21:31:17，2分46秒。成功流程区间累计4分12秒，端到端墙钟6分21秒；发布内部并行job执行累计4分02秒，无失败、取消或重跑。GitHub最长成功基线保留CI 2分16秒、正式发布3分13秒、关联墙钟7分23秒；首次终态查询至少3分钟／4分钟，仍运行再至少10分钟。旧Gitea基线独立保留。
+
+镜像索引：`sha256:bc16d0af0c63f17fd0ca65e141697559bfe3d656ff2c6e687c4f826934bb1e9f`，版本与latest一致。
+
+[源码CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42376851798) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42377114685) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.43)
+
+推广页完成同版前端、GPL源码、Skill下载、版本化安装内容及既有脱敏双端演示的本地交付；线上220容器未替换。知识库仅本地同步，不上传WeKnora；未升级真实HA主机，未发布个人户型或联动流程。
