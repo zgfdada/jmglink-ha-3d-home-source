@@ -293,7 +293,7 @@
         .map((x) => x.trim())
         .filter(Boolean);
     async function api(path, body) {
-      const r = await fetch("/api/mcp-admin/" + path, {
+      const r = await fetch("./api/mcp-admin/" + path, {
         method: body === undefined ? "GET" : "POST",
         headers: { "Content-Type": "application/json" },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),

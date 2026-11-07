@@ -925,3 +925,14 @@ test("MCP共享连接地址支持保存、持久化、校验和恢复部署默�
  state=(await app.inject({method:"GET",url:"/api/mcp-admin/state"})).json();
  assert.equal(state.endpointOverride,"");assert.notEqual(state.endpoint,"https://example.invalid:18112/mcp");
 });
+
+test("MCP管理页API保留HA Ingress前缀，Docker根路径同样可用",async t=>{
+ const {app}=await setup(t,true);
+ const html=(await app.inject({method:"GET",url:"/mcp-admin"})).body;
+ assert.ok(html.includes('fetch("./api/mcp-admin/" + path'));
+ assert.ok(!html.includes('fetch("/api/mcp-admin/'));
+ for(const page of ["http://localhost:8101/mcp-admin","http://ha.invalid/api/hassio_ingress/session/mcp-admin"]){
+  const resolved=new URL("./api/mcp-admin/state",page);
+  assert.equal(resolved.pathname,page.includes("hassio_ingress")?"/api/hassio_ingress/session/api/mcp-admin/state":"/api/mcp-admin/state");
+ }
+});

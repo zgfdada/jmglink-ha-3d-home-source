@@ -2,7 +2,7 @@
 
 ## MCP 服务与管理
 
-v0.1.5-custom.41 将 MCP 实现纳入正式构建。apps/server/src/mcp 使用官方 SDK；私有配置／权限／计划存储复用 ProjectStore、SidebarStore 和 writeGate。默认 sharedAccess 共用身份，免密连接、免人工批准，保留同源、资源、修订、参数和幂等校验；旧独立客户端模式仅供兼容测试。
+v0.1.5-custom.42 将 MCP 实现纳入正式构建。apps/server/src/mcp 使用官方 SDK；私有配置／权限／计划存储复用 ProjectStore、SidebarStore 和 writeGate。默认 sharedAccess 共用身份，免密连接、免人工批准，保留同源、资源、修订、参数和幂等校验；旧独立客户端模式仅供兼容测试。
 
 浮窗检测同站点管理状态，不请求任意保存 URL。publicEndpoint 通过管理接口串行持久化，空值恢复默认，不修改监听器。Docker监听和映射由环境配置控制。Node-RED Basic／Bearer凭据加密，不回显。可信代码不是安全沙箱。
 
@@ -792,9 +792,9 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 
 星点在 OrbitStarfield 挂载时一次生成随机属性，普通状态更新不重新布局；GPU 着色器处理随机闪烁及微量漂移，并响应 reduced-motion。视频复核后不再添加 X/Z 楼层偏移，各层按原位置对齐，仅 Y 方向分层过渡，不改项目坐标。楼板自发光增强，边缘不透明度提高至 0.95、渐隐柔光提高至 0.68，不引入场景点光源。
 
-旋转视频复核：保持 Y-up，presentationOrbitLimits 锁定主页单层极角 48°、总览极角 62°，方位角不受限；presentationCameraPosition 与轨道约束共用极角，主页取景偏移通过 setViewOffset 调整镜头投影，保持轨道目标位于户型中心。编辑模式／top／front 保留原轨道限制。wallTintBlend 在 opacity=1、编辑或漫游时为 0，避免覆盖原墙面色与材质；透明度前 20% 平滑渐入乳白。回归使用真实 Three.js OrbitControls 验证 360° 旋转、固定俯角及取景可达。
+当前主页保持Y-up，presentationOrbitLimits允许手动俯仰和方位旋转；初始取景角度不等于锁定角度。presentationCameraPosition与轨道范围共同保证取景可达，setViewOffset仅调整镜头投影。编辑模式／top／front保留各自轨道范围。wallTintBlend 在 opacity=1、编辑或漫游时为 0，避免覆盖原墙面色与材质；透明度前 20% 平滑渐入乳白。回归使用真实Three.js OrbitControls验证旋转、手动俯仰及取景可达。
 
-展示模式保留固定俯角与 zoomToCursor=false，开启 OrbitControls 原生右键平移，交互期间允许 target 改变；取消右键投影位移监听。恢复自动旋转时 yi 通过 anchorOrbitTarget 同步平移相机和 target，将轴心归回 frame.target，保持相对观察方向和距离，并取消未完成的取景动画。侧栏构图继续使用 applyOrbitProjection/setViewOffset。
+展示模式允许手动俯仰，zoomToCursor=false，开启 OrbitControls 原生右键平移，交互期间允许 target 改变；取消右键投影位移监听。恢复自动旋转时 yi 通过 anchorOrbitTarget 同步平移相机和 target，将轴心归回 frame.target，保持相对观察方向和距离，并取消未完成的取景动画。侧栏构图继续使用 applyOrbitProjection/setViewOffset。
 
 后续恢复主页手动俯仰。48°／62° 只用于默认取景，OrbitControls 使用通用楼层角度范围，并在用户开始拖动时取消取景动画。
 

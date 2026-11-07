@@ -46,8 +46,8 @@ export function McpConnectionGuide({onClose}) {
   {state.endpoint && <div className="home-mcp-address"><label>MCP 连接地址<input type="url" aria-label="MCP 连接地址" value={address} onChange={event=>setAddress(event.target.value)} placeholder="https://主机或域名:端口/mcp" /></label><div><button disabled={saving||state.kind==="checking"} onClick={()=>saveAddress()}>保存地址</button><button disabled={saving||state.kind==="checking"} onClick={()=>saveAddress(true)}>恢复默认</button></div><small>此处保存所有客户端使用的连接地址，不修改实际监听端口、Docker 映射或代理。端口被占用时须先修改部署配置再重启服务。</small>{addressNotice && <p role="status">{addressNotice}</p>}</div>}
   {state.kind!=="checking" && <>
    {["ready","disabled","auth"].includes(state.kind) && <a className="home-mcp-manage" href="./mcp-admin" target="_blank" rel="noopener">打开连接与权限管理 ↗</a>}
-   <p>首次使用：部署支持 MCP 的服务，配置监听端口，并将容器端口映射到宿主机。管理页用于配置连接和权限。</p>
-   <ol><li>确认启动配置包含 HA3D_MCP_ENABLED=true。</li><li>确认 MCP 监听端口、Docker 映射与客户端连接地址一致。部署时可设置 HA3D_MCP_PUBLIC_PORT（宿主机端口）和 HA3D_MCP_PORT（监听端口），再重新创建容器；无需固定使用 8112。</li><li>接口不存在时检查服务版本和反向代理路由；无法连接时检查服务状态、地址和端口。</li><li>服务关闭时进入管理页启用；需要认证时按管理页提示操作。</li></ol>
+   <p>MCP随3DHome的App／Docker镜像安装和更新。首次使用需启用服务并映射一个可用端口，管理页用于配置连接和权限。</p>
+   <ol><li>Home Assistant App：配置页启用MCP，网络页映射8102/tcp，对外端口填写实际映射值，然后重启App。Docker：设置HA3D_MCP_ENABLED=true。</li><li>确认 MCP 监听端口、Docker 映射与客户端连接地址一致。部署时可设置 HA3D_MCP_PUBLIC_PORT（宿主机端口）和 HA3D_MCP_PORT（监听端口），再重新创建容器；无需固定使用 8112。</li><li>接口不存在时检查服务版本和反向代理路由；无法连接时检查服务状态、地址和端口。</li><li>服务关闭时进入管理页启用；需要认证时按管理页提示操作。</li></ol>
    <small>此检测确认网页管理接口状态，不能证明客户端到独立 MCP 端口的网络连通性；连接失败也不能直接判定为未部署。</small>
    <button onClick={check}>重新检测</button>
   </>}
