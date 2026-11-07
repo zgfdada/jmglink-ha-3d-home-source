@@ -6,7 +6,9 @@ MCP 的 HA 实体资源范围支持显式 `*`，表示全部当前及后续实�
 
 ## 影院模型与实体状态
 
-builtinModelTemplates 提供四个影院资源模板，程序化 shape 使用 cinema_projector、cinema_screen、cinema_speaker；预览器和主场景分别提供模型细节，schema 保存时保留专用形状与尺寸。场景设备按绑定实体 on/off 驱动幕布伸缩和投影柔光，禁用其通用运行流光以避免包围盒光框。材质透明度仅墙体可调，设备离线仅调整颜色与发光，保留原玻璃材质属性。
+初始模型仅在旧目录迁移或新实例初始化时写入持久模型目录，运行时不再叠加只读内置模型列表；旧 builtin.* ID 保留兼容，但 builtin 标志统一为 false。modelCatalogVersion:1 随备份导出，标记完整模型清单，防止删除资源在重启或恢复时复生。model-catalog.js 对完整实例执行内容指纹去重：程序化参数或上传文件 SHA256 加完整渲染配置；优先保留在用 ID，重写模型引用及模型文件 URL。无法验证文件内容的资源不合并；同 ID 配置或文件冲突拒绝恢复，沿用恢复前备份及回滚流程。
+
+初始资源提供四个影院模型，程序化 shape 使用 cinema_projector、cinema_screen、cinema_speaker；预览器和主场景分别提供模型细节，schema 保存时保留专用形状与尺寸。场景设备按绑定实体 on/off 驱动幕布伸缩和投影柔光，禁用其通用运行流光以避免包围盒光框。材质透明度仅墙体可调，设备离线仅调整颜色与发光，保留原玻璃材质属性。
 
 情景控件可同时显式绑定 scene 与 Node-RED button 实体，调用各自已配置服务；无状态按钮 unknown 可用而 unavailable 禁用。个人楼层配置、实体与 Node-RED 流程属于实例数据，不编入发布镜像。
 
@@ -846,3 +848,5 @@ POST /api/mcp-admin/endpoint 复用管理权限、串行持久化及审计，保
 
 
 App入口addon-entry.js调用addonMcpEnvironment，将mcp_enabled／mcp_public_port转换为监听配置；内部固定8102，私有目录/config/mcp-private位于/data之外。Supervisor网络映射与公开地址选项需一致，更新镜像保留挂载和共用权限。旧App配置缺省关闭。正式镜像冒烟启用MCP并验证管理接口与独立health，覆盖AMD64／ARM64打包后的代码。
+
+本次模型目录回归见 `jmglink-ha-3d-home/source/tests/model-catalog.test.mjs`。本地 HAOS 测试无需正式发布，见 [HAOS 本地测试加载项](docs/HAOS本地测试加载项.md)。

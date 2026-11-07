@@ -1,3 +1,4 @@
+import { deduplicateInstanceModels, rewriteImportedModelUrls } from "../device-platform/model-catalog.js";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, rename, rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
@@ -214,11 +215,19 @@ export async function restoreInstance(
     previous = previousBackupPath
       ? null
       : await exportInstance(projects, platform, sidebars);
+  let modelDeduplication;
   try {
+    if (!takeOwnership) {
+      const { assets = [], ...metadata } = next.devicePlatform;
+      next.devicePlatform = { ...structuredClone(metadata), assets: assets.map(asset => ({...asset})) };
+      next.deviceHistory = structuredClone(next.deviceHistory);
+    }
+    modelDeduplication = deduplicateInstanceModels(next);
     await platform.importBundle(next.devicePlatform, {
       persist: false,
       releaseAssets: takeOwnership,
     });
+    rewriteImportedModelUrls(next, platform.getModelTemplates());
     for (const key of ["projectReleases", "projectDrafts", "projectTests"])
       platform[key] = takeOwnership
         ? next.deviceHistory[key]
@@ -252,6 +261,7 @@ export async function restoreInstance(
   return {
     projects: next.projects.length,
     currentProjectId: next.currentProjectId,
+    modelDeduplication,
   };
 }
 export async function registerInstanceBackup(

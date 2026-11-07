@@ -1,3 +1,4 @@
+import { assertModelId } from "../device-platform/model-catalog.js";
 import { isDeepStrictEqual } from "node:util";
 import { normalizeModelTemplate } from "../device-platform/devicePlatformSchema.js";
 import { randomUUID } from "node:crypto";
@@ -349,11 +350,11 @@ export class McpEngine {
     allow(client, "home3d.publish", "projects", projectId);
     if (
       !model?.id ||
-      model.id.startsWith("builtin.") ||
       (model.source?.url &&
         !model.source.url.startsWith("./api/device-platform/model-files/"))
     )
-      throw fail("RESOURCE_DENIED", "不修改内置模型或远程模型URL");
+      throw fail("RESOURCE_DENIED", "不允许远程模型URL或服务器路径");
+    try { assertModelId(model.id); } catch { throw fail("RESOURCE_DENIED", "模型ID无效"); }
     const before = this.platform
       .getModelTemplates()
       .find((m) => m.id === model.id);

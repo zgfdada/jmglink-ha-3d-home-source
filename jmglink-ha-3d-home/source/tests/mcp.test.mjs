@@ -936,3 +936,13 @@ test("MCP管理页API保留HA Ingress前缀，Docker根路径同样可用",async
   assert.equal(resolved.pathname,page.includes("hassio_ingress")?"/api/hassio_ingress/session/api/mcp-admin/state":"/api/mcp-admin/state");
  }
 });
+
+ test("统一模型目录允许MCP编辑旧模型ID，仍拒绝未知ID及远程URL",async(t)=>{
+  const f=await setup(t);
+  const model={id:"builtin.cinema.projector",name:"兼容投影仪",source:{type:"procedural",shape:"cinema_projector"}};
+  f.models.push(model);
+  const plan=await f.service.engine.planFullModel(f.client,{projectId:f.current.id,model:{...model,color:"#ffffff"}});
+  assert.ok(plan.id);
+  await assert.rejects(f.service.engine.planFullModel(f.client,{projectId:f.current.id,model:{...model,id:"builtin.unknown"}}),/ID/);
+  await assert.rejects(f.service.engine.planFullModel(f.client,{projectId:f.current.id,model:{...model,source:{type:"upload",url:"https:\/\/example.com/a.glb"}}}),/远程/);
+ });

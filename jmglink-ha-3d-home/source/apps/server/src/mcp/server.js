@@ -224,7 +224,7 @@ export function createProtocol(engine, client) {
   );
   tool(
     "home3d.draft.model_full",
-    "完整业务管理：编辑非内置模型库配置；不允许任意远程URL或服务器路径",
+    "完整业务管理：编辑本地模型库配置（兼容旧模型ID）；不允许任意远程URL或服务器路径",
     object({ projectId: id, model: z.record(z.unknown()) }),
     (args) => engine.planFullModel(client, args),
   );

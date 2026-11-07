@@ -1,3 +1,4 @@
+import { assertModelId, materializeModels } from "./model-catalog.js";
 import {partMotionIssues} from "../../../../packages/schema/src/part-motion.js";
 import {entityOnlyDeviceId} from "../../../../packages/schema/src/entity-only-device.js";
 import {normalizeMotionLogic,normalizeMotionShader} from '../../../../packages/schema/src/motion-code.js';
@@ -45,6 +46,7 @@ const FILES = {
   projectReleases: "project-releases.json",
   projectDrafts: "project-release-drafts.json",
   projectTests: "project-test-summaries.json",
+  modelCatalog: "model-catalog-version.json",
 };
 
 const CUSTOM_ID_PATTERN = /^custom\.[a-z0-9][a-z0-9._-]{1,120}$/;
@@ -308,6 +310,7 @@ export class DevicePlatformStore {
           return [];
         }
       });
+    const catalogVersion = await readCollection(path.join(resolved, FILES.modelCatalog));
     const starterModels = starterCustomModelTemplates();
     const hasStarterModels = rawModels.some((item) =>
       starterModels.some((starter) => starter.id === item?.id),
@@ -317,9 +320,9 @@ export class DevicePlatformStore {
         normalizeDeviceTemplate(item),
       ),
       bindings: safeLoad(rawBindings, normalizeDeviceBinding),
-      modelTemplates: safeLoad(
-        hasStarterModels ? rawModels : [...rawModels, ...starterModels],
-        (item) => normalizeModelTemplate(item),
+      modelTemplates: materializeModels(
+        safeLoad(catalogVersion.includes(1) || hasStarterModels ? rawModels : [...rawModels, ...starterModels], item => normalizeModelTemplate(item)),
+        rawSuppressed, !catalogVersion.includes(1),
       ),
       controlPanels: safeLoad(rawPanels, (item) =>
         normalizeControlPanelTemplate(item),
@@ -349,12 +352,7 @@ export class DevicePlatformStore {
     );
   }
   getModelTemplates() {
-    return mergeBuiltins(
-      builtinModelTemplates(),
-      this.modelTemplates,
-      this.suppressedBuiltins,
-      "model",
-    );
+    return this.modelTemplates.filter(item => !this.suppressedBuiltins.has(`model:${item.id}`)).map(item => structuredClone(item));
   }
   getControlPanels() {
     return mergeBuiltins(
@@ -1276,7 +1274,7 @@ export class DevicePlatformStore {
   }
 
   async upsertModelTemplate(value, file) {
-    assertCustomId(value?.id);
+    assertModelId(value?.id);
     let sourceOverride;
     if (file?.dataUrl) {
       const { bytes, mimeType } = decodeDataUrl(file.dataUrl);
@@ -1359,12 +1357,13 @@ export class DevicePlatformStore {
     }
     const index = collection.findIndex((item) => item[key] === id);
     if (index < 0 && !builtin) return false;
-    const removed = builtin ?? collection.splice(index, 1)[0];
+    const removed = kind === "model" && index >= 0 ? collection.splice(index, 1)[0] : builtin ?? collection.splice(index, 1)[0];
     if (builtin) {
       this.suppressedBuiltins.add(`${kind}:${id}`);
       this.suppressedBuiltins = expandDeviceTemplateSuppressions(
         this.suppressedBuiltins,
       );
+      this.modelTemplates = this.modelTemplates.filter(item => !this.suppressedBuiltins.has(`model:${item.id}`));
     }
     if (referencingBindings.length) {
       if (kind === "device") {
@@ -1432,6 +1431,7 @@ export class DevicePlatformStore {
       exportedAt: new Date().toISOString(),
       global: true,
       deviceTemplates: this.deviceTemplates,
+      modelCatalogVersion: 1,
       modelTemplates: this.modelTemplates,
       controlPanels: this.controlPanels,
       ...(this.controlLibrary ? {controlLibrary: this.controlLibrary.export()} : {}),
@@ -1454,10 +1454,7 @@ export class DevicePlatformStore {
       assertCustomId(item.id);
       return normalizeDeviceTemplate(item);
     });
-    const models = (bundle.modelTemplates ?? []).map((item) => {
-      assertCustomId(item.id);
-      return normalizeModelTemplate(item);
-    });
+    const models = materializeModels(bundle.modelTemplates ?? [], bundle.suppressedBuiltinIds, bundle.modelCatalogVersion !== 1);
     const panels = (bundle.controlPanels ?? []).map((item) => {
       assertCustomId(item.id);
       return normalizeControlPanelTemplate(item);
@@ -1487,9 +1484,6 @@ export class DevicePlatformStore {
     );
     const modelIds = new Set(
       [
-        ...builtinModelTemplates().filter(
-          (item) => !suppressedBuiltins.has(`model:${item.id}`),
-        ),
         ...models,
       ].map((item) => item.id),
     );
@@ -1548,6 +1542,7 @@ export class DevicePlatformStore {
       .catch(() => {})
       .then(() =>
         Promise.all([
+          atomicWrite(path.join(this.dataDir, FILES.modelCatalog), [1]),
           atomicWrite(
             path.join(this.dataDir, FILES.deviceTemplates),
             this.deviceTemplates,
