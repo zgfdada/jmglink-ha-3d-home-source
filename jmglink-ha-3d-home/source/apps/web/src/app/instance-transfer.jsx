@@ -7,19 +7,22 @@ export default function InstanceTransfer({ onClose }) {
   async function request(method, body) {
     const response = await fetch("api/instance-backup", {
       method,
+      signal: AbortSignal.timeout(120_000),
       headers: { "Content-Type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    const value = await response.json();
-    if (!response.ok) throw Error(value.message || "导入导出失败");
-    return value;
+    if (!response.ok) {
+      const value = await response.json().catch(() => ({}));
+      throw Error(value.message || value.error || `导入导出失败（HTTP ${response.status}）`);
+    }
+    return method === 'GET' ? response.blob() : response.json();
   }
   async function download() {
     setBusy(true);
     try {
       const value = await request("GET");
       const url = URL.createObjectURL(
-        new Blob([JSON.stringify(value)], { type: "application/json" }),
+        value,
       );
       const a = document.createElement("a");
       a.href = url;

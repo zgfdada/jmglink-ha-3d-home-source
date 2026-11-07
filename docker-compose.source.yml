@@ -40,7 +40,7 @@ services:
       - ./docker-runtime-source/assets:/assets
       - ./docker-runtime-source/mcp-private:/mcp-private
     environment:
-      NODE_OPTIONS: --max-old-space-size=${HA3D_NODE_MAX_OLD_SPACE_MB:-384}
+      NODE_OPTIONS: --max-old-space-size=${HA3D_NODE_MAX_OLD_SPACE_MB:-192}
       HA3D_MCP_ENABLED: "true"
       HA3D_MCP_HOST: "0.0.0.0"
       HA3D_MCP_PORT: "${HA3D_MCP_PORT:-8102}"
@@ -53,6 +53,11 @@ services:
       HA3D_BUILD_VERSION: reconstructed-source
       HA3D_ENABLE_DEV_ENTITIES: "true"
       HA3D_RESOURCE_LOG_INTERVAL_MINUTES: ${HA3D_RESOURCE_LOG_INTERVAL_MINUTES:-5}
+    # Exercise the same small Node heap used on the 2 GiB HAOS host.
+    # Keep native buffers, MCP and filesystem cache separate from the heap budget.
+    mem_limit: ${HA3D_MEMORY_LIMIT:-384m}
+    memswap_limit: ${HA3D_MEMORY_SWAP_LIMIT:-384m}
+    cpus: ${HA3D_CPU_LIMIT:-1.0}
     healthcheck:
       test:
         - CMD

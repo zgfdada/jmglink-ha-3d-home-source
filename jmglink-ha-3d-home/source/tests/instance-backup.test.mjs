@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readdir, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { request } from "node:http";
 import path from "node:path";
 import Fastify from "fastify";
 import { ProjectStore } from "../apps/server/src/projects/ProjectStore.js";
@@ -39,6 +40,112 @@ test("sidebar fragments retain code and remap conflicting widget references", ()
     original,
   );
   assert.throws(() => importSidebarPart(original, {}));
+});
+
+test("instance import keeps JSON limits and errors isolated, rejects a concurrent upload and recovers after disconnect", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "ha3d-instance-http-"));
+  const app = Fastify({ bodyLimit: 1024 });
+  let slowStarted;
+  const started = new Promise((resolve) => {
+    slowStarted = resolve;
+  });
+  app.addHook("preParsing", async (req, reply, payload) => {
+    if (req.headers["x-test-slow"]) slowStarted();
+    return payload;
+  });
+  app.post("/ordinary", async (req) => req.body);
+  try {
+    const state = await stores(dir);
+    await registerInstanceBackup(app, { ...state, dataDir: dir });
+    const backup = await exportInstance(
+      state.projects,
+      state.platform,
+      state.sidebars,
+    );
+    const payload = { confirm: true, backup };
+    assert.equal(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/ordinary",
+          payload: { text: "x".repeat(2048) },
+        })
+      ).statusCode,
+      413,
+    );
+    assert.equal(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/instance-backup",
+          headers: { "content-type": "application/json" },
+          payload: '{"confirm":',
+        })
+      ).statusCode,
+      400,
+    );
+    assert.equal(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/instance-backup",
+          payload,
+        })
+      ).statusCode,
+      200,
+    );
+    const update = state.sidebars.replaceState.bind(state.sidebars);
+    let fail = true;
+    state.sidebars.replaceState = async (value) => {
+      if (fail) {
+        fail = false;
+        throw Error("disk failure after other stores changed");
+      }
+      return update(value);
+    };
+    const changed = structuredClone(payload);
+    changed.backup.projects[0].name = "Must not survive";
+    assert.equal(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/instance-backup",
+          payload: changed,
+        })
+      ).statusCode,
+      500,
+    );
+    assert.equal(state.projects.getProject().name, backup.projects[0].name);
+    await app.listen({ host: "127.0.0.1", port: 0 });
+    const base = `http://127.0.0.1:${app.server.address().port}`;
+    const slow = request(base + "/api/instance-backup", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-slow": "yes" },
+    });
+    slow.on("error", () => {});
+    slow.write('{"confirm":true,');
+    await started;
+    const response = await fetch(base + "/api/instance-backup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    assert.equal(response.status, 409);
+    await response.text();
+    await new Promise((resolve) => {
+      slow.once("close", resolve);
+      slow.destroy();
+    });
+    const retry = await fetch(base + "/api/instance-backup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    assert.equal(retry.status, 200, await retry.text());
+  } finally {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 async function stores(root) {
@@ -179,6 +286,16 @@ test("complete instance restores projects, floor drafts, published UI, models an
       (await app.inject("/api/instance-backup")).json().format,
       "ha3d-instance-backup",
     );
+    const streamed = (await app.inject("/api/instance-backup")).json();
+    assert.equal(
+      streamed.devicePlatform.assets[0].dataBase64,
+      glb.toString("base64"),
+    );
+    assert.deepEqual(
+      streamed.deviceHistory.projectDrafts,
+      snapshot.deviceHistory.projectDrafts,
+    );
+    assert.deepEqual(streamed.sidebars, b.sidebars.state);
     await app.close();
   } finally {
     await rm(dir, { recursive: true, force: true });

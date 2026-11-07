@@ -14,6 +14,9 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { createWriteStream } from 'node:fs';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import {
   capabilityDependencies,
   incompatibleDependencies,
@@ -139,15 +142,21 @@ async function readCollection(filePath) {
 async function atomicWrite(filePath, items) {
   await mkdir(path.dirname(filePath), { recursive: true });
   const temporaryPath = `${filePath}.tmp`;
-  await writeFile(
-    temporaryPath,
-    JSON.stringify(
-      { version: PLATFORM_VERSION, updatedAt: new Date().toISOString(), items },
-      null,
-      2,
-    ),
-    "utf8",
-  );
+  // History arrays can be larger than the entire heap budget of an HAOS App
+  // once stringified together. Serialize and flush one entry at a time.
+  try {
+    await pipeline(Readable.from((async function* () {
+      yield `{"version":${JSON.stringify(PLATFORM_VERSION)},"updatedAt":${JSON.stringify(new Date().toISOString())},"items":[`;
+      for (let index = 0; index < items.length; index++) {
+        if (index) yield ',';
+        yield JSON.stringify(items[index]);
+      }
+      yield ']}';
+    })()), createWriteStream(temporaryPath, { mode: 0o600 }));
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
   await copyFile(filePath, `${filePath}.bak`).catch(() => {});
   await rename(temporaryPath, filePath);
 }
@@ -1391,23 +1400,30 @@ export class DevicePlatformStore {
     return true;
   }
 
-  async exportBundle() {
+  async exportModelAsset(model) {
+    if (model.source?.type !== "upload" || !model.source.url) return null;
+    const name = decodeURIComponent(model.source.url.split("/").pop());
+    try {
+      const bytes = await readFile(
+        path.join(this.modelAssetDir, path.basename(name)),
+      );
+      return {
+        modelTemplateId: model.id,
+        fileName: model.source.fileName ?? name,
+        mimeType: model.source.mimeType,
+        dataBase64: bytes.toString("base64"),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async exportBundle({ includeAssets = true } = {}) {
     const assets = [];
-    for (const model of this.modelTemplates) {
-      if (model.source?.type !== "upload" || !model.source.url) continue;
-      const name = decodeURIComponent(model.source.url.split("/").pop());
-      try {
-        const bytes = await readFile(
-          path.join(this.modelAssetDir, path.basename(name)),
-        );
-        assets.push({
-          modelTemplateId: model.id,
-          fileName: model.source.fileName ?? name,
-          mimeType: model.source.mimeType,
-          dataBase64: bytes.toString("base64"),
-        });
-      } catch {
-        // Keep the configuration export useful even if a manually deleted model asset is missing.
+    if (includeAssets) {
+      for (const model of this.modelTemplates) {
+        const asset = await this.exportModelAsset(model);
+        if (asset) assets.push(asset);
       }
     }
     return {
@@ -1426,7 +1442,7 @@ export class DevicePlatformStore {
     };
   }
 
-  async importBundle(bundle) {
+  async importBundle(bundle, { persist = true, releaseAssets = false } = {}) {
     if (
       bundle?.format !== "ha3d-device-platform" ||
       bundle.version !== PLATFORM_VERSION
@@ -1500,6 +1516,9 @@ export class DevicePlatformStore {
       const model = models.find((item) => item.id === asset.modelTemplateId);
       if (!model || typeof asset.dataBase64 !== "string") continue;
       const bytes = Buffer.from(asset.dataBase64, "base64");
+      // The HTTP restore owns this request object. Once decoded, its Base64
+      // string must not stay live while histories and libraries are persisted.
+      if (releaseAssets) delete asset.dataBase64;
       const mimeType = asset.mimeType || model.source?.mimeType;
       const extension = safeModelExtension(asset.fileName, mimeType, bytes);
       if (bytes.length > MAX_MODEL_BYTES)
@@ -1518,7 +1537,7 @@ export class DevicePlatformStore {
     this.controlPanels = panels;
     this.bindings = activeBindings;
     this.suppressedBuiltins = suppressedBuiltins;
-    await this.persistAll();
+    if (persist) await this.persistAll();
     if(libraryPackage && this.controlLibrary) await this.controlLibrary.restore(libraryPackage);
     if(motionPackage && this.motionLibrary) await this.motionLibrary.restore(motionPackage);
     return this.snapshot();
