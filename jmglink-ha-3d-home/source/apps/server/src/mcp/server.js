@@ -15,6 +15,7 @@ import {
   hash,
 } from "./store.js";
 import { McpEngine } from "./engine.js";
+import { registerDeviceTools } from "./device-tools.js";
 const id = z.string().min(1).max(128),
   entity = z.string().regex(/^[a-z0-9_]+\.[a-z0-9_]+$/);
 const action = z
@@ -91,6 +92,7 @@ export function createProtocol(engine, client) {
     () => engine.capabilities(client),
     true,
   );
+  registerDeviceTools(tool, engine, client);
   tool(
     "home3d.projects.list",
     "列出授权项目，不包含秘密",
@@ -130,7 +132,6 @@ export function createProtocol(engine, client) {
       return {
         models: engine.platform
           .getModelTemplates()
-          .filter((m) => m.builtin && m.source?.type === "procedural")
           .map((m) => ({
             id: m.id,
             name: m.name,
@@ -142,7 +143,8 @@ export function createProtocol(engine, client) {
           shape: "box",
           dimensions: "width/depth/height in meters",
         },
-        sidebar: { mode: "passive HTML/CSS", scripts: false, actions: false },
+        sidebar: { mode: client.scopes.includes("home3d.code.write") ? "trusted HTML/CSS/JS" : "passive HTML/CSS", scripts: client.scopes.includes("home3d.code.write"), actions: client.scopes.includes("home3d.code.write") },
+        devicePlatform: { tools: "home3d.device.*, home3d.library.*, home3d.model.parts_get, home3d.transfer.*", sharedResourcesRequireAllProjects: true, modelReuseFirst: true, maxModelBytes: 15 * 1024 * 1024, transferChunkBytes: 256 * 1024 },
       };
     },
     true,
@@ -328,10 +330,19 @@ export function createProtocol(engine, client) {
         current = engine.sidebars.get(p.payload.key).revision;
       if (["nodered", "nodered-delete"].includes(p.kind))
         current = (await engine.nr.flows()).rev;
+      let deviceValid = true;
+      if (p.kind === "device-platform") {
+        current = engine.devicePlatform.revision();
+        deviceValid = await engine.devicePlatform.validate(client, p);
+      }
+      if (p.kind === "device-platform-restore") {
+        engine.devicePlatform.access(client, p.payload.projectId, true);
+        current = engine.devicePlatform.revision();
+      }
       return {
         ...result,
         baseCurrent: current,
-        valid: current === p.base && Date.parse(p.expiresAt) > Date.now(),
+        valid: deviceValid && current === p.base && Date.parse(p.expiresAt) > Date.now(),
       };
     },
     true,

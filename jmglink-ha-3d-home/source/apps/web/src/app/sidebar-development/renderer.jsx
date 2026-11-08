@@ -375,7 +375,7 @@ export function PublishedSidebar({
         <div className="sb-dock-surface" aria-hidden="true" title="拖动侧栏到屏幕边缘" />
         <SidebarPanel key={activeFloorId} floorId={activeFloorId} config={config} projectId={projectId} workspace="published" entities={entities} title={title} theme={theme} dock={dock} collapsed={collapsed} onToggleCollapse={() => toggleCollapsed()} onPageChange={() => {if(collapsed)toggleCollapsed(false);}} />
       </div>
-      {!collapsed && <a className="sb-skill-download" href="agent-skills/ha3d-mcp-workflow.zip" download>下载 Home3D MCP 使用 Skill v1.0</a>}
+      {!collapsed && <a className="sb-skill-download" href="agent-skills/ha3d-mcp-workflow.zip" download>下载 Home3D MCP 使用 Skill v1.1</a>}
     </aside>
 
     </>

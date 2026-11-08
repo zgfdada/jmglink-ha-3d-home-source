@@ -24,7 +24,12 @@ test("平台文档与脚本在服务内可读，ZIP 包含当前澄清和播报�
     const files = unzipLocal(await createSkillArchive(name));
     assert.match(files.get(name + "/SKILL.md"), /^---/);
     if(name === 'ha3d-mcp-workflow'){
-      assert.deepEqual([...files.keys()],[name+'/SKILL.md']);
+      assert.deepEqual([...files.keys()],[name+'/SKILL.md',name+'/references/mcp-tools.md']);
+      assert.match(files.get(name+'/SKILL.md'), /MCP 优先/);
+      assert.match(files.get(name+'/SKILL.md'), /version: "1\.1\.2"/);
+      assert.match(files.get(name+'/SKILL.md'), /成套设备由独立单件组合/);
+      assert.match(files.get(name+'/SKILL.md'), /必须在用户看过并确认上述视觉预览后/);
+      assert.match(files.get(name+'/references/mcp-tools.md'), /home3d\.schemas\.get/);
       continue;
     }
     if(name === 'ha3d-sidebar-widget-design'){

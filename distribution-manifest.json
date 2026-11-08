@@ -20,5 +20,6 @@
   "jmglink-ha-3d-home/CHANGELOG.md",
   "LICENSE",
   "NOTICE.md",
-  "docs/MCP本地部署与使用.md"
+  "docs/MCP本地部署与使用.md",
+  "docs/MCP设备开发接口.md"
 ]

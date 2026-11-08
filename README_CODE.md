@@ -1,6 +1,8 @@
 # 开发说明
 
-Home3D MCP 使用 Skill v1.0.0 维护于 `apps/server/resources/agent-skills/ha3d-mcp-workflow/SKILL.md`，`SkillPackages.js` 按 manifest 动态打包，侧栏链接指向 `agent-skills/ha3d-mcp-workflow.zip`。本包只包含使用规范，不包含运行配置或凭据。
+Home3D MCP 使用 Skill v1.1.2 维护于 `apps/server/resources/agent-skills/ha3d-mcp-workflow/SKILL.md`，`SkillPackages.js` 按 manifest 动态打包，包含操作速查；侧栏链接指向 `agent-skills/ha3d-mcp-workflow.zip`。本包只包含使用规范，不包含运行配置或凭据。
+
+MCP 设备平台接口位于 `src/mcp/device-platform.js`、`device-tools.js`，复用 DevicePlatformStore、MotionLibraryStore、ControlLibraryStore 的归一化和持久化；计划在隔离内存存储中执行相同业务校验，应用前复核全局内容修订及素材 SHA256，并通过 writeGate.exclusive 排除网页写入竞争。`model-parts.js` 静态检查普通自包含 GLB/GLTF，返回 path/raw name/label，不对蒙皮、扩展生成节点、多 primitive 或重名身份假装完成渲染确认。`transfers.js` 以服务端 UUID 和客户端归属管理限额分块文件，保持 MCP 单请求 2 MiB 上限；不接受文件路径或外部下载 URL。配置回滚检查后续修订，模型文件恢复依赖尚未过期的暂存快照。接口与边界见 [MCP设备开发接口](docs/MCP设备开发接口.md)。
 
 MCP 的 HA 实体资源范围支持显式 `*`，表示全部当前及后续实体；实体列表和服务资源校验统一识别该值，具体服务能力及 scope 校验仍生效。管理页保存共用权限后立即生效，不自动把既有实体白名单扩为全范围。
 
@@ -812,7 +814,7 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 
 主页的侧栏停靠、环境光手动值和风格预设由浏览器保存。侧栏通过手柄捕获指针，按拖拽终点最近的屏幕边缘停靠，并据停靠边调整相机的镜头构图留白。风格编辑使用主页场景做实时预览，完成后写入偏好，取消时回到已保存风格。墙体不透明度与环境光面板共用同一设置。侧边栏控件编辑继续使用现有实体绑定协议，复选卡片只改变实体列表的显示。
 
-默认自动旋转由 use-idle-rotation.js / idle-rotation.js 管理，根工作区捕获交互，窗口捕获指针释放／取消、焦点与可见性；单个可取消 8000ms 定时器按最后活动重新计时，焦点、按住指针、弹窗或不可见期间不计时。卸载清除监听和定时器，无后台轮询。HomeView 移除手动旋转状态与菜单，遮罩／漫游／详情作为 blocked 输入；主场景恢复首帧 delta 限制 50ms，避免停顿后角度跳变。idle-rotation.test.mjs 使用假时钟验证精确8秒、多指针、焦点、窗口失焦及清理。
+默认自动旋转由 use-idle-rotation.js / idle-rotation.js 管理，根工作区捕获交互，窗口捕获指针释放／取消、焦点与可见性；单个可取消 8000ms 定时器按最后活动重新计时，按住指针、弹窗或不可见期间不计时。焦点进入／离开只重置计时，不再把保留焦点当作持续操作；键盘与 input 事件重置计时，避免按钮保留焦点或焦点节点移除后永久暂停。页面隐藏时清除指针按住记录，避免漏收 pointerup 后无法恢复。卸载清除监听和定时器，无后台轮询。HomeView 移除手动旋转状态与菜单，遮罩／漫游／详情作为 blocked 输入；主场景恢复首帧 delta 限制 50ms，避免停顿后角度跳变。idle-rotation.test.mjs 使用假时钟验证精确8秒、多指针、焦点节点移除、持续输入、隐藏期间丢失指针释放及清理。
 
 拖拽停止响应补修：主页 OrbitControls enableDamping=false，直接清除每次交互增量，避免自动旋转转为 demand 渲染后继续消耗惯性；编辑器 enableDamping=true、dampingFactor=0.085。idle-rotation 策略不变。
 

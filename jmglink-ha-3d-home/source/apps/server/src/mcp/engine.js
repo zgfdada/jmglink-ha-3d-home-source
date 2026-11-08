@@ -2,6 +2,7 @@ import { assertModelId } from "../device-platform/model-catalog.js";
 import { isDeepStrictEqual } from "node:util";
 import { normalizeModelTemplate } from "../device-platform/devicePlatformSchema.js";
 import { randomUUID } from "node:crypto";
+import { McpDevicePlatform } from "./device-platform.js";
 import { validateFloorplanProject } from "@ha3d/schema";
 import { normalizeSidebar } from "../../../../packages/schema/src/sidebar.js";
 import { allow, fail, clean, hash } from "./store.js";
@@ -146,6 +147,7 @@ export class McpEngine {
     });
     this.haAdapter = new HaAdapter(store, ha, fetcher);
     this.nr = new NodeRedAdapter(store, fetcher);
+    this.devicePlatform = new McpDevicePlatform(this);
   }
   project(client, id, scope = "home3d.project.read") {
     allow(client, scope, "projects", id);
@@ -198,6 +200,10 @@ export class McpEngine {
           ? "trusted sidebar HTML/CSS/JS editing"
           : "passive sidebar draft/publish/restore",
         "procedural box model library",
+        "device projects, HA entity selection/capability mappings, appearance/part motions and control panels via versioned plans",
+        "paginated local model/motion/control libraries, references, chunked GLB/GLTF and device packages",
+        "model part paths/raw identities/SHA256 and condition simulation (not rendered visual verification)",
+        "simulation test records, release drafts and local device publishing (no real HA actions)",
         "HA light actions",
         "HA input_boolean creation",
         "HA disabled static time automation creation",
@@ -465,6 +471,7 @@ export class McpEngine {
   }
   async rollback(client, id) {
     const original = this.store.plan(id, client);
+    if (original.kind === "device-platform") return this.devicePlatform.rollback(client, original);
     if (
       original.status !== "applied" ||
       !["project", "project-full", "sidebar"].includes(original.kind)
@@ -532,7 +539,7 @@ export class McpEngine {
       });
       await this.store.persist();
       try {
-        p.result = await this.writeGate.shared(() => this.execute(client, p));
+        p.result = await this.writeGate[p.kind.startsWith("device-platform") ? "exclusive" : "shared"](() => this.execute(client, p));
         p.status = "applied";
         await this.store.audit({
           kind: "apply.finished",
@@ -564,6 +571,8 @@ export class McpEngine {
   }
   async execute(client, p) {
     const x = p.payload;
+    if (p.kind === "device-platform") return this.devicePlatform.execute(client, p);
+    if (p.kind === "device-platform-restore") return this.devicePlatform.restore(client, p);
     if (p.kind === "project-create") {
       allow(client, "home3d.project.replace", "projects", "*");
       if (x.sourceProjectId) this.project(client, x.sourceProjectId);

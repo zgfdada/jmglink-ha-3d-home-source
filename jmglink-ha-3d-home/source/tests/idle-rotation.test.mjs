@@ -13,12 +13,12 @@ test('默认旋转，任何新活动重新计算完整8秒，恢复只触发一�
  f.policy.activity();f.advance(7999);assert.equal(f.running,false);f.advance(1);assert.equal(f.running,true);
  f.advance(30000);assert.deepEqual(f.changes,[false,true]);assert.equal(f.pending,0);
 });
-test('按住指针、输入焦点、弹窗或隐藏页面时不得恢复，释放后等待8秒',()=>{
+test('按住指针、弹窗或隐藏页面时不得恢复，释放后等待8秒',()=>{
  const f=fixture(),p=f.policy;
  p.pointerDown(1);p.pointerDown(2);f.advance(20000);assert.equal(f.running,false);
  p.pointerUp(1);f.advance(20000);assert.equal(f.running,false);
  p.pointerUp(2);f.advance(8000);assert.equal(f.running,true);
- for(const setter of ['setFocused','setBlocked','setHidden']){
+ for(const setter of ['setBlocked','setHidden']){
   p[setter](true);f.advance(30000);assert.equal(f.running,false);assert.equal(f.pending,0);
   p[setter](false);f.advance(7999);assert.equal(f.running,false);f.advance(1);assert.equal(f.running,true);
  }
@@ -29,11 +29,38 @@ test('页面绑定处理轮滚、焦点转移、窗口外取消、隐藏及清�
  root.contains=node=>node===child;doc.hidden=false;doc.activeElement=null;
  const f=fixture(),cleanup=bindIdleRotation(root,f.policy,owner,doc);
  root.dispatchEvent(event('wheel'));assert.equal(f.running,false);f.advance(8000);assert.equal(f.running,true);
- root.dispatchEvent(event('focusin'));root.dispatchEvent(event('focusout',{relatedTarget:child}));f.advance(9000);assert.equal(f.running,false);
+ root.dispatchEvent(event('focusin'));root.dispatchEvent(event('focusout',{relatedTarget:child}));f.advance(7999);assert.equal(f.running,false);f.advance(1);assert.equal(f.running,true);
  root.dispatchEvent(event('focusout',{relatedTarget:null}));f.advance(8000);assert.equal(f.running,true);
  root.dispatchEvent(event('pointerdown',{pointerId:3}));owner.dispatchEvent(event('pointercancel',{pointerId:3}));f.advance(8000);assert.equal(f.running,true);
  doc.hidden=true;doc.dispatchEvent(event('visibilitychange'));f.advance(10000);assert.equal(f.running,false);
  doc.hidden=false;doc.dispatchEvent(event('visibilitychange'));f.advance(8000);assert.equal(f.running,true);
  root.dispatchEvent(event('pointerdown',{pointerId:4}));owner.dispatchEvent(event('blur'));f.advance(8000);assert.equal(f.running,true);
  cleanup();const count=f.changes.length;root.dispatchEvent(event('wheel'));owner.dispatchEvent(event('focus'));f.advance(9000);assert.equal(f.changes.length,count);assert.equal(f.pending,0);
+});
+
+test('按钮保留焦点、焦点节点无 focusout 被移除以及挂载时已有焦点均不锁死旋转',()=>{
+ for(const removeFocused of [false,true]){
+  const root=new EventTarget(),owner=new EventTarget(),doc=new EventTarget(),button={};
+  root.contains=node=>node===button;doc.hidden=false;doc.activeElement=button;
+  const f=fixture(),cleanup=bindIdleRotation(root,f.policy,owner,doc);
+  f.advance(7999);assert.equal(f.running,false);f.advance(1);assert.equal(f.running,true);
+  root.dispatchEvent(event('pointerdown',{pointerId:1}));
+  root.dispatchEvent(event('focusin'));
+  owner.dispatchEvent(event('pointerup',{pointerId:1}));
+  if(removeFocused)doc.activeElement=null;
+  f.advance(7999);assert.equal(f.running,false);f.advance(1);assert.equal(f.running,true);
+  cleanup();
+ }
+});
+
+test('持续输入重新计时，页面隐藏期间丢失 pointerup 后仍能恢复',()=>{
+ const root=new EventTarget(),owner=new EventTarget(),doc=new EventTarget();
+ root.contains=()=>false;doc.hidden=false;
+ const f=fixture(),cleanup=bindIdleRotation(root,f.policy,owner,doc);
+ root.dispatchEvent(event('input'));f.advance(7000);
+ root.dispatchEvent(event('input'));f.advance(7999);assert.equal(f.running,false);f.advance(1);assert.equal(f.running,true);
+ root.dispatchEvent(event('pointerdown',{pointerId:8}));
+ doc.hidden=true;doc.dispatchEvent(event('visibilitychange'));f.advance(20000);assert.equal(f.running,false);
+ doc.hidden=false;doc.dispatchEvent(event('visibilitychange'));f.advance(7999);assert.equal(f.running,false);f.advance(1);assert.equal(f.running,true);
+ cleanup();
 });

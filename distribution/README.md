@@ -12,11 +12,13 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.44`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.45`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://github.com/zgfdada/jmglink-ha-3d-home-custom/blob/main/docs/wiki/Home.md) · [RELEASE_NOTES](RELEASE_NOTES.md)
 
 本版本更新墙体透明与统一光路遮挡、可调散射角与截锥渐隐光束、同步星空和多楼层总览，完善右键平移及空闲自动旋转。请查看[版本说明](RELEASE_NOTES.md)。
+
+本版补齐 MCP 设备开发与资源管理接口，下载包同步 Home3D MCP Skill v1.1.2；模型统一按本地资源维护，完整实例导入按内容去重。[MCP 设备开发接口](docs/MCP设备开发接口.md)。
 
 ## 你可以做什么
 
