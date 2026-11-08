@@ -70,14 +70,15 @@ docker compose -f docker-compose.release.yml pull
 docker compose -f docker-compose.release.yml up -d
 ```
 
-打开 `http://主机IP:8101`，在界面配置 Home Assistant 连接。Compose 中已指定独立运行入口，请不要直接使用 App 默认入口启动独立 Docker。
+打开 `http://主机IP:8101`，在界面配置 Home Assistant 连接。Compose 项目名为 `3dhome`，只有一个 `ha3d-home` 服务和一个镜像；同一容器同时提供网页与 MCP，无需额外 MCP 镜像。默认启用 MCP，地址为 `http://主机IP:8112/mcp`，管理页为 `http://主机IP:8101/mcp-admin`。仅向可信网络开放；已有 `.env` 中的 `HA3D_MCP_ENABLED=false` 会覆盖此默认值。Compose 中已指定独立运行入口，请不要直接使用 App 默认入口启动独立 Docker。
 
 | 主机目录 | 容器目录 | 用途 |
 | --- | --- | --- |
 | `./ha3d-data` | `/data` | 项目、绑定、助手配置与其他运行数据 |
 | `./ha3d-assets` | `/assets` | 用户模型及素材 |
+| `./ha3d-mcp-private` | `/mcp-private` | MCP 权限、连接及加密凭据，迁移时单独保留 |
 
-**从旧 Docker 部署迁移时，先备份，再把 Compose 的主机目录改为原有 `docker-runtime-source/data` 和 `docker-runtime-source/assets`。不要空目录启动后误以为旧项目丢失，也不要让两个容器同时写同一份数据。**
+**从旧 Docker 部署迁移时，先备份，再把 Compose 的主机目录改为原有 `docker-runtime-source/data`、`docker-runtime-source/assets` 和 `docker-runtime-source/mcp-private`（分别对应三个挂载）。不要空目录启动后误以为旧项目丢失，也不要让两个容器同时写同一份数据。**
 
 ## 开始使用
 
@@ -151,4 +152,4 @@ docker compose -f docker-compose.release.yml up -d
 
 ## MCP与自定义风格
 
-App和Docker镜像均内置MCP，跟随3DHome安装／更新。默认不启用，按 [MCP部署与权限](docs/MCP本地部署与使用.md)启用和映射自选端口；连接浮窗支持状态、保存地址与外部点击收起。三种内置风格不可覆盖，自定义风格支持新建、修改和另存为。
+App和Docker镜像均内置MCP，跟随3DHome安装／更新。安装仓库 Compose 默认启用；直接运行镜像及 App 默认关闭，按 [MCP部署与权限](docs/MCP本地部署与使用.md)启用和映射自选端口；连接浮窗支持状态、保存地址与外部点击收起。三种内置风格不可覆盖，自定义风格支持新建、修改和另存为。

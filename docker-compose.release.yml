@@ -1,3 +1,6 @@
+# 一个镜像、一个服务：同时提供 3DHome 网页与 MCP，无需另装 MCP 镜像。
+# 默认端口：网页 8101，MCP 8112；仅向可信网络开放。
+name: 3dhome
 services:
   ha3d-home:
     image: ghcr.io/zgfdada/jmglink-ha-3d-home-custom:latest
@@ -12,7 +15,8 @@ services:
       HA3D_DATA_DIR: /data
       HA3D_ASSET_DIR: /assets
       NODE_OPTIONS: --max-old-space-size=384
-      HA3D_MCP_ENABLED: "${HA3D_MCP_ENABLED:-false}"
+      HA3D_MCP_ENABLED: "${HA3D_MCP_ENABLED:-true}"
+      HA3D_MCP_HOST: "0.0.0.0"
       HA3D_MCP_PORT: "${HA3D_MCP_PORT:-8102}"
       HA3D_MCP_PUBLIC_PORT: "${HA3D_MCP_PUBLIC_PORT:-8112}"
       HA3D_MCP_PRIVATE_DIR: /mcp-private

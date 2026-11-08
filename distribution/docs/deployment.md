@@ -20,11 +20,11 @@ docker compose -f docker-compose.release.yml ps
 
 打开 `http://主机IP:8101`，在界面配置 HA 地址与访问令牌。
 
-Compose 通过独立入口运行已发布的同一多架构镜像。`./ha3d-data` 保存运行数据，`./ha3d-assets` 保存模型素材。旧部署迁移时改为原有目录，先停旧容器；不要同时写同一份数据。
+Compose 通过独立入口运行已发布的同一多架构镜像。`./ha3d-data` 保存运行数据，`./ha3d-assets` 保存模型素材，`./ha3d-mcp-private` 保存 MCP 权限、连接及加密凭据。Compose 项目名为 `3dhome`，单个 `ha3d-home` 服务使用一个镜像同时提供网页和 MCP；默认启用 MCP 并监听 0.0.0.0，地址为 `http://主机IP:8112/mcp`，管理页为 `http://主机IP:8101/mcp-admin`。仅向可信网络开放；已有 `.env` 的 `HA3D_MCP_ENABLED=false` 仍优先。旧部署迁移时改为原有目录，先停旧容器；不要同时写同一份数据。
 
 ## 更新与回滚
 
-先导出项目 JSON、备份两个目录，保持镜像标签为 `latest`，执行同样的 `pull`、`up -d`。更新不会主动删除挂载目录；不要卸载数据卷。旧版本镜像不再公开保留；需要回滚时使用升级前自行保存的镜像与兼容数据备份。
+先导出项目 JSON、停服备份上述三个目录，保持镜像标签为 `latest`，执行同样的 `pull`、`up -d`。更新不会主动删除挂载目录；不要卸载数据卷。旧版本镜像不再公开保留；需要回滚时使用升级前自行保存的镜像与兼容数据备份。
 
 安装与排障完整入口见仓库 README、部署说明和“数据备份与升级”。
 ## Home Assistant App
@@ -36,7 +36,7 @@ App 运行数据位于 /data，素材位于 /config/assets；运行密钥属于�
 
 ## MCP安装和更新（v0.1.5-custom.43）
 
-MCP随同App／Docker镜像提供和更新，无需单独安装。App配置mcp_enabled启用，网络设置8102/tcp映射至空闲宿主端口，并配置mcp_public_port匹配。默认关闭；权限和连接保存于独立持久目录，普通业务导出不包含这些私有数据。详细步骤见 [MCP部署与权限](MCP本地部署与使用.md)。
+MCP随同App／Docker镜像提供和更新，无需单独安装。App配置mcp_enabled启用，网络设置8102/tcp映射至空闲宿主端口，并配置mcp_public_port匹配。安装仓库 Compose 默认启用 MCP，直接运行镜像及 App 默认关闭；权限和连接保存于独立持久目录，普通业务导出不包含这些私有数据。详细步骤见 [MCP部署与权限](MCP本地部署与使用.md)。
 
 
 ## v0.1.5-custom.44 完整实例恢复

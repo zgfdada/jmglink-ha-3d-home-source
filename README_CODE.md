@@ -852,3 +852,7 @@ POST /api/mcp-admin/endpoint 复用管理权限、串行持久化及审计，保
 App入口addon-entry.js调用addonMcpEnvironment，将mcp_enabled／mcp_public_port转换为监听配置；内部固定8102，私有目录/config/mcp-private位于/data之外。Supervisor网络映射与公开地址选项需一致，更新镜像保留挂载和共用权限。旧App配置缺省关闭。正式镜像冒烟启用MCP并验证管理接口与独立health，覆盖AMD64／ARM64打包后的代码。
 
 本次模型目录回归见 `jmglink-ha-3d-home/source/tests/model-catalog.test.mjs`。本地 HAOS 测试无需正式发布，见 [HAOS 本地测试加载项](docs/HAOS本地测试加载项.md)。
+
+## Docker Compose 部署约定
+
+公开 Compose 与 distribution 副本保持一致：项目名 `3dhome`，单个 `ha3d-home` 服务使用同一镜像提供网页及内置 MCP。Compose 默认启用 MCP 并监听 0.0.0.0，保留 8101／8112 端口和 data／assets／mcp-private 三类独立挂载。直接运行镜像与 App 的默认开关不变。部署调整同步安装快照、推广页与下载文件，不包含本机私有数据。

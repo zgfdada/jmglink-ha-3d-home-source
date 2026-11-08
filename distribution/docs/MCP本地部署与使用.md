@@ -4,7 +4,7 @@
 
 ## 使用前提与入口
 
-MCP 是独立 HTTP 服务，不是语音助手，也不会因保存一个 URL 自动安装或启动。正式镜像包含实现，Docker 部署需显式启用；未启用时，主页浮窗显示接口缺失和引导，不影响原有三维展示。Home Assistant App 与 Docker 使用同一正式镜像，MCP 已随镜像提供，无需另装服务；升级3DHome会同步更新MCP代码。
+MCP 是独立 HTTP 服务，不是语音助手，也不会因保存一个 URL 自动安装或启动。正式镜像包含实现，仓库 Compose 默认启用（镜像本身仍需启动变量启用）；未启用时，主页浮窗显示接口缺失和引导，不影响原有三维展示。Home Assistant App 与 Docker 使用同一正式镜像，MCP 已随镜像提供，无需另装服务；升级3DHome会同步更新MCP代码。
 
 主页工具菜单 → MCP 连接与权限，打开浮窗。点击外部或按 Esc 收起，内部操作不穿透到场景。绿色表示网页管理接口可达且服务开关开启，红色表示关闭、需认证、接口缺失或连接失败，灰色表示检测中。这不是客户端到独立 MCP 端口的连通性检测。
 
@@ -24,7 +24,9 @@ MCP 是独立 HTTP 服务，不是语音助手，也不会因保存一个 URL �
 
 ## Docker 启用与自定义端口
 
-使用安装仓库的 `docker-compose.release.yml`，在同目录新建 `.env`：
+使用安装仓库的 `docker-compose.release.yml` 即可同时启动 3DHome 和 MCP：Compose 项目名为 `3dhome`，只有一个 `ha3d-home` 服务、一个应用镜像，同一进程提供网页 8101 和 MCP 8112，不需要额外 MCP 镜像。默认已启用 MCP 且监听 `0.0.0.0`；仅向可信网络开放。已有 `.env` 中的关闭设置仍会生效；如不需要 MCP，设置 `HA3D_MCP_ENABLED=false` 后重建容器。
+
+保持默认端口无需创建 `.env`；如需自定义端口（以下示例改为 18112），在同目录新建 `.env`：
 
 ```dotenv
 HA3D_MCP_ENABLED=true
@@ -40,7 +42,7 @@ docker compose -f docker-compose.release.yml up -d
 
 | 配置 | 含义 | 默认 |
 | --- | --- | --- |
-| HA3D_MCP_ENABLED | 启动独立监听器 | false，显式启用 |
+| HA3D_MCP_ENABLED | 启动独立监听器 | Compose 为 true；直接运行镜像仍需显式启用 |
 | HA3D_MCP_PORT | 容器内部监听端口 | 8102 |
 | HA3D_MCP_PUBLIC_PORT | 客户端使用的宿主端口和地址默认值 | 8112 |
 | HA3D_MCP_PRIVATE_DIR | 独立私有配置目录 | Compose 中为 /mcp-private |

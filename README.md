@@ -34,7 +34,7 @@
 
 **当前版本：`0.1.5-custom.45`** · 支持 `linux/amd64`、`linux/arm64`
 
-本版新增独立 MCP 服务、共用权限管理、连接状态浮窗和可配置地址／端口。独立 Docker 部署需显式启用，Home Assistant App 同样内置 MCP，可在配置页启用、网络页映射独立端口。管理页默认免登录，所有 Agent 共用权限且写入无需人工批准，保留资源范围、版本和幂等检查；仅供可信网络使用。详见 [MCP 部署、连接与权限](docs/MCP本地部署与使用.md)。
+本版新增独立 MCP 服务、共用权限管理、连接状态浮窗和可配置地址／端口。仓库 Compose 默认启用 MCP，可通过 `HA3D_MCP_ENABLED=false` 关闭；镜像本身仍需启动变量启用，Home Assistant App 同样内置 MCP，可在配置页启用、网络页映射独立端口。管理页默认免登录，所有 Agent 共用权限且写入无需人工批准，保留资源范围、版本和幂等检查；仅供可信网络使用。详见 [MCP 部署、连接与权限](docs/MCP本地部署与使用.md)。
 
 ## 你可以做什么
 
@@ -100,14 +100,15 @@ docker compose -f docker-compose.release.yml pull
 docker compose -f docker-compose.release.yml up -d
 ```
 
-打开 `http://主机IP:8101`，在界面配置 Home Assistant 连接。Compose 中已指定独立运行入口，请不要直接使用 App 默认入口启动独立 Docker。
+打开 `http://主机IP:8101`，在界面配置 Home Assistant 连接。Compose 项目名为 `3dhome`，只有一个 `ha3d-home` 服务和一个镜像；同一容器同时提供网页与 MCP，MCP 无需单独镜像。默认 MCP 地址为 `http://主机IP:8112/mcp`，权限管理页为 `http://主机IP:8101/mcp-admin`。默认已启用 MCP，仅向可信网络开放；已有 `.env` 中的 `HA3D_MCP_ENABLED=false` 会覆盖此默认值。Compose 中已指定独立运行入口，请不要直接使用 App 默认入口启动独立 Docker。
 
 | 主机目录 | 容器目录 | 用途 |
 | --- | --- | --- |
 | `./ha3d-data` | `/data` | 项目、绑定、助手配置与其他运行数据 |
 | `./ha3d-assets` | `/assets` | 用户模型及素材 |
+| `./ha3d-mcp-private` | `/mcp-private` | MCP 权限、共享连接及加密凭据，迁移时必须单独保留 |
 
-**从旧 Docker 部署迁移时，先备份，再把 Compose 的主机目录改为原有 `docker-runtime-source/data` 和 `docker-runtime-source/assets`。不要空目录启动后误以为旧项目丢失，也不要让两个容器同时写同一份数据。**
+**从旧 Docker 部署迁移时，先备份，再把 Compose 的主机目录改为原有 `docker-runtime-source/data`、`docker-runtime-source/assets` 和 `docker-runtime-source/mcp-private`（分别对应三个挂载）。不要空目录启动后误以为旧项目丢失，也不要让两个容器同时写同一份数据。**
 
 ## 部件动效（当前版本）
 
