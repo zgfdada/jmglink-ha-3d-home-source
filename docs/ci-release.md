@@ -171,3 +171,16 @@ GitHub源码CI最长成功基线提高为2分16秒，发布保留3分13秒，成
 [源码CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42409794609) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42410066864) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.44)
 
 推广页同步同版前端、GPL源码、Skill下载与版本化内容，沿用既有脱敏快照与隔离适配层；知识库仅本机同步，不上传WeKnora。线上部署与文件校验在独立部署结果中记录，不把本地准备当作线上已更新。
+
+
+## .45 正式发布验收与耗时
+
+正式源码：`8cdccd5d80081f53adcf6069ff268bd746b02787`。472项业务测试、18项安装发布检查通过；AMD64／ARM64正式镜像运行、Ingress与匿名拉取检查成功。公开安装库23文件逐项Git blob哈希一致。Home3D MCP Skill v1.1.2正文及操作速查与当前Codex安装文件逐字一致；个人实例脚本未纳入提交。
+
+北京时间2026-11-08：源码CI #42428090721，首个job 08:04:36至08:06:50，2分14秒；正式发布 #42428366472，首个job 08:08:12至最后job 08:11:26，3分14秒。成功流程区间累计5分28秒，从CI首个job开始至发布最后job完成墙钟6分50秒；发布内部并行job执行累计5分14秒。无失败、取消或重跑。GitHub历史最长成功基线保留CI 2分16秒、正式发布3分18秒、关联墙钟7分23秒；首次终态查询至少3分钟／4分钟，仍运行再至少10分钟。
+
+镜像索引：`sha256:3019f100f038292f2ea85fc3d0a17df9976c4dea68705df4728097d299d9fa6c`。同一正式镜像同时包含3DHome与独立MCP服务，Docker与HA App均可使用；本地8101已切换至正式.45，真实SDK握手可发现44个工具，新设备开发及资源传输入口存在，Skill下载包为v1.1.2且包含操作速查。升级前后17个模型ID集合一致；保留原有持久目录、MCP端口及权限，未升级真实HAOS或控制真实设备。
+
+[源码CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42428090721) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42428366472) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.45)
+
+推广页同版前端、GPL源码、Skill下载、安装内容及校验清单使用既有脱敏演示快照。知识库仅本机同步，不上传WeKnora；线上推广页部署以独立运行核验为准。
