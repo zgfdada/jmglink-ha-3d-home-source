@@ -1,10 +1,10 @@
 import {a as React} from '../vendor/react.js';
 import {useBeamSettings} from './light-beam-settings.jsx';
-import {resolveBeamAngle,resolvePanelBeamFixtures,setFixtureBeamAngle,resetFixtureBeamAngle} from '../domain/light-beam-settings.js';
+import {resolveBeamAngle,resolvePanelBeamFixtures,setFixtureBeamAngle,resetFixtureBeamAngle,isDirectionalFixture} from '../domain/light-beam-settings.js';
 
 export default function FixtureBeamControl({project,entityId,selection}) {
  const settings=useBeamSettings();
- const fixtures=resolvePanelBeamFixtures(project,entityId,selection);
+ const fixtures=resolvePanelBeamFixtures(project,entityId,selection).filter(fixture=>isDirectionalFixture(fixture.modelId));
  return <>{fixtures.map(fixture=>{
   const inherited=settings.fixtures[fixture.id]===undefined;
   const angle=resolveBeamAngle(settings,fixture.modelId,fixture.id);

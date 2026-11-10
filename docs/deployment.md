@@ -1,5 +1,72 @@
 # 部署与升级
 
+## 2026-11-10 本地 8101 全灯型修复（当前部署）
+
+按用户确认的全灯型 Demo 同步：灯带整条均匀发光，沿长度分布 5–16 个照明点并保留总强度；吊灯／落地灯的吊杆、支撑杆与底座保留原色，灯罩和灯面继续发光，壁灯背板不误发光。保留零亮度原色、俯视显示、无自身投影、缓开缓灭、独立亮度滑块及彩色能力检测。覆盖8种内置灯型与8个开关别名，详见[灯型效果巡检](灯型效果巡检-20261110.md)。
+
+镜像 `jmglink-ha-3d-home:all-lights-20261110`，标记 `0.1.5-custom.45+alllights.20261110`。实际渲染器和材质与最终确认 Demo 一致；496项测试、构建及差异检查通过。容器 healthy，健康接口200，入口与17个JS模块SHA256全部一致。仅本地前端部署，未提交／推送或发布远端正式版本。
+
+更新前88文件完整备份并逐一校验，目录 `docker-runtime-source/backups/before-all-lights-20261110/`；部署后41个业务JSON排除updatedAt后内容保持一致。回滚文件 `docker-runtime-source/deployment-lighting/rollback-color-capability.json`，部署元数据见同目录deployment.json。未修改用户模型选择，未调用真实HA设备服务进行验证。
+
+## 2026-11-10 本地 8101 彩色能力检测与调试折叠（历史部署）
+
+沿用原有灯光控制面板、颜色选择器及预设按钮。优先按 HA 的 supported_color_modes 检测 hs／xy／rgb／rgbw／rgbww；不再把色温派生的 RGB 属性误判为彩色能力。未声明彩色支持或能力待确认时，默认折叠“彩色调试”，允许手动展开使用原有控件；支持彩色时正常显示。检测与展开不发送指令，切换设备恢复默认折叠。
+
+镜像 `jmglink-ha-3d-home:color-capability-20261110`，标记 `0.1.5-custom.45+colorcapability.20261110`。493 项隔离测试、构建及差异检查通过，健康接口 200，入口与 17 个 JS 文件 SHA256 均与构建一致。保留上一版已确认的灯体材质、俯视亮度、零亮度底色及无自身暗斑逻辑。本次仅更新本地前端，未发布远端正式版本。
+
+部署前 82 文件备份并逐一校验，备份 `docker-runtime-source/backups/before-color-capability-20261110/`；更新后 35 个业务 JSON 排除更新时间后内容不变。回滚文件 `docker-runtime-source/deployment-lighting/rollback-lighting-final.json`，校验明细保存在同目录 deployment.json。未调用真实 HA 设备服务进行测试。
+
+## 2026-11-10 本地 8101 用户确认的灯体材质修复（历史部署）
+
+同步独立体验页最终确认方案：灯体亮度为零时保留灯壳原始颜色，只关闭发光；顶部与底部均能显示亮度变化；内置灯具不再投射自身阴影，消除底部地面暗斑，其他场景物体的阴影计算保持。发光面采用低反射材质，光晕可完全归零，周围照明继续独立调节。保留缓开缓灭及浏览器现有偏好。
+
+本地镜像 `jmglink-ha-3d-home:lighting-final-20261110`，标记 `0.1.5-custom.45+lightingfinal.20261110`。488 项隔离测试及构建通过；实际 BuiltinFixtureBody 与用户确认的体验页渲染代码一致。8101 容器 healthy，健康接口 200，入口及 17 个 JS 文件的 SHA256 全部与构建匹配。仅更新本地前端，未提交／推送或发布远端正式版本。
+
+部署前 82 个文件完整备份并逐一校验，备份目录 `docker-runtime-source/backups/before-lighting-final-20261110/`；部署后 35 个业务 JSON 排除更新时间后内容不变。回滚 Compose 为 `docker-runtime-source/deployment-lighting/rollback-emitter-fix.json`，部署元数据与文件校验见同目录 `deployment.json`。未调用真实 HA 设备服务。
+
+
+## 2026-11-10 本地 8101 实际筒灯亮度控制修复（历史预览）
+
+根因为实际筒灯独立发光面仍使用固定自发光，未经过FixtureGlowMaterial；平板吸顶灯另有固定Basic叠加光面未经过FixtureHaloMaterial。现均统一接入灯体滑块与共享渐变。新增实际BuiltinFixtureBody渲染树回归，覆盖八种灯型和奶油／卡通风格；486项隔离测试、构建通过。隔离浏览器直接加载修复前后实际模型渲染代码，确认筒灯灯体0%时旧版仍发光、新版归零，100%时新版自发光2.5；周围照明保持独立。
+
+当前镜像 `jmglink-ha-3d-home:lighting-emitter-fix-20261110`，ID `sha256:088e4d3c8eee5255d8ab25fe3b9988f1ee2aac5d9b44f059929d41ac0dd8f663`，标记 `0.1.5-custom.45+emitterfix.20261110`。只更新前端，8101健康检查通过，入口及全部17个JS模块SHA256与本次构建一致；保留ha3d.fixtureLighting偏好，不重置用户滑块。
+
+更新前82个文件备份并逐一校验，备份为 `docker-runtime-source/backups/before-emitter-fix-20261110/`；更新后35个业务JSON排除updatedAt后内容保持一致。Compose仍为deployment-lighting/compose.json，deployment.json保存证据；rollback-lighting-sliders.json可回退上一版。未自动控制真实设备或发布正式版本。
+
+## 2026-11-10 本地 8101 环境光双滑块（上一版预览记录）
+
+环境光设置新增“灯体亮度”0–200%与“周围照明亮度”0–300%两个独立滑块，默认65%／115%，复用现有面板样式。拖动实时预览，当前浏览器自动保存并刷新恢复；不调用HA服务、不写项目配置。零值可独立关闭相应发光或照明，原缓开缓灭保留。484项隔离测试、构建及浏览器验证通过，确认独立调节、刷新保留和面板无横向溢出。
+
+当前镜像 `jmglink-ha-3d-home:lighting-sliders-20261110`，ID `sha256:2bfe5bf3c32da0a7cab7a4a81c4d9d4ccceb2302da67720d92949e108e86eac5`，标记 `0.1.5-custom.45+sliders.20261110`；只更新前端，8101健康检查通过，入口及全部JS模块SHA256与构建一致。未发布正式版本或升级HAOS。
+
+更新前82个文件备份校验一致，备份目录 `docker-runtime-source/backups/before-lighting-sliders-20261110/`；更新后35个业务JSON排除updatedAt后内容未变。Compose仍为 `docker-runtime-source/deployment-lighting/compose.json`，deployment.json保存构建证据；rollback-lighting-balance.json可回到上一版固定亮度平衡。仅在隔离页面测试滑块，未覆盖用户8101浏览器偏好。
+
+## 2026-11-10 本地 8101 灯体与周边亮度平衡（上一版预览记录）
+
+灯体自发光及局部光晕乘0.65，真实照明乘1.15；保留缓开缓灭、墙体遮光和既有Bloom参数。481项隔离测试、构建及隔离浏览器对比通过，满亮吸顶灯实际强度23、自发光1.625，渐变同步。
+
+镜像 `jmglink-ha-3d-home:lighting-balance-20261110`，ID `sha256:2c3b2e750eab156e03cdbcec9859b0b837c39b921acc9f0b6ddacb448694ff8f`，标记 `0.1.5-custom.45+balance.20261110`；只更新前端。8101健康检查通过，入口及17个JS模块与构建SHA256一致。更新前82个文件备份校验通过，备份为 `docker-runtime-source/backups/before-lighting-balance-20261110/`；更新后35个业务JSON排除updatedAt后内容不变。
+
+持久Compose仍为 `docker-runtime-source/deployment-lighting/compose.json`，同目录deployment.json记录本次证据，rollback-soft-fade.json可切回上一版。实际家庭场景效果等待用户验收，未自动控制真实设备或发布正式版本。
+
+## 2026-11-10 本地 8101 同步缓开缓灭（上一版预览记录）
+
+沿用参考项目LightUnit式按帧指数过渡，灯体、自发光、局部柔光与真实光源共享同一个渐变状态；开／关速率调整为4.5／3.5（约1.5秒渐亮／2秒渐灭），消除发光零点台阶，目标改变首帧从当前状态开始。快速开关不重置亮度，无逐帧React重渲染，不调用HA服务。481项隔离测试与前端构建通过；浏览器确认普通／卡通灯体、灯带和快速反向切换期间同步，关灯后真实照明和灯体发光都归零。
+
+当前镜像 `jmglink-ha-3d-home:lighting-soft-fade-20261110`，镜像ID `sha256:2ff45d7a3c4761782cd1c780158a6b2c0c9f2ebd41f669ff1cfc0a891a2b4a0a`，标记 `0.1.5-custom.45+softfade.20261110`；只替换前端，保留原后端及8101／8112入口。健康检查通过，前端入口与全部JS模块和本次构建SHA256一致。未发布正式版本或升级HAOS。
+
+当前数据在停止后完整备份至 `docker-runtime-source/backups/before-soft-fade-20261110/`，82个文件校验一致；启动后35个业务JSON排除updatedAt后的内容未变。运行Compose仍为 `docker-runtime-source/deployment-lighting/compose.json`，同目录deployment.json保留完整哈希和本地源码改动标记；rollback-reference-lighting.json可回退上一版参考灯光移植。此前各级回退镜像、编排和备份继续保留。
+
+## 2026-11-10 本地 8101 参考灯光移植（上一版预览记录）
+
+已移植 house-control 的真实光源、宽角柔边、自发光、线性RGB色温、HDR UnrealBloom及Output链路，删除空气光锥网格。479项隔离测试与前端构建通过；隔离浏览器直接对照参考LightUnit，验证灯带／落地灯、描边、画质切换和渐灭归零。移植保留原项目MIT声明。未对真实设备发送测试指令。
+
+仅更新前端，后端仍为原 `.45`。Windows Docker 容器 `3dhome` 使用本地镜像 `jmglink-ha-3d-home:lighting-reference-20261110`，网页8101／MCP8112，健康状态healthy。运行镜像ID为 `sha256:3449edeedc6e0a17d1e2f82d5127c18e238716027586659b7f30739064375a3c`；网页入口及scene-BjiGK3el.js等三个关键模块与最终构建SHA256一致。版本标记 `0.1.5-custom.45+house-control.20261110`，本次不是正式发布或HAOS升级。
+
+运行目录沿用整理后的 `docker-runtime-source/{data,assets,mcp-private}`。更新前停服务备份82个文件至 `docker-runtime-source/backups/before-house-control-lighting-20261110/` 并逐一校验；启动后35个项目／业务JSON排除自动updatedAt后内容保持一致，当前挂载未用旧副本覆盖。首次预览前的备份 `backups/before-lighting-20261110/` 及旧容器 `3dhome-before-lighting-20261110` 仍保留。
+
+持久编排为 `docker-runtime-source/deployment-lighting/compose.json`；同目录deployment.json记录镜像、前端哈希、源码基线与本地改动标记。rollback-lighting-v1.json可切回首次灯光渐变预览，rollback.json可切回原正式前端；均沿用相同数据挂载。运行 `docker compose -f docker-runtime-source/deployment-lighting/compose.json up -d --pull never` 启动当前预览，换用对应回退JSON可回退程序。实际户型效果等待用户手工测试；省电画质关闭Bloom。
+
 ## 2026-10-31 8101 额外实体实时状态修复验收
 
 源码容器构建完成且健康检查 healthy，323 项测试通过。修复实时推送过滤器遗漏无主设备项目额外实体的问题，平台绑定保存后同步重算过滤范围。使用生产 `/ws` 连续验证虚拟车辆 home、not_home、charging、complete 四次状态消息到达，服务调用至消息收到分别为 54、178、176、180ms；未刷新页面，不使用轮询补偿。此时间不包含前端 120ms 合批及模型动画过渡。测试后恢复离家、已充满，未控制物理设备。控制面板读取关联实体实时状态，规则选项保留中文说明并明确原始状态值。现有小车离家条件已由中文“离家”修正为 `not_home`，修改前配置保存在 Downloads/小车-离家隐藏规则修复前.json。此次仅部署本地 8101，未发布 HAOS 新版本。

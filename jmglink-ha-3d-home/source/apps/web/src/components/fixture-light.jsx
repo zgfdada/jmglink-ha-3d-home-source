@@ -1,11 +1,12 @@
+import {useFixtureLightTransition} from './fixture-light-transition.jsx';
 import {bindPhysicalLightOcclusion} from '../domain/physical-light-occlusion.js';
 import {a as React} from '../vendor/react.js';
-const {createContext,useContext,useMemo,useRef,useLayoutEffect}=React;
-import {b as useFrame,lightsFragmentBegin} from '../vendor/three.js';
-import {Object3D,Vector2,Vector3,Vector4,Matrix4,DoubleSide,AdditiveBlending} from 'three';
-import {wallLightBlockers,beamOcclusionShader} from '../domain/light-occlusion.js';
-import {beamFrustum,normalizeBeamAngle} from '../domain/light-beam-settings.js';
-import {ignoreSceneEffectRaycast} from '../domain/scene-picking.js';
+const {createContext,useMemo,useRef,useLayoutEffect}=React;
+import {b as useFrame,u as useThree,lightsFragmentBegin} from '../vendor/three.js';
+import {Object3D,Vector2,Vector4,Matrix4} from 'three';
+import {fixtureLightProfile,fixtureLightOutput,stripLightPositions,DEFAULT_FIXTURE_BEAM_ANGLE} from '../domain/fixture-lighting.js';
+import {wallLightBlockers} from '../domain/light-occlusion.js';
+import {normalizeBeamAngle} from '../domain/light-beam-settings.js';
 export const FloorLightContext=createContext(null);
 export function FloorLightOcclusion({floor,root,children}){
  const value=useMemo(()=>({root,blockers:wallLightBlockers(floor)}),[floor,root]);
@@ -15,28 +16,23 @@ export function FloorLightOcclusion({floor,root,children}){
  useLayoutEffect(()=>bindPhysicalLightOcclusion(root.current,physicalUniforms,value.blockers.length,lightsFragmentBegin),[root,physicalUniforms,value]);
  return <FloorLightContext.Provider value={value}>{children}</FloorLightContext.Provider>;
 }
-export default function FixtureLight({color,brightness,variant,beamAngle=38}){
- const floor=useContext(FloorLightContext),root=useRef(),light=useRef();
- const angle=normalizeBeamAngle(beamAngle),level=Math.max(0,Math.min(1,brightness));
- const length=variant==='floor'?1.04:variant==='wall'?.85:variant==='downlight'?1.6:variant==='chandelier'?1.5:2.1;
- const source=useMemo(()=>[0,variant==='floor'?1.02:variant==='chandelier'?-.55:-.09,variant==='wall'?.13:0],[variant]);
- const rotation=variant==='wall'?[-Math.PI/2,0,0]:[0,0,0];
- const target=useMemo(()=>{const o=new Object3D();o.position.set(0,-length,0);return o;},[length]);
- const uniforms=useMemo(()=>({beamFloorInverse:{value:new Matrix4()},beamSource:{value:new Vector3()},beamWalls:{value:floor?.blockers.length?floor.blockers.map(b=>new Vector4(...b.segment)):[new Vector4()]},beamHeights:{value:floor?.blockers.length?floor.blockers.map(b=>new Vector2(...b.height)):[new Vector2()]}}),[floor]);
- const scratch=useMemo(()=>new Vector3(),[]);
+export default function FixtureLight({color,brightness,on=true,variant,beamAngle=DEFAULT_FIXTURE_BEAM_ANGLE,stripLength=1,intensityScale=1,fixtureId,roomId}){
+ const root=useRef(),lights=useRef([]);
+ const profile=fixtureLightProfile(variant),state=useFixtureLightTransition({on,brightness,color});
+ const invalidate=useThree(state=>state.invalidate);
+ useLayoutEffect(()=>{invalidate();},[variant,stripLength,intensityScale,invalidate]);
+ const source=[0,variant==='floor'?1.02:variant==='chandelier'?-.55:-.09,variant==='wall'?.13:0];
+ const target=useMemo(()=>{const object=new Object3D();object.position.set(0,-1,0);return object;},[]);
+ const positions=useMemo(()=>variant==='strip'?stripLightPositions(stripLength):[[0,0,0]],[variant,stripLength]);
  useFrame(()=>{
-  if(!root.current||!floor?.root.current)return;
-  floor.root.current.updateWorldMatrix(true,false);root.current.updateWorldMatrix(true,false);
-  uniforms.beamFloorInverse.value.copy(floor.root.current.matrixWorld).invert();
-  root.current.getWorldPosition(scratch);uniforms.beamSource.value.copy(scratch).applyMatrix4(uniforms.beamFloorInverse.value);
+  if(!root.current)return;
+  root.current.visible=state.level>0;
+  const output=fixtureLightOutput(state.level,variant,state.balance);
+  for(const light of lights.current){if(light){light.intensity=output.intensity*Math.max(0,Number.isFinite(intensityScale)?intensityScale:1)/positions.length;light.color.copy(state.color);}}
  });
- const aperture=beamFrustum(length,angle,variant);
- return <group position={source} rotation={rotation} ref={root}>
-  <primitive object={target}/>
-  <spotLight ref={light} target={target} color={color} intensity={.6+level*2.5} distance={length+4} decay={2} angle={angle*Math.PI/360} penumbra={.45} castShadow shadow-mapSize-width={256} shadow-mapSize-height={256} shadow-bias={-.00008} shadow-normalBias={.004} shadow-camera-near={.025} shadow-camera-far={12}/>
-  <mesh userData={{sceneVisualEffect:true}} position={[0,-length/2,0]} raycast={ignoreSceneEffectRaycast} castShadow={false} receiveShadow={false}>
-   <cylinderGeometry args={[aperture.top,aperture.bottom,length,32,1,true]}/>
-   <meshBasicMaterial key={floor?.blockers.length??0} color={color} transparent opacity={.014+level*.032} depthWrite={false} side={DoubleSide} blending={AdditiveBlending} toneMapped={false} userData={{outlineParameters:{visible:false}}} onBeforeCompile={shader=>beamOcclusionShader(shader,uniforms,floor?.blockers.length??0)} customProgramCacheKey={()=>`beam-faded-occlusion-${floor?.blockers.length??0}`}/>
-  </mesh>
+ const metadata={fixtureLight:true,fixtureVariant:variant,fixtureId,roomId};
+ // No mesh, cylinder, sprite or cone: light is visible only on receiving surfaces.
+ return <group position={source} rotation={variant==='wall'?[-Math.PI/2,0,0]:[0,0,0]} ref={root}>
+  {profile.type==='spot'?<><primitive object={target}/><spotLight ref={node=>{lights.current=[node]}} userData={metadata} target={target} intensity={0} distance={0} decay={2} angle={normalizeBeamAngle(beamAngle,DEFAULT_FIXTURE_BEAM_ANGLE)*Math.PI/360} penumbra={.75} shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-radius={5} shadow-bias={-.0006} shadow-normalBias={.03} shadow-camera-near={.15} shadow-camera-far={9}/></>:positions.map((position,index)=><pointLight key={index} ref={node=>{lights.current[index]=node}} userData={metadata} position={position} intensity={0} distance={profile.distance} decay={2} shadow-mapSize-width={512} shadow-mapSize-height={512} shadow-radius={4} shadow-bias={-.003} shadow-normalBias={.03} shadow-camera-near={.08} shadow-camera-far={9}/>)}
  </group>;
 }

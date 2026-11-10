@@ -11,7 +11,7 @@ test('每个灯型独立默认值，单灯覆盖、恢复继承与持久化',()=
  store.update({types:{'light.downlight':65},fixtures:{a:12}});
  assert.equal(resolveBeamAngle(store.getSnapshot(),'light.downlight','a'),12);
  assert.equal(resolveBeamAngle(store.getSnapshot(),'switch.light.downlight','b'),65);
- assert.equal(resolveBeamAngle(store.getSnapshot(),'light.ceiling','b'),38);
+ assert.ok(Math.abs(resolveBeamAngle(store.getSnapshot(),'light.ceiling','b')-137.5098708314)<1e-8);
  store.update({fixtures:{}});assert.equal(resolveBeamAngle(store.getSnapshot(),'light.downlight','a'),65);
  const restored=createBeamSettingsStore(()=>({getItem:k=>data.get(k)}));assert.deepEqual(restored.getSnapshot(),store.getSnapshot());
  assert.equal(notifications,2);stop();store.update({types:{}});assert.equal(notifications,2);

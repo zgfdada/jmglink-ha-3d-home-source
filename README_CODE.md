@@ -1,5 +1,11 @@
 # 开发说明
 
+灯型回归从实际选择器提取全部light模型，并检查switch.light别名映射；新增灯型必须纳入覆盖。FixtureShellMaterial.glowEnabled区分灯罩和支撑部件；灯带使用均匀HDR灯面，stripLightPositions沿线分布5–16个光源，分摊原总输出，保持影子预算策略。巡检与8101部署证据见docs/灯型效果巡检-20261110.md及docs/deployment.md。
+
+light-color-capability.js 优先使用非空 supported_color_modes；缺失时只以当前明确的彩色模式作为支持依据，不使用派生 RGB 值推断。LightColorCapabilitySection 复用原有 control-section 与完整颜色控件；默认闭合 details 按设备及能力状态重建，不保存调试展开偏好，不在检测／展开时调用服务。
+
+内置灯型的 FixtureShellMaterial 保留原始底色，并按共享渐变增加 HDR 视觉发光，避免灯壳自身高光误触 Bloom；FixtureGlowMaterial 不再将零增益乘到底色。BuiltinFixtureBody 的灯具网格关闭 castShadow，其他物体及地面接收阴影不变。最终体验页与应用渲染树一致，8101 本地部署证据见 docs/deployment.md。
+
 Home3D MCP 使用 Skill v1.1.2 维护于 `apps/server/resources/agent-skills/ha3d-mcp-workflow/SKILL.md`，`SkillPackages.js` 按 manifest 动态打包，包含操作速查；侧栏链接指向 `agent-skills/ha3d-mcp-workflow.zip`。本包只包含使用规范，不包含运行配置或凭据。
 
 MCP 设备平台接口位于 `src/mcp/device-platform.js`、`device-tools.js`，复用 DevicePlatformStore、MotionLibraryStore、ControlLibraryStore 的归一化和持久化；计划在隔离内存存储中执行相同业务校验，应用前复核全局内容修订及素材 SHA256，并通过 writeGate.exclusive 排除网页写入竞争。`model-parts.js` 静态检查普通自包含 GLB/GLTF，返回 path/raw name/label，不对蒙皮、扩展生成节点、多 primitive 或重名身份假装完成渲染确认。`transfers.js` 以服务端 UUID 和客户端归属管理限额分块文件，保持 MCP 单请求 2 MiB 上限；不接受文件路径或外部下载 URL。配置回滚检查后续修订，模型文件恢复依赖尚未过期的暂存快照。接口与边界见 [MCP设备开发接口](docs/MCP设备开发接口.md)。
@@ -733,7 +739,7 @@ Agent 平台接入包：`agent-skills/` 为 skill 入口，`scripts/build-agent-
 事件与主机资源可选样板位于 packages/schema/src/monitoring-widgets.js，独立离线统计和耗材位于 operations-widget.js。仅通过绑定实体和现有通用 SDK 交互，不增加控件专属服务端路由。行为与接口见 docs/sidebar-development.md；回归覆盖原日志状态、缺失值、独立耗材和刷新目标。
 
 
-3D 灯光颜色解析位于 apps/web/src/domain/light-color.js：优先当前 color_mode，色温模式不读取残留 RGB；RGB/HS/XY/RGBW/RGBWW 按对应通道解析。scene.js 共用该颜色绘制真实光源、灯具自发光和光晕，移除固定暖黄偏色；房间光色按亮度在线性 RGB 中混合，再编码为 sRGB。色温沿用已有 Kelvin 色表，是屏幕近似渲染，不是光谱或照度标定。
+3D 灯光颜色解析位于 apps/web/src/domain/light-color.js：优先当前 color_mode，色温模式不读取残留 RGB；RGB/HS/XY/RGBW/RGBWW 按对应通道解析。scene.js 共用该颜色绘制真实光源、灯具自发光和光晕，移除固定暖黄偏色；房间光色按亮度在线性 RGB 中混合，再编码为 sRGB。色温采用参考项目的线性 RGB Kelvin 节点表，是屏幕近似渲染，不是光谱或照度标定。
 
 摄像头扩展：cameraSettings 持久化第二路实体、外部 HTTP(S) 地址、云台服务及目标。CameraControlPanel 展示双缩略图，CameraViewer 居中标签切换时仅挂载一个播放器。cameraPtz 路由校验已保存的摆放绑定和同源请求，按实际集成与服务检测 Frigate／ONVIF；Frigate 短移后在 finally 发送停止。vertical-reference 支持 ceiling，摄像头高度根据包围盒尺寸及实例缩放计算，并将底部高度限制在层高减模型高度以内。
 
@@ -821,21 +827,29 @@ PartMotionEditor 在 rotate／spin 规则的局部轴下提供显示辅助轴、
 星空同步：OrbitStarfield 放在 pi 的旋转 group 内，模型自动转动时共同继承 Y 旋转，手动相机环绕时共享 world/view/projection 矩阵。2400 个随机点共一个 draw call，不参与点选、阴影或全局描边，不单独 invalidate，替代原 100 个 DOM/CSS 动画星点。ci 仅对内置柜体的主题主色与细节色分别混入38%／32%浅暖色，跳过自定义模型，不改项目或资产原色。
 
 
-## 灯具散射角与透明墙遮光（本地预览）
+## 真实灯光、柔光与墙体遮光（本地预览）
 
-`light-beam-settings.js` 提供完整夹角规范化、灯型默认值、fixture.id 覆盖和浏览器 localStorage（ha3d.lightBeams）外部存储；LightBeamSettings 与灯具通过同一 useSyncExternalStore 快照更新，不接 HA 服务。独立灯与开关受控虚拟灯均按放置实例 id 解析；灯带路径每段沿用所属实例的角度。
+灯光移植自 [house-control](https://github.com/0xProbabillity/house-control/tree/ff9e069edf015af2f88068603e8bf7c34ac88234/web/src/three) 的 lights.js／world.js。MIT 许可及来源保留在 `apps/web/public/licenses/house-control-MIT.txt` 并随前端交付。FixtureLight 不创建网格、锥体或透明柱，空气中不显示照明范围。
 
-`FixtureLight` 使用带256px阴影的 SpotLight，完整角度转半角传入 Three；只在灯具亮起时创建。墙面保留不透明 customDepthMaterial，显示 opacity 不影响阴影。`wallLightBlockers` 将墙体按门窗洞口切分为实体矩形条；FloorLightOcclusion 提供楼层几何，光束 shader 在楼层坐标中求光源至片元的墙面交点并截断。每帧更新逆楼层变换，保持旋转、平移和堆叠坐标一致。虚拟分区不遮光。光束不参与点选、投影和全局描边。回归覆盖类型继承、单灯恢复、存储异常、角度边界、实体墙、门楣、窗台、斜墙和同侧光路。
+`fixture-lighting.js` 使用原项目强度：吸顶灯／筒灯20、吊灯9、落地灯3.4、灯带总1.6。聚光半角1.2rad、penumbra=0.75、decay=2；默认完整夹角约137.51°，已有显式单灯／灯型角度覆盖继续有效。落地灯使用点光；灯带约每米一盏无阴影点光，按路径段长及光源数分摊总强度。光源位置适配现有灯体，不替换家庭模型。
 
+沿用参考LightUnit的按帧指数过渡，开灯／关灯速率放缓为4.5／3.5，变色仍为6；level^1.5照明曲线保留，0.8+1.7*level^0.7灯体自发光在0–0.12亮度加smoothstep门控，消除零点台阶。FixtureLightTransition为每个内置灯具保存唯一level／color状态，FixtureLight、六处FixtureGlowMaterial与FixtureHaloMaterial在同一帧读取，不逐帧触发React重渲染。灯体发光、颜色、透明度与光源同步，选中提示作为独立最低高亮保留。目标改变后的第一帧不推进时间，后续delta上限0.05秒，避免长时间空闲后直接跳亮；归零隐藏光源组，收敛后停止请求帧。色温改用2200／3000／4200／6500K节点并在线性RGB插值，保留HA当前color_mode及RGBW等通道解析。
 
-光束 shader 使用锥体 UV 沿轴向归一化距离，按 1/(1+4t²) 衰减透明度，并在 t=0.72–1 平滑淡出；不增加光源、网格、纹理或每帧 CPU 计算。
+亮度平衡由 fixture-lighting.js 的 FIXTURE_LIGHT_BALANCE 独立维护：灯体自发光及局部光晕乘0.65，真实照明乘1.15，在相同HA亮度下减弱灯体刺眼感、略提墙面／地面／家具受光。参考灯型的基础强度与原渐变曲线保留，关灯零输出仍成立。
 
+fixture-light-settings.js 提供两个亮度的归一化与外部store，localStorage键ha3d.fixtureLighting；灯体0–2、照明0–3，缺省0.65／1.15。FixtureLightSettings复用环境光面板样式，位于自动环境光开关后；useSyncExternalStore同步UI与灯具过渡上下文，增益改变时主动invalidate，保持按需Canvas的即时预览，不重置渐变、不调用HA服务。辅助光晕／选中发光随灯体增益归零，两个增益独立；存储损坏／不可用时仍可在内存调节。回归验证独立性、刷新恢复、零值、范围约束和存储异常。
 
-`physical-light-occlusion.js` 在 renderer 匹配的 lights_fragment_begin 中，获取 point/spot 的直接照明后、RE_Direct（BRDF）之前执行实体墙光路可见性判断；光被墙挡住时将该灯贡献置零，同时阻断漫反射、镜面与 clearcoat。使用相机视空间到楼层空间矩阵，统一消费门窗分割后的实体墙条，不受 receiveShadow、显示透明度、阴影强度与画质档位影响。保留原有环境照明和日月阴影，光束继续独立使用同一墙体几何裁剪与距离淡出。绑定监听异步模型，并在 onBeforeRender 检查后换材质；卸载恢复回调和程序缓存键。vendor/three.js 只额外导出当前 renderer 的 nR 灯光块，避免 npm Three 与恢复版 renderer 的 shader 版本差异。
+实际筒灯的独立发光面也必须使用FixtureGlowMaterial，平板吸顶灯的额外叠加光面使用FixtureHaloMaterial；不能只改O()通用灯面。fixture-light-models.test.mjs直接读取并执行实际BuiltinFixtureBody的渲染函数，覆盖八种内置灯型及奶油／卡通风格，检查通电自发光与随通电变化的Basic叠加光面是否绕过控制。隔离浏览器使用从实际源文件提取的模型渲染代码对比修复前后，不用通用替代灯泡作为接线回归。
 
+`SceneLightingEffects` 移植 HDR HalfFloat + UnrealBloomPass(0.34,0.5,1.0) + OutputPass，曝光1.05。平衡／高画质使用4x MSAA，流畅画质不使用MSAA，省电或缺少浮点颜色附件支持时降级直接渲染。卡通OutlineEffect作为同一个HDR场景pass绘制，统一由一个priority=1回调输出，避免多次渲染覆盖Bloom。尺寸／DPR同步，卸载释放pass和render target；Bloom混合保留透明展示画布的alpha。
 
-光束使用开口 CylinderGeometry(top,bottom,length)，灯口半径按灯型设定，bottom=top+length*tan(angle/2)，保持散射边缘斜率；沿轴向UV与旧锥体一致，距离淡出和遮光shader无需更改。
+聚光阴影1024px／radius5，落地灯点光阴影512px／radius4。沿用参考项目PCF及最多8灯预算，为已有日月阴影与材质保留采样器，每房间优先一盏，避免灯多时shader无法链接。3DHome存在移动家具与设备动画，阴影继续随需求帧更新，不照搬只适用于静态房屋的永久缓存。
 
+`light-beam-settings.js` 保留fixture.id覆盖及浏览器localStorage（ha3d.lightBeams），不调用HA服务。角度控件仅用于聚光灯型；点光的落地灯和灯带不显示角度滑块。旧beamFrustum／beamOcclusionShader仅保留为历史算法与兼容回归，已不接入场景照明。
+
+`FloorLightOcclusion` 与 `physical-light-occlusion.js` 继续在renderer匹配的lights_fragment_begin中，获取point/spot直接照明后、BRDF之前判断实体墙及门窗光路，同时阻断漫反射和镜面。不受显示透明度或receiveShadow影响，旋转／平移／堆叠后仍在同一楼层坐标判断；保留异步模型及材质替换绑定、卸载回收和日月阴影。
+
+回归覆盖渐变帧率独立与归零、真实灯型、灯带总强度、色温节点与线性插值、阴影预算及墙体遮光。隔离浏览器直接加载参考LightUnit，与移植组件同场景对比；验证无空气光锥、HDR Bloom、点光阴影、卡通描边、关灯与画质切换。参考灯具的点光阴影对象适配为当前renderer版本；正式组件直接使用当前R3F灯光。未对用户场景进行自动设备控制测试。
 
 MCP 项目读取保留家具模型与柜体配置；完整项目权限可通过对象草稿摆放本地 procedural box 自定义模型，拒绝上传／远程模型来源。较长侧边栏脚本读取上限增至512000字符，避免已有控件被20k截断；新增脚本保留及模型权限回归测试。
 

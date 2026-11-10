@@ -1,3 +1,4 @@
+import FixtureLightSettings from '../components/fixture-light-settings.jsx';
 import { McpConnectionGuide } from "./mcp-connection-guide.jsx";
 import LightBeamSettings from "../components/light-beam-settings.jsx";
 import {useIdleRotation} from "../components/use-idle-rotation.js";
@@ -3262,6 +3263,7 @@ function Qn({
               e.jsxs("span", { children: [e.jsx("strong", { children: "自动环境光" }), e.jsx("small", { children: "关闭时恢复上次手动强度" })] }),
               e.jsx("input", { type: "checkbox", role: "switch", "aria-label": "自动环境光", checked: ambientLight.automatic, onChange: event => changeAmbientLight({ automatic: event.target.checked }) }),
             ] }),
+            e.jsx(FixtureLightSettings,{}),
             e.jsxs("div", { className: "home-background-controls", children: [
               e.jsx("strong", { children: "场景背景图片" }),
               e.jsx("small", { children: "替换户型模型后面的背景。仅保存在当前浏览器。" }),

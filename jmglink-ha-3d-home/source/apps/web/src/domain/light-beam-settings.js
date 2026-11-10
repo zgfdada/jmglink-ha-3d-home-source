@@ -1,6 +1,7 @@
+import {DEFAULT_FIXTURE_BEAM_ANGLE} from './fixture-lighting.js';
 export const LIGHT_BEAM_TYPES = [
- ['light.ceiling','通用吸顶灯',38],['light.ceiling_panel','平板吸顶灯',38],['light.ceiling_round','圆形吸顶灯',38],
- ['light.downlight','筒灯／射灯',20],['light.chandelier','吊灯',39],['light.wall_sconce','壁灯',50],['light.floor_lamp','落地灯',56],['light.strip','灯带',100],
+ ['light.ceiling','通用吸顶灯',DEFAULT_FIXTURE_BEAM_ANGLE],['light.ceiling_panel','平板吸顶灯',DEFAULT_FIXTURE_BEAM_ANGLE],['light.ceiling_round','圆形吸顶灯',DEFAULT_FIXTURE_BEAM_ANGLE],
+ ['light.downlight','筒灯／射灯',DEFAULT_FIXTURE_BEAM_ANGLE],['light.chandelier','吊灯',DEFAULT_FIXTURE_BEAM_ANGLE],['light.wall_sconce','壁灯',DEFAULT_FIXTURE_BEAM_ANGLE],['light.floor_lamp','落地灯',56],['light.strip','灯带',100],
 ];
 export function normalizeBeamAngle(value, fallback=38) {
  return typeof value==='number' && Number.isFinite(value)?Math.max(1,Math.min(160,value)):fallback;
@@ -11,9 +12,10 @@ export function normalizeBeamSettings(value) {
 }
 export function lightBeamType(modelId='light.ceiling') {return modelId.replace(/^switch\.light\./,'light.');}
 export function resolveBeamAngle(settings,modelId,id) {
- const type=lightBeamType(modelId), fallback=LIGHT_BEAM_TYPES.find(t=>t[0]===type)?.[2]??38;
+ const type=lightBeamType(modelId), fallback=LIGHT_BEAM_TYPES.find(t=>t[0]===type)?.[2]??DEFAULT_FIXTURE_BEAM_ANGLE;
  return normalizeBeamAngle(settings?.fixtures?.[id],normalizeBeamAngle(settings?.types?.[type],fallback));
 }
+export function isDirectionalFixture(modelId){return !['light.floor_lamp','light.strip'].includes(lightBeamType(modelId));}
 export function beamRadius(length,angle) {return Math.max(.01,length)*Math.tan(normalizeBeamAngle(angle)*Math.PI/360);}
 // Radius at the emitting aperture, followed by the configured side divergence.
 export function beamFrustum(length,angle,variant) {

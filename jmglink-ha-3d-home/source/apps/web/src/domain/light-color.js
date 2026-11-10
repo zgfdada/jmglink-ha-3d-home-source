@@ -1,4 +1,14 @@
 import {Color,SRGBColorSpace} from 'three';
+// house-control's linear-RGB temperature stops (MIT; public/licenses/house-control-MIT.txt).
+const TEMPERATURE_STOPS=[[2200,'#ff9438'],[3000,'#ffbd7a'],[4200,'#ffe2c2'],[6500,'#dfe9ff']].map(([k,c])=>[k,new Color(c)]);
+export function fixtureTemperatureColor(kelvin){
+ const k=Math.max(2200,Math.min(6500,Number.isFinite(kelvin)?kelvin:3000));
+ for(let i=0;i<TEMPERATURE_STOPS.length-1;i++){
+  const [k0,c0]=TEMPERATURE_STOPS[i],[k1,c1]=TEMPERATURE_STOPS[i+1];
+  if(k<=k1)return '#'+c0.clone().lerp(c1,(k-k0)/(k1-k0)).getHexString(SRGBColorSpace);
+ }
+ return '#'+TEMPERATURE_STOPS.at(-1)[1].getHexString(SRGBColorSpace);
+}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const hex=rgb=>'#'+rgb.map(v=>Math.round(clamp(v,0,255)).toString(16).padStart(2,'0')).join('');
 const valid=(v,size)=>Array.isArray(v)&&v.length>=size&&v.slice(0,size).every(Number.isFinite);

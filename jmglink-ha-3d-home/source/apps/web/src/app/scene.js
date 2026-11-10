@@ -1,3 +1,8 @@
+import LightColorCapabilitySection from '../components/light-color-capability-section.jsx';
+import {detectLightColorCapability} from '../domain/light-color-capability.js';
+import {FixtureLightTransition,FixtureGlowMaterial,FixtureHaloMaterial,FixtureShellMaterial} from '../components/fixture-light-transition.jsx';
+import SceneLightingEffects from '../components/scene-lighting-effects.jsx';
+import {fixtureEmissiveOutput,FIXTURE_BLOOM} from '../domain/fixture-lighting.js';
 import FixtureBeamControl from '../components/fixture-beam-control.jsx';
 import {syncWalkSceneRotation} from '../domain/first-person-camera.js';
 import FixtureLight,{FloorLightOcclusion} from "../components/fixture-light.jsx";
@@ -22,7 +27,7 @@ import CurtainTrackModel from '../components/curtain-model.jsx';
 import {resolveCurtainTrack} from '../../../../packages/schema/src/curtain-track.js';
 import CameraControlPanel from '../components/camera-controls.jsx';
 import {CAMERA_MODELS,cameraModelDefinition} from '../../../../packages/schema/src/camera-models.js';
-import {resolveLightChromaticity, mixLightColors} from "../domain/light-color.js";
+import {resolveLightChromaticity, mixLightColors, fixtureTemperatureColor} from "../domain/light-color.js";
 import { DEFAULT_OUTLINE_SCALE, outlineThickness, updateOutlineThickness } from "../domain/outline-settings.js";
 import { overlayRefitKey } from "../domain/camera-refit.js";
 import { FLOOR_CAMERA_UP, FLOOR_ORBIT_LIMITS, presentationCameraPosition, applyOrbitProjection, anchorOrbitTarget, alignedTopCameraPosition, reachableOrbitPosition, cancelFitOnOrbitStart } from "../domain/camera-orbit.js";
@@ -1530,18 +1535,8 @@ function Po(e, s) {
   const r = Ce(e, "hs_color");
   return r.length >= 2 ? Co(r[0], r[1]) : s;
 }
-function Go(e) {
-  const s = He(e, Me[0].kelvin, Me[Me.length - 1].kelvin),
-    r = Me.findIndex((c) => c.kelvin >= s),
-    o = Me[Math.max(0, r)],
-    n = Me[Math.max(0, r - 1)];
-  if (o.kelvin === n.kelvin) return `#${o.color.map(gt).join("")}`;
-  const i = (s - n.kelvin) / (o.kelvin - n.kelvin);
-  return `#${n.color
-    .map((c, l) => c + (o.color[l] - c) * i)
-    .map(gt)
-    .join("")}`;
-}
+function Go(e) { return fixtureTemperatureColor(e); }
+
 function ot(e) {
   const s = (e == null ? void 0 : e.state.toLowerCase()) === "on",
     r = So(e),
@@ -4960,7 +4955,8 @@ function Kt({ color: e, level: s, radius: r, position: o, elongated: n = !1 }) {
   });
 }
 function je(props) {return t.jsx(FixtureLight,props);}
-function $s({
+function $s(props){return t.jsx(FixtureLightTransition,{on:props.appearance.isOn&&!props.unavailable,brightness:props.appearance.brightness,color:props.appearance.color,children:t.jsx(BuiltinFixtureBody,props)});}
+function BuiltinFixtureBody({
   modelId: e,
   bodyColor: s,
   appearance: r,
@@ -4996,20 +4992,20 @@ function $s({
           : i
             ? "#edf4f6"
             : "#e4e8e5",
-    k = h ? (0.28 + y * 1.62) * (n ? 1.1 : 1) : m ? 0.34 : 0,
+    k = h ? fixtureEmissiveOutput(y) : m ? 0.34 : 0,
     G = dt(f, u),
-    C = (E = 0.04) =>
+    C = (E = 0.04, shellGlow = !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e)) =>
       t.jsxs(t.Fragment, {
         children: [
           f
-            ? t.jsx("meshToonMaterial", {
+            ? t.jsx(FixtureShellMaterial, { glowEnabled:shellGlow,
                 color: b,
                 emissive: m ? j : "#000000",
                 emissiveIntensity: m ? 0.12 : 0,
                 transparent: o,
                 opacity: w,
               })
-            : t.jsx("meshPhysicalMaterial", {
+            : t.jsx(FixtureShellMaterial, { glowEnabled:shellGlow,
                 color: b,
                 roughness: i ? 0.28 : 0.42,
                 metalness: E,
@@ -5032,14 +5028,14 @@ function $s({
       t.jsxs(t.Fragment, {
         children: [
           f
-            ? t.jsx("meshToonMaterial", {
+            ? t.jsx(FixtureGlowMaterial, { materialType:"meshToonMaterial",
                 color: x,
                 emissive: h || m ? j : "#000000",
-                emissiveIntensity: k * 0.56,
+                emissiveIntensity: k,
                 transparent: !0,
                 opacity: o ? 0.42 : h ? 0.98 : m ? 0.88 : 0.82,
               })
-            : t.jsx("meshPhysicalMaterial", {
+            : t.jsx(FixtureGlowMaterial, { materialType:"meshPhysicalMaterial",
                 color: x,
                 emissive: h || m ? j : "#000000",
                 emissiveIntensity: k,
@@ -5061,7 +5057,7 @@ function $s({
         ],
       }),
     N = (E = 1) =>
-      t.jsx("meshBasicMaterial", {
+      t.jsx(FixtureHaloMaterial, { haloScale:E,selected:m,
         color: h || m ? j : r.color,
         transparent: !0,
         opacity: h ? (0.12 + y * 0.28) * E : m ? 0.09 * E : 0.025,
@@ -5073,14 +5069,14 @@ function $s({
     const E = i ? $(b, "#d8dde0", 0.36) : "#d7dcdd",
       d = h || m ? $(j, "#ffffff", 0.52) : "#f4f7f5",
       g = f
-        ? t.jsx("meshToonMaterial", {
+        ? t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
             color: b,
             emissive: m ? j : "#000000",
             emissiveIntensity: m ? 0.08 : 0,
             transparent: o,
             opacity: w,
           })
-        : t.jsx("meshPhysicalMaterial", {
+        : t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
             color: b,
             roughness: i ? 0.3 : 0.44,
             metalness: 0.05,
@@ -5092,14 +5088,14 @@ function $s({
             opacity: w,
           }),
       _ = f
-        ? t.jsx("meshToonMaterial", {
+        ? t.jsx(FixtureGlowMaterial, { materialType:"meshToonMaterial",
             color: x,
             emissive: h || m ? j : "#000000",
-            emissiveIntensity: k * 0.5,
+            emissiveIntensity: k,
             transparent: !0,
             opacity: o ? 0.42 : h ? 0.98 : m ? 0.88 : 0.84,
           })
-        : t.jsx("meshPhysicalMaterial", {
+        : t.jsx(FixtureGlowMaterial, { materialType:"meshPhysicalMaterial",
             color: x,
             emissive: h || m ? j : "#000000",
             emissiveIntensity: k,
@@ -5112,8 +5108,8 @@ function $s({
           }),
       M = () =>
         f
-          ? t.jsx("meshToonMaterial", { color: E, transparent: o, opacity: w })
-          : t.jsx("meshPhysicalMaterial", {
+          ? t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e), color: E, transparent: o, opacity: w })
+          : t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
               color: E,
               roughness: 0.36,
               metalness: 0.12,
@@ -5129,7 +5125,7 @@ function $s({
           args: [0.52, 0.026, 0.31],
           radius: 0.012,
           smoothness: 5,
-          castShadow: !0,
+          castShadow: !1,
           children: g,
         }),
         t.jsx(D, {
@@ -5182,7 +5178,7 @@ function $s({
           renderOrder: 9,
           children: [
             t.jsx("planeGeometry", { args: [0.355, 0.17] }),
-            t.jsx("meshBasicMaterial", {
+            t.jsx(FixtureHaloMaterial, { haloScale:.9,selected:m,
               color: d,
               transparent: !0,
               opacity: o ? 0.06 : h ? 0.18 + y * 0.18 : m ? 0.13 : 0.055,
@@ -5192,7 +5188,7 @@ function $s({
             }),
           ],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling", beamAngle }),
+        t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId, color: r.color, brightness: y, variant: "ceiling", beamAngle }),
       ],
     });
   }
@@ -5201,7 +5197,7 @@ function $s({
       children: [
         t.jsxs("mesh", {
           position: [0, 0.016, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.245, 0.262, 0.034, 64] }),
             C(0.05),
@@ -5209,7 +5205,7 @@ function $s({
         }),
         t.jsxs("mesh", {
           position: [0, -0.01, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.225, 0.238, 0.03, 64] }),
             O(),
@@ -5224,7 +5220,7 @@ function $s({
             N(h ? 0.78 : 0.38),
           ],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling", beamAngle }),
+        t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId, color: r.color, brightness: y, variant: "ceiling", beamAngle }),
       ],
     });
   if (e === "light.downlight") {
@@ -5233,11 +5229,11 @@ function $s({
     return t.jsxs("group", {
       children: [
         t.jsxs("mesh", {
-          castShadow: !0,
+          castShadow: !1,
           position: [0, 0.004, 0],
           children: [
             t.jsx("cylinderGeometry", { args: [0.098, 0.108, 0.018, 48] }),
-            t.jsx("meshPhysicalMaterial", {
+            t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
               color: E,
               roughness: i ? 0.28 : 0.36,
               metalness: 0.08,
@@ -5252,7 +5248,7 @@ function $s({
           position: [0, -0.008, 0],
           children: [
             t.jsx("cylinderGeometry", { args: [0.058, 0.068, 0.014, 48] }),
-            t.jsx("meshPhysicalMaterial", {
+            t.jsx(FixtureGlowMaterial, { materialType:"meshPhysicalMaterial",
               color: d,
               emissive: h || m ? j : "#000000",
               emissiveIntensity: h ? 0.28 + y * 1.05 : m ? 0.36 : 0,
@@ -5271,7 +5267,7 @@ function $s({
           renderOrder: 8,
           children: [t.jsx("circleGeometry", { args: [0.07, 48] }), N(0.42)],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "downlight", beamAngle }),
+        t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId, color: r.color, brightness: y, variant: "downlight", beamAngle }),
       ],
     });
   }
@@ -5280,7 +5276,7 @@ function $s({
       children: [
         t.jsxs("mesh", {
           position: [0, 0.08, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.1, 0.115, 0.055, 32] }),
             C(0.08),
@@ -5288,7 +5284,7 @@ function $s({
         }),
         t.jsxs("mesh", {
           position: [0, -0.16, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.014, 0.014, 0.44, 12] }),
             C(0.18),
@@ -5296,10 +5292,10 @@ function $s({
         }),
         t.jsxs("mesh", {
           position: [0, -0.4, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.13, 0.29, 0.24, 40, 1, !0] }),
-            C(0.06),
+            C(0.06, true),
           ],
         }),
         t.jsxs("mesh", {
@@ -5314,8 +5310,7 @@ function $s({
           rotation: [-Math.PI / 2, 0, 0],
           children: [t.jsx("circleGeometry", { args: [0.25, 40] }), N()],
         }),
-        h &&
-          t.jsx(je, { color: r.color, brightness: y, variant: "chandelier", beamAngle }),
+        t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId, color: r.color, brightness: y, variant: "chandelier", beamAngle }),
       ],
     });
   if (e === "light.wall_sconce")
@@ -5324,7 +5319,7 @@ function $s({
         t.jsxs("mesh", {
           position: [0, 0, -0.006],
           rotation: [Math.PI / 2, 0, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.17, 0.17, 0.036, 40] }),
             C(0.08),
@@ -5335,7 +5330,7 @@ function $s({
           args: [0.26, 0.24, 0.082],
           radius: 0.06,
           smoothness: 6,
-          castShadow: !0,
+          castShadow: !1,
           children: O(),
         }),
         t.jsxs("mesh", {
@@ -5348,13 +5343,13 @@ function $s({
         }),
         t.jsxs("mesh", {
           position: [0, -0.17, 0.036],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.012, 0.012, 0.18, 12] }),
             C(0.16),
           ],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "wall", beamAngle }),
+        t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId, color: r.color, brightness: y, variant: "wall", beamAngle }),
       ],
     });
   if (e === "light.floor_lamp")
@@ -5362,7 +5357,7 @@ function $s({
       children: [
         t.jsxs("mesh", {
           position: [0, 0.025, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.17, 0.19, 0.05, 32] }),
             C(0.1),
@@ -5370,7 +5365,7 @@ function $s({
         }),
         t.jsxs("mesh", {
           position: [0, 0.59, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.018, 0.022, 1.12, 14] }),
             C(0.2),
@@ -5378,10 +5373,10 @@ function $s({
         }),
         t.jsxs("mesh", {
           position: [0, 1.19, 0],
-          castShadow: !0,
+          castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.17, 0.245, 0.28, 40, 1, !0] }),
-            C(0.05),
+            C(0.05, true),
           ],
         }),
         t.jsxs("mesh", {
@@ -5396,13 +5391,13 @@ function $s({
           rotation: [-Math.PI / 2, 0, 0],
           children: [t.jsx("circleGeometry", { args: [0.21, 40] }), N()],
         }),
-        h && t.jsx(je, { color: r.color, brightness: y, variant: "floor", beamAngle }),
+        t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId, color: r.color, brightness: y, variant: "floor", beamAngle }),
       ],
     });
   if (e === "light.strip") {
     const E = h ? $(j, "#fff6d6", 0.26) : "#8fa0a7",
       d = 0.032,
-      g = (_, M, p) => {
+      g = (_, M, p, totalLength = 1) => {
         const v = p[0] - M[0],
           P = p[1] - M[1],
           T = Math.max(0.08, Math.hypot(v, P)),
@@ -5415,28 +5410,13 @@ function $s({
             position: F,
             rotation: [0, -I, 0],
             children: [
-              h && t.jsx(je,{color:r.color,brightness:y,variant:"strip",beamAngle}),
-              h &&
-                t.jsxs("mesh", {
-                  rotation: [0, 0, Math.PI / 2],
-                  children: [
-                    t.jsx("capsuleGeometry", { args: [d * 2.05, z, 8, 24] }),
-                    t.jsx("meshBasicMaterial", {
-                      color: E,
-                      transparent: !0,
-                      opacity: (0.12 + y * 0.24) * (n ? 1.15 : 1),
-                      depthWrite: !1,
-                      blending: q,
-                      toneMapped: !1,
-                    }),
-                  ],
-                }),
+              t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId,color:r.color,brightness:y,variant:"strip",stripLength:T,intensityScale:T/totalLength,beamAngle}),
               t.jsxs("mesh", {
                 rotation: [0, 0, Math.PI / 2],
                 children: [
                   t.jsx("capsuleGeometry", { args: [d, z, 8, 28] }),
-                  t.jsx("meshBasicMaterial", {
-                    color: E,
+                  t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
+                    color: E, emissive:j, emissiveIntensity:h?fixtureEmissiveOutput(y):0, roughness:.6,
                     transparent: !0,
                     opacity: o ? 0.2 : h ? 0.94 : 0.34,
                     depthWrite: !1,
@@ -5465,24 +5445,26 @@ function $s({
       };
     if (c && Ve(c)) {
       const _ = [c.position[0], c.position[2]],
-        M = js(ys(c), xs(c));
+        M = js(ys(c), xs(c)),
+        totalLength=M.reduce((sum,p)=>sum+Math.hypot(p.end[0]-p.start[0],p.end[1]-p.start[1]),0);
       return t.jsx("group", {
         children: M.map((p, v) =>
           g(
             `strip-segment-${v}`,
             [p.start[0] - _[0], p.start[1] - _[1]],
             [p.end[0] - _[0], p.end[1] - _[1]],
+            Math.max(.08,totalLength),
           ),
         ),
       });
     }
     return t.jsx("group", {
-      children: [h && t.jsx(je,{color:r.color,brightness:y,variant:"strip",beamAngle}),t.jsxs("mesh", {
+      children: [t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId,color:r.color,brightness:y,variant:"strip",stripLength:.88,beamAngle}),t.jsxs("mesh", {
         rotation: [0, 0, Math.PI / 2],
         children: [
           t.jsx("capsuleGeometry", { args: [d, 0.88, 8, 28] }),
-          t.jsx("meshBasicMaterial", {
-            color: E,
+          t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
+            color: E, emissive:j, emissiveIntensity:h?fixtureEmissiveOutput(y):0, roughness:.6,
             transparent: !0,
             opacity: o ? 0.2 : h ? 0.94 : 0.34,
             depthWrite: !1,
@@ -5497,7 +5479,7 @@ function $s({
     children: [
       t.jsxs("mesh", {
         position: [0, 0.018, 0],
-        castShadow: !0,
+        castShadow: !1,
         children: [
           t.jsx("cylinderGeometry", { args: [0.285, 0.31, 0.044, 64] }),
           C(0.05),
@@ -5505,7 +5487,7 @@ function $s({
       }),
       t.jsxs("mesh", {
         position: [0, -0.014, 0],
-        castShadow: !0,
+        castShadow: !1,
         children: [
           t.jsx("cylinderGeometry", { args: [0.255, 0.275, 0.036, 64] }),
           O(),
@@ -5543,7 +5525,7 @@ function $s({
           }),
         ],
       }),
-      h && t.jsx(je, { color: r.color, brightness: y, variant: "ceiling", beamAngle }),
+      t.jsx(je, { on: h, fixtureId:c?.id, roomId:c?.roomId, color: r.color, brightness: y, variant: "ceiling", beamAngle }),
     ],
   });
 }
@@ -11203,7 +11185,7 @@ function yi({
     null
   );
 }
-function ji({ enabled: e, scale = DEFAULT_OUTLINE_SCALE }) {
+function ji({ enabled: e, scale = DEFAULT_OUTLINE_SCALE,quality }) {
   const { gl: s, scene: r, camera: o, size: n } = tt(),
     i = L.useMemo(
       () =>
@@ -11222,13 +11204,7 @@ function ji({ enabled: e, scale = DEFAULT_OUTLINE_SCALE }) {
     L.useEffect(() => {
       i.setSize(n.width, n.height);
     }, [i, n.height, n.width]),
-    re(
-      () => {
-        e && i.render(r, o);
-      },
-      e ? 1 : 0,
-    ),
-    null
+    t.jsx(SceneLightingEffects,{outlineRenderer:e?i:null,quality})
   );
 }
 const Et = {
@@ -11744,22 +11720,12 @@ function _a({
         alpha: u,
         antialias: R.antialias,
         toneMapping: tr,
-        toneMappingExposure: v
-          ? 1.08
-          : P
-            ? 1.02
-            : I
-              ? w === "security"
-                ? 0.9
-                : 1.02
-              : u
-                ? 1
-                : 1.05,
+        toneMappingExposure: FIXTURE_BLOOM.exposure,
         powerPreference: "high-performance",
       },
       onCreated: ({ gl: Z }) => {
         ((Z.shadowMap.enabled = R.shadows),
-          (Z.shadowMap.type = rr),
+          (Z.shadowMap.type = Xa.PCFShadowMap),
           (Z.outputColorSpace = Zt));
       },
       children: [
@@ -11816,7 +11782,7 @@ function _a({
           savedViewAngle,
           viewAngleRef,
         }),
-        v && t.jsx(ji, { enabled: v, scale: outlineScale }),
+        t.jsx(ji, { enabled: v, scale: outlineScale,quality:E }),
         t.jsx(sr, {
           enabled: walkthrough.mode === 'idle',
           makeDefault: !0,
@@ -12028,7 +11994,7 @@ function Ii(e) {
       we(e, "min_color_temp_kelvin") ||
       we(e, "max_color_temp_kelvin"),
     u =
-      o(Li) || et(e, "rgb_color").length >= 3 || et(e, "hs_color").length >= 2;
+      detectLightColorCapability(e).supported;
   return {
     brightness: a,
     brightnessPercent: Math.round((a / 255) * 100),
@@ -12336,8 +12302,7 @@ function Bi({ active: e, busy: s, compact: r = !1, entity: o, run: n, beamSelect
             }),
           ],
         }),
-      i.hasColor &&
-        t.jsxs(se, {
+      t.jsx(LightColorCapabilitySection,{entity:o,children:t.jsxs(se, {
           title: "颜色",
           hint: a.toUpperCase(),
           children: [
@@ -12386,7 +12351,7 @@ function Bi({ active: e, busy: s, compact: r = !1, entity: o, run: n, beamSelect
               ),
             }),
           ],
-        }),
+        })}),
       !r &&
         !i.hasBrightness &&
         !i.hasColorTemperature &&
@@ -12394,7 +12359,7 @@ function Bi({ active: e, busy: s, compact: r = !1, entity: o, run: n, beamSelect
         t.jsx("p", {
           className: "control-hint",
           children:
-            "这个灯在 HA 数据中只暴露开关能力，因此隐藏亮度、色温和颜色控件。",
+            "这个灯在 HA 数据中只暴露开关能力；彩色控件默认收起，可展开调试。",
         }),
       t.jsx(BeamControlsBridge,{entity:o,selection:beamSelection}),
     ],
