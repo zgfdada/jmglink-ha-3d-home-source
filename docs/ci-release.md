@@ -33,7 +33,7 @@ main／PR 只校验、测试、构建与隔离冒烟，不推镜像。通过验�
 
 ## 等待与耗时
 
-GitHub 与旧 Gitea 分别记录最长成功基线。当前 GitHub CI 为2分04秒、正式发布为3分13秒，首次终态查询分别至少等待3分钟、4分钟；仍在运行时至少再等待10分钟。不下调历史最长基线。发布后补记各流水线实际开始／完成、累计成功执行时间及端到端墙钟，失败与重跑单列。
+GitHub 与旧 Gitea 分别记录最长成功基线。当前 GitHub CI 为2分16秒、正式发布为3分55秒，首次终态查询分别至少等待3分钟、4分钟；仍在运行时至少再等待10分钟。不下调历史最长基线。发布后补记各流水线实际开始／完成、累计成功执行时间及端到端墙钟，失败与重跑单列。
 
 ## 历史 Gitea 发布记录
 
@@ -184,3 +184,15 @@ GitHub源码CI最长成功基线提高为2分16秒，发布保留3分13秒，成
 [源码CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42428090721) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42428366472) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.45)
 
 推广页同版前端、GPL源码、Skill下载、安装内容及校验清单使用既有脱敏演示快照。知识库仅本机同步，不上传WeKnora；线上推广页部署以独立运行核验为准。
+
+## .46 正式发布验收与耗时
+
+正式源码提交 `c488873459141a1883fce4359b0a123f737617bc`。497 项业务测试及 18 项发布检查通过，AMD64 和 ARM64 镜像运行及 Ingress 检查通过。公开安装仓库 23 个文件逐项核对 Git blob。版本与 latest 指向同一镜像索引 `sha256:c467b24bd3698a1357540b50b6e3bcfc04df71c2b60ee21519c1b33d05e17c8e`。
+
+北京时间 2026-11-11，源码 CI 12:54:35–12:56:41，用时 2 分 06 秒。正式发布 12:57:56–13:01:51，用时 3 分 55 秒。成功流程累计 6 分 01 秒，端到端 7 分 16 秒。发布内部并行任务累计 5 分 46 秒。两条 GitHub Actions 均首次成功。
+
+GitHub 源码 CI 最长成功基线保留 2 分 16 秒，正式发布提高至 3 分 55 秒，关联墙钟保留 7 分 23 秒。首次终态查询分别至少等待 3 分钟和 4 分钟，仍运行时再等至少 10 分钟。
+
+推广页本地 Docker 包使用同版前端、GPL 源码、Skill 与原公开脱敏快照。浏览器演示已验证环境光入口，70 个 HTTP 文件通过 SHA256 核对。公网推广页沿用此前部署。
+
+[源码 CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42962252764) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42962594998) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.46)
