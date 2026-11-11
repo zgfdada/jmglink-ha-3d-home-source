@@ -55,5 +55,7 @@ test('前端串接实时太阳、全户型北向和夜间投影开关', async ()
   assert.match(home,/solarDirection: resolveSolarDirection\(s, northAngle\)/);
   assert.match(scene,/castShadow: R.shadows && \(moonActive \|\| !solarActive \|\| solar.aboveHorizon\)/);
   assert.doesNotMatch(editor,/aria-label": "户型北向角度"/);
-  assert.match(home,/e.jsx\(NorthDirectionControl/);
+  assert.match(home,/e.jsx\(HomeAmbientPanel/);
+  const panel=await readFile(new URL("../apps/web/src/app/home-ambient-panel.js",import.meta.url),"utf8");
+  assert.match(panel,/e.jsx\(NorthDirectionControl/);
 });

@@ -3060,7 +3060,7 @@ const Ss = L.createContext("glass"),
     threshold: e ? 18 : s ? 22 : 24,
   }),
   Cs = (e) => e;
-function Gt({ children: e }) {
+function Gt({ children: e, colorFill = true }) {
   const s = L.useRef(null);
   return (
     L.useLayoutEffect(() => {
@@ -3071,7 +3071,7 @@ function Gt({ children: e }) {
           o instanceof Js && ((o.castShadow = !1), (o.receiveShadow = !1));
         });
     }),
-    t.jsx("group", { ref: s, children: e })
+    t.jsx("group", { ref: s, userData: { surfaceColorFill: colorFill }, children: e })
   );
 }
 function Ps(e) {
@@ -3799,6 +3799,7 @@ function Rn({
     ],
   });
 }
+const FurnitureColorOverride = L.createContext("");
 function H({
   position: e,
   size: s,
@@ -3811,10 +3812,11 @@ function H({
     [n, s[0], s[1], s[2]],
   );
   L.useEffect(() => () => roundedGeometry?.dispose(), [roundedGeometry]);
+  const explicitFurnitureColor = L.useContext(FurnitureColorOverride);
   const i = ue(),
     a = i === "cartoon" && n,
     c = i === "cream" && n,
-    l = a
+    l = explicitFurnitureColor ? r : a
       ? qe(r)
       : c
         ? $(qe(r), "#fff3df", 0.2)
@@ -3981,17 +3983,7 @@ function Hn({
       F = o ? (p ? 0.56 : 0.46) : 0.68,
       S = o ? (p ? 0.36 : 0.26) : 0.42,
       B = o ? 0.016 : 0.024,
-      R = Math.max(B * 0.72, o ? 0.011 : 0.016),
       W = o ? 0.01 : 0.016,
-      ee = Math.max(2, Math.min(5, Math.round(e.width / 0.48))),
-      K = Array.from(
-        { length: ee - 1 },
-        (Q, Z) => -e.width / 2 + e.width * ((Z + 1) / ee),
-      ),
-      X =
-        e.height > 0.92
-          ? [e.height * (e.windowStyle === "floor_to_ceiling" ? -0.16 : 0)]
-          : [],
       te = ({ x: Q, y: Z, width: ye, height: ae, opacity: Us = F }) =>
         t.jsxs("mesh", {
           position: [Q, Z, M + 0.006],
@@ -4066,20 +4058,6 @@ function Hn({
           height: e.height,
         }),
         t.jsx(te, { x: e.width / 2 - B / 2, y: 0, width: B, height: e.height }),
-        K.map((Q) =>
-          t.jsx(
-            te,
-            { x: Q, y: 0, width: R, height: e.height * 0.94, opacity: S },
-            `mullion-${Q}`,
-          ),
-        ),
-        X.map((Q) =>
-          t.jsx(
-            te,
-            { x: 0, y: Q, width: e.width * 0.94, height: R, opacity: S },
-            `rail-${Q}`,
-          ),
-        ),
       ],
     });
   }
@@ -8384,6 +8362,7 @@ const ii = L.memo(function ({
             distance: 2.7,
           }),
         t.jsx(Gt, {
+          colorFill: !O,
           children: configuredModel?.source
             ? t.jsx(ConfiguredDeviceModel, {
                 config: configuredModel,
@@ -8544,6 +8523,7 @@ const ii = L.memo(function ({
       },
       children: [
         t.jsx(Gt, {
+          colorFill: false,
           children: t.jsx($s, {
             modelId: y,
             bodyColor: N,
@@ -8705,6 +8685,7 @@ function VanityMirrorCabinetFixture({ item, theme }) {
                   mirrorY,
                   mirrorFront,
                 ],
+                userData: { surfaceColorFill: false },
                 castShadow: !0,
                 children: [
                   t.jsx("boxGeometry", {
@@ -9039,7 +9020,7 @@ function CinemaProjector({ active }) {
     t.jsx(H, { position: [0, 0.08, 0.2], size: [0.28, 0.18, 0.04], color: "#d9d5cc", roughness: 0.48 }),
     t.jsx(H, { position: [0, 0.08, 0], size: [0.36, 0.15, 0.36], color: "#eeeae1", roughness: 0.38 }),
     t.jsx(H, { position: [0, 0.01, -0.185], size: [0.31, 0.045, 0.02], color: "#d6d2c9", roughness: 0.3 }),
-    t.jsxs("mesh", { position: [0, 0.078, -0.194], rotation: [Math.PI / 2, 0, 0], children: [
+    t.jsxs("mesh", { position: [0, 0.078, -0.194], userData: { surfaceColorFill: false }, rotation: [Math.PI / 2, 0, 0], children: [
       t.jsx("cylinderGeometry", { args: [0.044, 0.044, 0.014, 32] }),
       t.jsx("meshPhysicalMaterial", { ref: lens, color: "#a5b9c9", emissive: "#b9d9ff", emissiveIntensity: 0, roughness: 0.12, clearcoat: 0.9 }),
     ] }),
@@ -9084,7 +9065,14 @@ function CinemaSpeaker({ item, active }) {
     t.jsx(H, { position: [0, item.height - 0.023, -item.depth / 2 - 0.014], size: [0.026, 0.008, 0.008], color: active ? "#94c8e9" : "#aab5b4", roughness: 0.25 }),
   ] });
 }
-function Furniture({
+function Furniture(props) {
+  const style = L.useContext(HomeStyleOverrides);
+  return t.jsx(FurnitureColorOverride.Provider, {
+    value: style?.ambientFurnitureColor ?? "",
+    children: t.jsx(FurnitureBody, props),
+  });
+}
+function FurnitureBody({
   item: e,
   theme: s,
   presentation: r,
@@ -9097,10 +9085,11 @@ function Furniture({
     a = n === "cream" && r,
     c = ge(s, o),
     paleCabinet = r && !e.customModel?.source && ["cabinet","wardrobe","tv_stand","bookshelf","sideboard","shoe_cabinet","nightstand"].includes(e.kind),
-    l = paleCabinet ? $(c.furnitureMain, "#f4eddf", 0.38) : c.furnitureMain,
-    f = paleCabinet ? $(c.furnitureDetail, "#e9dfce", 0.32) : c.furnitureDetail,
-    u = i ? l : a ? $(l, "#f7ead5", 0.26) : r ? $(l, "#edf5ff", 0.28) : l,
-    h = i ? f : a ? $(f, "#cdbb9f", 0.18) : r ? $(f, "#d8e8ff", 0.22) : f,
+    explicitColor = L.useContext(FurnitureColorOverride),
+    l = explicitColor || (paleCabinet ? $(c.furnitureMain, "#f4eddf", 0.38) : c.furnitureMain),
+    f = explicitColor ? "#" + new Re(explicitColor).multiplyScalar(.82).getHexString() : paleCabinet ? $(c.furnitureDetail, "#e9dfce", 0.32) : c.furnitureDetail,
+    u = explicitColor || i ? l : a ? $(l, "#f7ead5", 0.26) : r ? $(l, "#edf5ff", 0.28) : l,
+    h = explicitColor || i ? f : a ? $(f, "#cdbb9f", 0.18) : r ? $(f, "#d8e8ff", 0.22) : f,
     m = i
       ? "#fff7e8"
       : a
@@ -9424,14 +9413,14 @@ function Furniture({
                       hollowHeight: segmentedHeights.hollowHeight,
                     })
                   : [],
-              cabinetBodyColor = i
+              cabinetBodyColor = explicitColor ? u : i
                 ? qe(u)
                 : a
                   ? $(qe(u), "#fff3df", 0.2)
                   : r
                     ? $(qe(u), "#eef5ff", 0.24)
                     : qe(u),
-              cabinetTopColor = i
+              cabinetTopColor = explicitColor ? h : i
                 ? qe(h)
                 : a
                   ? $(qe(h), "#fff3df", 0.2)
@@ -10619,6 +10608,7 @@ function fi({
   hoveredRoomKey: G,
   setHoveredRoomKey: C,
 }) {
+  const style = L.useContext(HomeStyleOverrides);
   const connected = Ie((state) => state.connection?.connected === true);
   const knownEntities = Ie((state) => state.entities);
   const O = L.useRef(null),
@@ -10668,7 +10658,7 @@ function fi({
     verticalElevations = resolveFloorVerticalElevations(e, r, {
       presentation: l,
     });
-  return t.jsx(FloorLightOcclusion,{floor:e,root:O,children:t.jsxs("group", {
+  return t.jsx(FloorLightOcclusion,{floor:e,root:O,colorFill:style?.furnitureColorFill ?? 0,children:t.jsxs("group", {
     ref: O,
     position: [0, 0, 0],
     children: [

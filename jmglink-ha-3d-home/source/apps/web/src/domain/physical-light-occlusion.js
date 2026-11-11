@@ -35,26 +35,39 @@ export function physicalLightShader(shader,uniforms,count,lightingChunk){
  shader.fragmentShader=declarations+shader.fragmentShader.replace('#include <lights_fragment_begin>',chunk);
 }
 
-export function bindPhysicalLightOcclusion(root,uniforms,count,lightingChunk){
+// Use the shaded material's own base colour, including its colour texture.
+export function applySurfaceColorFill(shader, strength) {
+ const output = '#include <opaque_fragment>';
+ if (!shader.fragmentShader.includes(output) || !shader.fragmentShader.includes('totalEmissiveRadiance')) return;
+ shader.uniforms.surfaceColorFill = strength;
+ shader.fragmentShader = 'uniform float surfaceColorFill;\n' + shader.fragmentShader.replace(
+  output,
+  'if (dot(totalEmissiveRadiance, totalEmissiveRadiance) < 0.000001) { outgoingLight += diffuseColor.rgb * surfaceColorFill; }\n' + output,
+ );
+}
+
+export function bindPhysicalLightOcclusion(root,uniforms,count,lightingChunk,surfaceColorFill){
  const nodes=new Map(),materials=new Map();
- const patch=material=>{
+ const patch=(material,eligible)=>{
   if(!material||materials.has(material)||!(material.isMeshStandardMaterial||material.isMeshPhysicalMaterial||material.isMeshPhongMaterial||material.isMeshLambertMaterial||material.isMeshToonMaterial))return;
+  const fill = surfaceColorFill && eligible && !material.transparent && !material.transmission && !material.emissiveMap && !material.isMeshMatcapMaterial && (material.metalness ?? 0) < .85;
   const compile=material.onBeforeCompile,key=material.customProgramCacheKey;
   materials.set(material,{compile,key});
-  material.onBeforeCompile=function(shader,renderer){compile.call(this,shader,renderer);physicalLightShader(shader,uniforms,count,lightingChunk);};
-  material.customProgramCacheKey=function(){return key.call(this)+'-physical-walls-'+count;};
+  material.onBeforeCompile=function(shader,renderer){compile.call(this,shader,renderer);physicalLightShader(shader,uniforms,count,lightingChunk);if(fill)applySurfaceColorFill(shader,surfaceColorFill);};
+  material.customProgramCacheKey=function(){return key.call(this)+'-physical-walls-'+count+(fill?'-surface-color-fill':'');};
   material.needsUpdate=true;
  };
- const add=node=>{
+ const add=(node,parentEligible=false)=>{
   if(!node||nodes.has(node)||node.userData?.sceneVisualEffect)return;
+  const eligible=node.userData?.surfaceColorFill ?? parentEligible;
   const before=node.onBeforeRender;
   if(node.isMesh){
-   node.onBeforeRender=function(renderer,scene,camera,geometry,material,group){before.call(this,renderer,scene,camera,geometry,material,group);patch(material);};
-   for(const mat of Array.isArray(node.material)?node.material:[node.material])patch(mat);
+   node.onBeforeRender=function(renderer,scene,camera,geometry,material,group){before.call(this,renderer,scene,camera,geometry,material,group);patch(material,eligible);};
+   for(const mat of Array.isArray(node.material)?node.material:[node.material])patch(mat,eligible);
   }
-  const added=e=>add(e.child),removed=e=>remove(e.child);
+  const added=e=>add(e.child,eligible),removed=e=>remove(e.child);
   nodes.set(node,{before,added,removed});node.addEventListener('childadded',added);node.addEventListener('childremoved',removed);
-  for(const child of node.children)add(child);
+  for(const child of node.children)add(child,eligible);
  };
  const remove=node=>{
   if(!node)return;for(const child of node.children)remove(child);

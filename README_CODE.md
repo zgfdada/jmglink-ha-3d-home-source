@@ -1,5 +1,7 @@
 # 开发说明
 
+场景外观的颜色补偿通过 FloorLightOcclusion 向家具和设备材质传递同一个值，补偿沿用漫反射底色及贴图，跳过镜面、透射和已有自发光的材质。延迟加载的模型沿用相同规则。
+
 灯型回归从实际选择器提取全部light模型，并检查switch.light别名映射；新增灯型必须纳入覆盖。FixtureShellMaterial.glowEnabled区分灯罩和支撑部件；灯带使用均匀HDR灯面，stripLightPositions沿线分布5–16个光源，分摊原总输出，保持影子预算策略。巡检与8101部署证据见docs/灯型效果巡检-20261110.md及docs/deployment.md。
 
 light-color-capability.js 优先使用非空 supported_color_modes；缺失时只以当前明确的彩色模式作为支持依据，不使用派生 RGB 值推断。LightColorCapabilitySection 复用原有 control-section 与完整颜色控件；默认闭合 details 按设备及能力状态重建，不保存调试展开偏好，不在检测／展开时调用服务。

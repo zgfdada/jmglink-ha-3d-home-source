@@ -8,12 +8,15 @@ import {fixtureLightProfile,fixtureLightOutput,stripLightPositions,DEFAULT_FIXTU
 import {wallLightBlockers} from '../domain/light-occlusion.js';
 import {normalizeBeamAngle} from '../domain/light-beam-settings.js';
 export const FloorLightContext=createContext(null);
-export function FloorLightOcclusion({floor,root,children}){
+export function FloorLightOcclusion({floor,root,children,colorFill=0}){
  const value=useMemo(()=>({root,blockers:wallLightBlockers(floor)}),[floor,root]);
  const physicalUniforms=useMemo(()=>({physicalViewToFloor:{value:new Matrix4()},physicalWalls:{value:value.blockers.length?value.blockers.map(b=>new Vector4(...b.segment)):[new Vector4()]},physicalWallHeights:{value:value.blockers.length?value.blockers.map(b=>new Vector2(...b.height)):[new Vector2()]}}),[value]);
+ const surfaceColorFill=useRef({value:0}).current;
+ const invalidate=useThree(state=>state.invalidate);
+ useLayoutEffect(()=>{surfaceColorFill.value=colorFill;invalidate();},[colorFill,surfaceColorFill,invalidate]);
  const inverse=useMemo(()=>new Matrix4(),[]);
  useFrame(({camera})=>{if(!root.current)return;root.current.updateWorldMatrix(true,false);camera.updateWorldMatrix(true,false);inverse.copy(root.current.matrixWorld).invert();physicalUniforms.physicalViewToFloor.value.multiplyMatrices(inverse,camera.matrixWorld);});
- useLayoutEffect(()=>bindPhysicalLightOcclusion(root.current,physicalUniforms,value.blockers.length,lightsFragmentBegin),[root,physicalUniforms,value]);
+ useLayoutEffect(()=>bindPhysicalLightOcclusion(root.current,physicalUniforms,value.blockers.length,lightsFragmentBegin,surfaceColorFill),[root,physicalUniforms,value,surfaceColorFill]);
  return <FloorLightContext.Provider value={value}>{children}</FloorLightContext.Provider>;
 }
 export default function FixtureLight({color,brightness,on=true,variant,beamAngle=DEFAULT_FIXTURE_BEAM_ANGLE,stripLength=1,intensityScale=1,fixtureId,roomId}){

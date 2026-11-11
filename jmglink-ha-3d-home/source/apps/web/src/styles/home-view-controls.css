@@ -16,28 +16,91 @@
   }
 }
 
-/* 在家人员和跟踪器顶部横排，兼容手机横竖屏。 */
-.mode-home .home-mobile-presence {
+.mode-home .home-presence {
+  position: absolute;
   top: max(1rem, env(safe-area-inset-top));
-  right: auto;
-  left: 50%;
-  width: min(64rem, calc(100% - 2 * var(--home-edge-x, 1rem)));
-  transform: translateX(-50%);
-  animation: none;
-}
-.mode-home .mobile-presence-list {
+  right: 1rem;
+  z-index: 32;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: .5rem 1rem;
+  gap: 5px;
+  width: max-content;
+  pointer-events: none;
 }
-.mode-home .mobile-presence-user {
-  flex: 0 1 auto;
-  max-width: min(18rem, 100%);
+.mode-home .sb-home-container.dock-left > .home-presence {
+  top: 4px;
+  left: calc(100% + 12px);
+  right: auto;
 }
-.mode-home .mobile-presence-more { flex: 0 0 auto; }
+.mode-home .sb-home-container.dock-right > .home-presence {
+  top: 4px;
+  right: calc(100% + 12px);
+}
+.mode-home .sb-home-container.dock-top > .home-presence {
+  top: calc(100% + 8px);
+  right: 0;
+}
+.mode-home .sb-home-container.dock-bottom > .home-presence {
+  top: auto;
+  bottom: calc(100% + 8px);
+  right: 0;
+}
+.home-presence-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #516277;
+  background: #dce5ef;
+  box-shadow: 0 2px 8px #172b4526;
+}
+.home-presence-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.home-presence-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #517f62;
+}
+.home-presence-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  background: #ffffffe6;
+  border-radius: 12px;
+  padding: 3px 6px;
+}
+@media (max-width: 760px) {
+  .mode-home .sb-home-container.dock-left > .home-presence,
+  .mode-home .sb-home-container.dock-right > .home-presence {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: auto;
+    right: 12px;
+  }
+}
 
 /* Non-modal device panels only receive input inside their own bounds. */
-.mode-home .home-insight-panel.entity-selected { position:fixed; z-index:40; max-height:calc(100dvh - 3rem); overflow:auto; pointer-events:auto; }
-.mode-home .insight-detail-toolbar { grid-template-columns:minmax(0,1fr); }
+.mode-home .home-insight-panel.entity-selected {
+  position: fixed;
+  z-index: 40;
+  max-height: calc(100dvh - 3rem);
+  overflow: auto;
+  pointer-events: auto;
+}
+.mode-home .insight-detail-toolbar {
+  grid-template-columns: minmax(0, 1fr);
+}

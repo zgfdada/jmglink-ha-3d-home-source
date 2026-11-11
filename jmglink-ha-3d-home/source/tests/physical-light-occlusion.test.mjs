@@ -60,3 +60,34 @@ test('户型旋转和楼层堆叠后，相机视空间光路仍还原到同一�
  const walls=wallLightBlockers({height:2.64,walls:[{id:'wall',start:[2.1,7.69],end:[2.1,10.39],height:2.64}],openings:[]});
  assert.equal(lightPathBlocked(...recovered,walls),true);
 });
+
+
+test('家具及设备共享颜色补偿，异步模型继承，镜面和玻璃排除', () => {
+ const root = new Group();
+ const furniture = new Group();
+ furniture.userData.surfaceColorFill = true;
+ root.add(furniture);
+ const strength = { value: .26 };
+ const cleanup = bindPhysicalLightOcclusion(root, {}, 0, ShaderChunk.lights_fragment_begin, strength);
+ const housing = new Mesh(undefined, new MeshPhysicalMaterial());
+ const glass = new Mesh(undefined, new MeshPhysicalMaterial({ transmission: .8 }));
+ const mirror = new Mesh(undefined, new MeshPhysicalMaterial());
+ mirror.userData.surfaceColorFill = false;
+ furniture.add(housing, glass, mirror);
+ const compile = mesh => {
+  const shader = {
+   uniforms: {},
+   fragmentShader: 'vec3 totalEmissiveRadiance;\n#include <lights_fragment_begin>\n#include <opaque_fragment>',
+  };
+  mesh.material.onBeforeCompile(shader);
+  return shader;
+ };
+ const shader = compile(housing);
+ assert.equal(shader.uniforms.surfaceColorFill, strength);
+ assert.match(shader.fragmentShader, /diffuseColor\.rgb \* surfaceColorFill/);
+ strength.value = 0;
+ assert.equal(shader.uniforms.surfaceColorFill.value, 0);
+ assert.equal(compile(glass).uniforms.surfaceColorFill, undefined);
+ assert.equal(compile(mirror).uniforms.surfaceColorFill, undefined);
+ cleanup();
+});

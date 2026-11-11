@@ -1,6 +1,6 @@
 {
   "name": "@ha3d/recovered-server",
-  "version": "0.1.5-custom.45",
+  "version": "0.1.5-custom.46",
   "license": "GPL-3.0-only",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@fastify/static": "^10.1.3",
-    "@ha3d/schema": "0.1.5-custom.45",
+    "@ha3d/schema": "0.1.5-custom.46",
     "@modelcontextprotocol/sdk": "1.32.2",
     "fastify": "^5.1.0",
     "stream-json": "3.8.0",
