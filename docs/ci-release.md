@@ -196,3 +196,13 @@ GitHub 源码 CI 最长成功基线保留 2 分 16 秒，正式发布提高至 3
 推广页本地 Docker 包使用同版前端、GPL 源码、Skill 与原公开脱敏快照。浏览器演示已验证环境光入口，70 个 HTTP 文件通过 SHA256 核对。公网推广页沿用此前部署。
 
 [源码 CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42962252764) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/42962594998) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.46)
+
+## .47 正式发布验收与耗时
+
+正式源码提交 `cc2a9168a29f5a7088e377a3c1e8cb92e33d330f`。498 项业务测试及 18 项发布检查通过，AMD64 和 ARM64 镜像、匿名拉取及安装快照 23 个文件的 Git blob SHA 校验通过。版本镜像与 latest 的索引相同，为 `sha256:b1af2ad588c4665504e2c395db6613074105187bb9ba14197b222b8c697b304e`。
+
+北京时间 2026-11-14，源码 CI 22:06:49–22:08:31，用时 1 分 42 秒。正式发布 22:09:46–22:13:01，用时 3 分 15 秒。成功流程累计 4 分 57 秒，端到端 6 分 12 秒。
+
+GitHub 历史最长成功基线为源码 CI 2 分 16 秒、正式发布 3 分 55 秒、端到端 7 分 23 秒。
+
+[源码 CI](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/43603143223) · [正式发布](https://github.com/zgfdada/jmglink-ha-3d-home-source/actions/runs/43603401980) · [安装版本](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases/tag/v0.1.5-custom.47)
