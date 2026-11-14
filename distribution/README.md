@@ -12,7 +12,7 @@
 
 支持全屋状态查看、设备控制、户型编辑、自定义模型与面板，以及 HA / Hermes 语音助手。可作为 Home Assistant App 安装，也可直接拉取 Docker 镜像独立运行。
 
-**当前版本：`0.1.5-custom.46`** · 支持 `linux/amd64`、`linux/arm64`
+**当前版本：`0.1.5-custom.47`** · 支持 `linux/amd64`、`linux/arm64`
 
 [版本下载与更新日志](https://github.com/zgfdada/jmglink-ha-3d-home-custom/releases) · [完整 Wiki](https://github.com/zgfdada/jmglink-ha-3d-home-custom/blob/main/docs/wiki/Home.md) · [RELEASE_NOTES](RELEASE_NOTES.md)
 

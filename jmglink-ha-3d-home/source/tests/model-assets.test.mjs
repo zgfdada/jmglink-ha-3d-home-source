@@ -5,9 +5,40 @@ import {
   createModelAsset,
   createModelLoadQueue,
   createLatestModelTask,
+  createSceneModelPool,
   loadModelAsset,
   modelLoadQueue,
 } from "../apps/web/src/domain/model-assets.js";
+
+test("placed models share one decode and geometry until the final placement leaves", async () => {
+  let loads = 0, disposed = 0;
+  const acquire = createSceneModelPool(async () => {
+    loads++;
+    const geometry = new THREE.BoxGeometry();
+    geometry.addEventListener("dispose", () => disposed++);
+    return createModelAsset({ scene: new THREE.Mesh(geometry, new THREE.MeshStandardMaterial()) });
+  });
+  const cancelled = new AbortController();
+  const skipped = assert.rejects(acquire("speaker.glb", { signal: cancelled.signal }), { name: "AbortError" });
+  const pair = Promise.all([acquire("speaker.glb"), acquire("speaker.glb")]);
+  cancelled.abort();
+  await skipped;
+  const [a, b] = await pair;
+  const first = a.instantiate(), second = b.instantiate();
+  assert.equal(loads, 1);
+  assert.equal(first.scene.geometry, second.scene.geometry);
+  assert.notEqual(first.scene.material, second.scene.material);
+  first.release();
+  a.release();
+  assert.equal(disposed, 0);
+  second.release();
+  b.release();
+  assert.equal(disposed, 1);
+  const reopened = await acquire("speaker.glb");
+  assert.equal(loads, 2);
+  reopened.release();
+  assert.equal(disposed, 2);
+});
 
 test("model decoding stays serial and cancelled queued tasks never execute", async () => {
   const queue = createModelLoadQueue(),

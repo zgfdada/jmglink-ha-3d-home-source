@@ -141,7 +141,7 @@ export const modelLoadQueue = createModelLoadQueue();
 // The prepared asset is handed to the editor preview, rather than parsed a second time.
 export function loadModelAsset(
   source,
-  { signal, background = false, timeoutMs = 45000, decode } = {},
+  { signal, background = false, timeoutMs = 45000, decode, textureEdge } = {},
 ) {
   const controller = new AbortController();
   const cancel = () => controller.abort();
@@ -183,7 +183,7 @@ export function loadModelAsset(
         if(decode)gltf=await decode(data,{signal:activeSignal});
         else if(typeof window!=="undefined"){
           if(typeof Worker==='undefined')throw new Error('当前浏览器不支持隔离模型解码，请使用支持 Worker 的浏览器');
-          const packet=await runModelWorker(data,{signal:activeSignal});
+          const packet=await runModelWorker(data,{signal:activeSignal,textureEdge});
           gltf=hydrateModelPacket(packet);
         }else{
           inspectModelBudget(data);
@@ -227,3 +227,59 @@ export function createLatestModelTask() {
     },
   };
 }
+
+// Share decoded sources only while a scene has consumers for them.
+export function createSceneModelPool(load = loadModelAsset) {
+  const entries = new Map();
+  return function acquire(url, { signal } = {}) {
+    if (signal?.aborted) return Promise.reject(aborted());
+    let entry = entries.get(url);
+    if (!entry) {
+      const controller = new AbortController();
+      entry = { controller, users: 0, asset: null };
+      const pending = entry;
+      entries.set(url, pending);
+      pending.ready = Promise.resolve()
+        .then(() => load(url, { signal: controller.signal, textureEdge: 2048 }))
+        .then(asset => {
+          if (pending.users === 0) {
+            asset.release();
+            throw aborted();
+          }
+          pending.asset = asset;
+          return asset;
+        });
+    }
+    const shared = entry;
+    shared.users++;
+    let released = false;
+    function release() {
+      if (released) return;
+      released = true;
+      if (--shared.users !== 0) return;
+      if (entries.get(url) === shared) entries.delete(url);
+      if (shared.asset) shared.asset.release();
+      else shared.controller.abort();
+    }
+    return new Promise((resolve, reject) => {
+      const cancel = () => {
+        release();
+        reject(aborted());
+      };
+      signal?.addEventListener("abort", cancel, { once: true });
+      shared.ready.then(asset => {
+        signal?.removeEventListener("abort", cancel);
+        if (!released) resolve({ instantiate: () => {
+          if (released) throw Error("Model handle already released");
+          return asset.instantiate();
+        }, release });
+      }, error => {
+        signal?.removeEventListener("abort", cancel);
+        release();
+        reject(error);
+      });
+    });
+  };
+}
+
+export const acquireSceneModel = createSceneModelPool();

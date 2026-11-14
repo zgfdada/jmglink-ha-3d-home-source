@@ -1,6 +1,6 @@
 import LightColorCapabilitySection from '../components/light-color-capability-section.jsx';
 import {detectLightColorCapability} from '../domain/light-color-capability.js';
-import {FixtureLightTransition,FixtureGlowMaterial,FixtureHaloMaterial,FixtureShellMaterial} from '../components/fixture-light-transition.jsx';
+import {FixtureLightTransition,FixtureGlowMaterial,FixtureHaloMaterial,FixtureShellMaterial,ChandelierShade} from '../components/fixture-light-transition.jsx';
 import SceneLightingEffects from '../components/scene-lighting-effects.jsx';
 import {fixtureEmissiveOutput,FIXTURE_BLOOM} from '../domain/fixture-lighting.js';
 import FixtureBeamControl from '../components/fixture-beam-control.jsx';
@@ -40,7 +40,7 @@ import { boundPanelStates } from "../domain/device-panel.js";
 import { c as A, u as Ie, p as Xt, R as pt, f as qs } from "./app.js";
 import { a as L } from "../vendor/react.js";
 import * as Xa from "three";
-import {loadModelAsset} from "../domain/model-assets.js";
+import {acquireSceneModel} from "../domain/model-assets.js";
 import { normalizeFurnitureElevation } from "../domain/furniture.js";
 import { createCabinetBodyGeometry } from "../domain/cabinet-body-geometry.js";
 import { createStableRoundedBoxGeometry, STABLE_SURFACE_EDGE_PROPS } from "../domain/stable-surface-geometry.js";
@@ -3045,7 +3045,9 @@ const Ss = L.createContext("glass"),
       n = Ht.get(o);
     if (n) return n;
     const i = `#${new Re(e).lerp(new Re(s), r).getHexString()}`;
-    return (Ht.set(o, i), i);
+    if (Ht.size >= 1024) Ht.delete(Ht.keys().next().value);
+    Ht.set(o, i);
+    return i;
   },
   Qe = (e, s, r) => Math.min(r, Math.max(s, e)),
   yn = "#f7fbff",
@@ -4158,6 +4160,7 @@ function Bn({
   color: s,
   openings: r,
   renderHeight: o,
+  clipOpeningModels = false,
   presentation: n,
   theme: i,
   presentationMode: a,
@@ -4178,7 +4181,7 @@ function Bn({
           ? b.filter((M) => M.type === "window" || M.type === "door")
           : b
         : [],
-    x = o > 0.42 ? b : [],
+    x = o > 0.42 ? b.filter(opening => !clipOpeningModels || opening.bottom + opening.height <= o) : [],
     k = L.useMemo(() => {
       const M = new Le(),
         p = n ? 0 : w / 2,
@@ -5178,7 +5181,7 @@ function BuiltinFixtureBody({
           castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.245, 0.262, 0.034, 64] }),
-            C(0.05),
+            t.jsx(ChandelierShade, {}),
           ],
         }),
         t.jsxs("mesh", {
@@ -5273,7 +5276,7 @@ function BuiltinFixtureBody({
           castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.13, 0.29, 0.24, 40, 1, !0] }),
-            C(0.06, true),
+            t.jsx(ChandelierShade, {}),
           ],
         }),
         t.jsxs("mesh", {
@@ -5309,7 +5312,7 @@ function BuiltinFixtureBody({
           radius: 0.06,
           smoothness: 6,
           castShadow: !1,
-          children: O(),
+          children: t.jsx(ChandelierShade, {}),
         }),
         t.jsxs("mesh", {
           position: [0, -0.02, 0.087],
@@ -5354,7 +5357,7 @@ function BuiltinFixtureBody({
           castShadow: !1,
           children: [
             t.jsx("cylinderGeometry", { args: [0.17, 0.245, 0.28, 40, 1, !0] }),
-            C(0.05, true),
+            t.jsx(ChandelierShade, {}),
           ],
         }),
         t.jsxs("mesh", {
@@ -5373,8 +5376,7 @@ function BuiltinFixtureBody({
       ],
     });
   if (e === "light.strip") {
-    const E = h ? $(j, "#fff6d6", 0.26) : "#8fa0a7",
-      d = 0.032,
+    const d = 0.032,
       g = (_, M, p, totalLength = 1) => {
         const v = p[0] - M[0],
           P = p[1] - M[1],
@@ -5393,14 +5395,7 @@ function BuiltinFixtureBody({
                 rotation: [0, 0, Math.PI / 2],
                 children: [
                   t.jsx("capsuleGeometry", { args: [d, z, 8, 28] }),
-                  t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
-                    color: E, emissive:j, emissiveIntensity:h?fixtureEmissiveOutput(y):0, roughness:.6,
-                    transparent: !0,
-                    opacity: o ? 0.2 : h ? 0.94 : 0.34,
-                    depthWrite: !1,
-                    blending: h ? q : Se,
-                    toneMapped: !1,
-                  }),
+                  t.jsx(FixtureShellMaterial, { color: "#f7f6f2", stripDiffuser: true }),
                 ],
               }),
               t.jsxs("mesh", {
@@ -5441,14 +5436,7 @@ function BuiltinFixtureBody({
         rotation: [0, 0, Math.PI / 2],
         children: [
           t.jsx("capsuleGeometry", { args: [d, 0.88, 8, 28] }),
-          t.jsx(FixtureShellMaterial, { glowEnabled: !["light.chandelier","light.wall_sconce","light.floor_lamp"].includes(e),
-            color: E, emissive:j, emissiveIntensity:h?fixtureEmissiveOutput(y):0, roughness:.6,
-            transparent: !0,
-            opacity: o ? 0.2 : h ? 0.94 : 0.34,
-            depthWrite: !1,
-            blending: h ? q : Se,
-            toneMapped: !1,
-          }),
+          t.jsx(FixtureShellMaterial, { color: "#f7f6f2", stripDiffuser: true }),
         ],
       })],
     });
@@ -5562,7 +5550,7 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
     invalidate();
   }, [s, unavailable, motionRulesKey, invalidate]);
   L.useEffect(() => {
-    let o = !0, n, assetLease;
+    let o = !0, n, assetLease, sourceLease;
     const controller = new AbortController();
     r(undefined);
     const onLoaded = () => {
@@ -5625,14 +5613,17 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
         r(n);
     };
     void (async () => {
-      const asset=await loadModelAsset(e.source.url,{signal:controller.signal});
-      try {
-        if(!o || controller.signal.aborted)return;
-        assetLease=asset.instantiate();
-        onLoaded();
-      } finally {asset.release();}
+      const asset = await acquireSceneModel(e.source.url, { signal: controller.signal });
+      if (!o || controller.signal.aborted) {
+        asset.release();
+        return;
+      }
+      sourceLease = asset;
+      assetLease = asset.instantiate();
+      onLoaded();
     })().catch(error=>{
       assetLease?.release();assetLease=null;
+      sourceLease?.release();sourceLease=null;
       if(o && error.name!=="AbortError")r(undefined);
     });
     return () => {
@@ -5642,6 +5633,8 @@ function UploadedDeviceModel({ config: e, runtime, unavailable = false, running 
       controller.abort();
       assetLease?.release();
       assetLease=null;
+      sourceLease?.release();
+      sourceLease=null;
     };
   }, [
     e.source.url,
@@ -10581,7 +10574,84 @@ function ShadowOnlyRoof({floor,visibleCeiling=false}) {
     ]}, index)
   )});
 }
+function EditorWallTop({ wall, height, maxHeight, onChange }) {
+  const { camera, controls, gl, size, invalidate } = tt();
+  const [hovered, setHovered] = L.useState(false);
+  const [dragging, setDragging] = L.useState(false);
+  const finishRef = L.useRef(null);
+  L.useEffect(() => () => finishRef.current?.(), []);
+  const canvas = gl.domElement;
+  const dx = wall.end[0] - wall.start[0];
+  const dz = wall.end[1] - wall.start[1];
+  function begin(event) {
+    if (event.button !== 0 || finishRef.current) return;
+    event.stopPropagation();
+    const native = event.nativeEvent;
+    if (native.cancelable) native.preventDefault();
+    const startY = native.clientY;
+    const pointerId = native.pointerId;
+    const point = event.point.clone();
+    const upper = point.clone();
+    upper.y += 1;
+    const projected = Math.abs(point.project(camera).y - upper.project(camera).y) * size.height / 2;
+    const pixelsPerMeter = Math.max(projected, size.height / Math.max(1, maxHeight * 3), 24);
+    const controlsEnabled = controls?.enabled;
+    if (controls) controls.enabled = false;
+    setDragging(true);
+    canvas.style.cursor = "ns-resize";
+    function move(next) {
+      if (next.pointerId !== pointerId) return;
+      if (next.cancelable) next.preventDefault();
+      next.stopPropagation();
+      onChange(Math.min(maxHeight, Math.max(0, height + (startY - next.clientY) / pixelsPerMeter)));
+      invalidate();
+    }
+    function finish(next) {
+      if (next?.pointerId !== undefined && next.pointerId !== pointerId) return;
+      window.removeEventListener("pointermove", move, true);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      window.removeEventListener("blur", finish);
+      finishRef.current = null;
+      if (controls) controls.enabled = controlsEnabled;
+      canvas.style.cursor = "";
+      setDragging(false);
+      setHovered(false);
+      invalidate();
+    }
+    finishRef.current = finish;
+    window.addEventListener("pointermove", move, { capture: true, passive: false });
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+    window.addEventListener("blur", finish);
+  }
+  return t.jsxs("mesh", {
+    position: [(wall.start[0] + wall.end[0]) / 2, height + 0.014, (wall.start[1] + wall.end[1]) / 2],
+    rotation: [0, -Math.atan2(dz, dx), 0],
+    onPointerDown: begin,
+    onClick: event => event.stopPropagation(),
+    onPointerOver: event => {
+      event.stopPropagation();
+      canvas.style.cursor = "ns-resize";
+      setHovered(true);
+    },
+    onPointerOut: () => {
+      if (!finishRef.current) canvas.style.cursor = "";
+      setHovered(false);
+    },
+    children: [
+      t.jsx("boxGeometry", { args: [Math.hypot(dx, dz), 0.045, Math.max(0.12, wall.thickness + 0.08)] }),
+      t.jsx("meshBasicMaterial", {
+        color: "#4289c2",
+        transparent: true,
+        opacity: dragging || hovered ? 0.72 : height <= 0.001 ? 0.45 : 0,
+        depthWrite: false,
+      }),
+    ],
+  });
+}
 function fi({
+  editorWalls,
   floor: e,
   wallOpacity = 0.55,
   roofOcclusion = true,
@@ -10637,6 +10707,8 @@ function fi({
         W = (S.start[0] + S.end[0]) / 2,
         ee = (S.start[1] + S.end[1]) / 2,
         K = (B && ee > v) || (R && W > p);
+      const displayHeight = editorWalls?.heights?.[e.id];
+      if (displayHeight !== undefined) return Math.min(e.height, Math.max(0, displayHeight));
       return !l && o === "cutaway" && K
         ? Math.min(0.72, wallHeight)
         : wallHeight;
@@ -10743,25 +10815,32 @@ function fi({
           S.id,
         );
       }),
-      P.map((S) =>
-        t.jsx(
-          Bn,
+      P.map((S) => {
+        const height = T(S);
+        return t.jsxs(t.Fragment, { children: [
+          height > 0.001 && t.jsx(Bn,
           {
             wall: S,
             wallOpacity,
             walkthrough,
             openings: e.openings.filter((B) => B.wallId === S.id),
-            renderHeight: T(S),
+            renderHeight: height,
+            clipOpeningModels: editorWalls?.heights?.[e.id] !== undefined,
             color: Te(s, S.materialId, "#f3f1ed"),
             theme: c,
             presentation: l,
             presentationMode: f,
             thicknessScale: u,
             entities: r,
-          },
-          S.id,
-        ),
-      ),
+          }),
+          editorWalls && t.jsx(EditorWallTop, {
+            wall: S,
+            height,
+            maxHeight: e.height,
+            onChange: next => editorWalls.onChange(e.id, next),
+          }),
+        ] }, S.id);
+      }),
       e.furniture.map((S) =>
         t.jsx(
           ci,
@@ -10835,6 +10914,7 @@ function fi({
   })});
 }
 function pi({
+  editorWalls,
   project: e,
   starfield = false,
   lighting,
@@ -10914,6 +10994,7 @@ function pi({
                       project: e,
                       entities: s,
                       wallMode: n,
+                      editorWalls,
                       showDevices: i,
                       showLabels: a,
                       elevation: B.get(R.id) ?? 0,
@@ -11524,6 +11605,7 @@ function ki({
   });
 }
 function _a({
+  editorWalls,
   project: e,
   walkthrough = {mode:'idle'},
   walkInput,
@@ -11741,6 +11823,7 @@ function _a({
           floorId: r,
           showAllFloors: o,
           wallMode: i,
+          editorWalls,
           showDevices: a,
           showLabels: c,
           showGrid: l,
@@ -12586,6 +12669,8 @@ function Vs({ compact: e = !1, entity: s }) {
 }
 function Vi({ label: e, onError: s, src: r }) {
   const o = L.useRef(null);
+  const onError = L.useRef(s);
+  onError.current = s;
   return (
     L.useEffect(() => {
       const n = o.current;
@@ -12609,18 +12694,20 @@ function Vi({ label: e, onError: s, src: r }) {
             .then(({ default: c }) => {
               if (i) return;
               if (!c.isSupported()) {
-                s();
+                onError.current();
                 return;
               }
               const l = new c({
-                backBufferLength: 30,
+                backBufferLength: 8,
+                maxBufferLength: 10,
+                maxMaxBufferLength: 20,
                 enableWorker: !0,
                 liveSyncDurationCount: 3,
                 lowLatencyMode: !0,
               });
               ((a = l),
                 l.on(c.Events.ERROR, (f, u) => {
-                  u.fatal && (s(), l.destroy());
+                  u.fatal && (onError.current(), l.destroy());
                 }),
                 l.on(c.Events.MANIFEST_PARSED, () => {
                   n.play().catch(() => {});
@@ -12628,14 +12715,14 @@ function Vi({ label: e, onError: s, src: r }) {
                 l.loadSource(r),
                 l.attachMedia(n));
             })
-            .catch(() => s()),
+            .catch(() => { if (!i) onError.current(); }),
           () => {
             ((i = !0),
               a == null || a.destroy(),
               n.removeAttribute("src"),
               n.load());
           });
-    }, [s, r]),
+    }, [r]),
     t.jsx("video", {
       ref: o,
       className: "camera-live-media",
@@ -12670,6 +12757,14 @@ function Ki({ compact: e = !1, entity: s, autoPlay = false }) {
       G(Date.now()));
   }, [s.entityId]);
   const cameraRequestVersion = L.useRef(0);
+  const [visible, setVisible] = L.useState(() => typeof document === "undefined" || !document.hidden);
+  L.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const update = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  const playing = n && visible;
   const C = Oi(),
     O =
       !!(r != null && r.mjpegUrl) &&
@@ -12677,15 +12772,15 @@ function Ki({ compact: e = !1, entity: s, autoPlay = false }) {
         (I = r == null ? void 0 : r.mjpegUrl) != null &&
         I.includes("camera_proxy_stream")
       ),
-    N = n && (r == null ? void 0 : r.source) === "mjpeg" && O && !u,
+    N = playing && (r == null ? void 0 : r.source) === "mjpeg" && O && !u,
     E =
-      n &&
+      playing &&
       !N &&
       (r == null ? void 0 : r.source) === "hls" &&
       C &&
       !!r.hlsUrl &&
       !m,
-    d = n && !!r && !N && !E && !w,
+    d = playing && !!r && !N && !E && !w,
     g = !n || a || (n && !N && !E && !d);
   L.useEffect(() => {
     if (!d) return;

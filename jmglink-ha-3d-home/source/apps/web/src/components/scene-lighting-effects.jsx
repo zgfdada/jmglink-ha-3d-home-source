@@ -31,9 +31,14 @@ export default function SceneLightingEffects({outlineRenderer=null,quality='bala
   return {composer,render,bloom,output};
  },[gl,scene,camera,outlineRenderer,quality]);
  React.useLayoutEffect(()=>{
-  if(pipeline){pipeline.composer.setPixelRatio(viewport.dpr);pipeline.composer.setSize(size.width,size.height);}
+  if (pipeline) {
+    const pixelBudget = quality === 'high' ? 4_000_000 : 2_000_000;
+    const pixelRatio = Math.min(viewport.dpr, Math.sqrt(pixelBudget / Math.max(1, size.width * size.height)));
+    pipeline.composer.setPixelRatio(pixelRatio);
+    pipeline.composer.setSize(size.width, size.height);
+  }
   invalidate();
- },[pipeline,size.width,size.height,viewport.dpr,invalidate]);
+ },[pipeline,size.width,size.height,viewport.dpr,quality,invalidate]);
  React.useEffect(()=>()=>{
   if(pipeline){pipeline.bloom.dispose();pipeline.output.dispose();pipeline.composer.dispose();}
  },[pipeline]);

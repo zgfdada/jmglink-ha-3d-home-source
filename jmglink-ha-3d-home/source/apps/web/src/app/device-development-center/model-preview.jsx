@@ -307,7 +307,7 @@ export default function ModelPreview({
           if (animated) runtimeGlow = createRuntimeModelGlow(root);
       };
       void (async () => {
-        const asset = preparedAsset ? preparedAsset.retain() : await loadModelAsset(source.url, {signal:loadController.signal,background:staticThumbnail});
+        const asset = preparedAsset ? preparedAsset.retain() : await loadModelAsset(source.url, {signal:loadController.signal,background:staticThumbnail,textureEdge:staticThumbnail?512:undefined});
         try {
           if (!active || loadController.signal.aborted) return;
           assetLease=asset.instantiate();

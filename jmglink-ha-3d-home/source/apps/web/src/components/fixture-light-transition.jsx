@@ -35,6 +35,20 @@ export function FixtureLightTransition({on,brightness,color,children}){
  return <FixtureTransitionContext.Provider value={state}>{children}</FixtureTransitionContext.Provider>;
 }
 
+export function ChandelierShade(){
+ const material=React.useRef();
+ const white=React.useMemo(()=>new Color('#f7f6f2'),[]);
+ const state=useFixtureLightTransition({});
+ useFrame(()=>{
+  if(!material.current)return;
+  const glow=fixtureEmissiveOutput(state.level,state.balance);
+  material.current.color.copy(white)
+   .lerp(state.color,Math.min(1,Math.sqrt(glow)))
+   .multiplyScalar(1+glow*.8);
+ });
+ return <meshBasicMaterial ref={material} color="#f7f6f2" toneMapped={false}/>;
+}
+
 // These materials read the exact same animated level as FixtureLight. React
 // receives only HA targets; no per-frame React renders or HA service calls.
 export function FixtureGlowMaterial({materialType='meshPhysicalMaterial',color,emissive,emissiveIntensity=0,opacity=1,blending,...props}){
@@ -64,9 +78,33 @@ export function FixtureHaloMaterial({haloScale=1,selected=false,color,opacity,..
 }
 
 // The housing keeps its paint colour at zero; HDR colour adds only the visual glow.
-export function FixtureShellMaterial({color,opacity=1,transparent=false,side,depthWrite=true,glowEnabled=true}){
+export function FixtureShellMaterial({color,opacity=1,transparent=false,side,depthWrite=true,glowEnabled=true,stripDiffuser=false}){
  const state=React.useContext(FixtureTransitionContext),material=React.useRef();
  const base=React.useMemo(()=>new Color(color??'#eeeeee'),[color]);
- useFrame(()=>{const m=material.current;if(!m||!state)return;const glow=glowEnabled?fixtureEmissiveOutput(state.level,state.balance):0;m.color.copy(base).lerp(state.color,Math.min(1,glow)).multiplyScalar(1+glow);});
+ const strip=React.useMemo(()=>({
+  stripTint:{value:new Color('#ffffff')},
+  stripGlow:{value:0},
+ }),[]);
+ const compileStrip=React.useCallback(shader=>{
+  Object.assign(shader.uniforms,strip);
+  shader.vertexShader='varying float stripTop;\n'+shader.vertexShader.replace(
+   '#include <begin_vertex>','#include <begin_vertex>\nstripTop = normal.x;');
+  shader.fragmentShader='varying float stripTop; uniform vec3 stripTint; uniform float stripGlow;\n'+shader.fragmentShader.replace(
+   '#include <color_fragment>',`#include <color_fragment>
+   float diffuser = smoothstep(0.08, 0.35, -stripTop);
+   float visibleGlow = stripGlow * mix(0.65, 1.0, diffuser);
+   diffuseColor.rgb = mix(diffuseColor.rgb, stripTint, min(1.0, visibleGlow)) * (1.0 + visibleGlow);`);
+ },[strip]);
+ useFrame(()=>{
+  const m=material.current;if(!m||!state)return;
+  const glow=glowEnabled?fixtureEmissiveOutput(state.level,state.balance):0;
+  if(stripDiffuser){
+   strip.stripGlow.value=glow;
+   strip.stripTint.value.copy(state.color);
+   return;
+  }
+  m.color.copy(base).lerp(state.color,Math.min(1,glow)).multiplyScalar(1+glow);
+ });
+ if(stripDiffuser)return <meshBasicMaterial ref={material} color={color} toneMapped={false} onBeforeCompile={compileStrip}/>;
  return <meshBasicMaterial ref={material} color={color} opacity={opacity} transparent={transparent} side={side} depthWrite={depthWrite}/>;
 }

@@ -32,6 +32,39 @@ export function physicalLightShader(shader,uniforms,count,lightingChunk){
   if(!chunk.includes(call))throw new Error('Renderer lighting chunk changed: '+method);
   chunk=chunk.replace(call,`${call}\n if(directLight.visible) directLight.color*=physicalWallVisibility(${light}.position,geometryPosition);`);
  }
+ const areaCall='RE_Direct_RectArea( rectAreaLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );';
+ if(!chunk.includes(areaCall))throw new Error('Renderer lighting chunk changed: area light');
+ chunk=chunk.replace(areaCall,`
+  rectAreaLight.color *= (
+   physicalWallVisibility(rectAreaLight.position - rectAreaLight.halfWidth * 0.75, geometryPosition) +
+   physicalWallVisibility(rectAreaLight.position, geometryPosition) +
+   physicalWallVisibility(rectAreaLight.position + rectAreaLight.halfWidth * 0.75, geometryPosition)
+  ) / 3.0;
+  ${areaCall}
+ `);
+ // Toon and legacy lit materials lack the LTC area-light BRDF. Integrate
+ // along the strip length and feed the resulting irradiance to their BRDF.
+ chunk+=`
+ #if ( NUM_RECT_AREA_LIGHTS > 0 ) && !defined( RE_Direct_RectArea ) && defined( RE_Direct )
+  for ( int i = 0; i < NUM_RECT_AREA_LIGHTS; i ++ ) {
+   RectAreaLight strip = rectAreaLights[ i ];
+   float halfLength = max(length(strip.halfWidth), 0.001);
+   vec3 axis = strip.halfWidth / halfLength;
+   vec3 toLight = strip.position - geometryPosition;
+   float along = dot(toLight, axis);
+   vec3 perpendicular = toLight - axis * along;
+   float distanceToLine = max(length(perpendicular), 0.015);
+   vec3 closest = toLight - axis * clamp(along, -halfLength, halfLength);
+   directLight.direction = closest / max(length(closest), 0.015);
+   float facing = max(0.0, dot(normalize(cross(strip.halfWidth, strip.halfHeight)), directLight.direction));
+   float spread = atan((along + halfLength) / distanceToLine) - atan((along - halfLength) / distanceToLine);
+   float visible = physicalWallVisibility(geometryPosition + closest, geometryPosition);
+   directLight.color = strip.color * (2.0 * length(strip.halfHeight) * spread * facing * visible / distanceToLine);
+   directLight.visible = facing > 0.0 && visible > 0.0;
+   RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
+  }
+ #endif
+ `;
  shader.fragmentShader=declarations+shader.fragmentShader.replace('#include <lights_fragment_begin>',chunk);
 }
 

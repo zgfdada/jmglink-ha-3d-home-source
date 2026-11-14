@@ -66,7 +66,9 @@ function render(data){
  while(node=walk.nextNode())node.textContent=node.textContent.replace(/\\{\\{\\s*([\\w.]+)\\s*\\}\\}/g,(_,key)=>{let value=data;for(const part of key.split('.')) value=value?.[part];return value==null?'--':typeof value==='object'?JSON.stringify(value):String(value);});
  const style=document.createElement('style');style.textContent=css;view.replaceChildren(style,...doc.body.childNodes);
 }
-const worker=new Worker(URL.createObjectURL(new Blob([${encode(workerCode)}],{type:'text/javascript'})));
+const workerUrl=URL.createObjectURL(new Blob([${encode(workerCode)}],{type:'text/javascript'}));
+const worker=new Worker(workerUrl);
+URL.revokeObjectURL(workerUrl);
 const timer=setTimeout(()=>{worker.terminate();view.textContent='控件脚本超时（1 秒）';},1000);
 worker.onmessage=event=>{clearTimeout(timer);worker.terminate();if(event.data.error)view.textContent='脚本错误：'+event.data.error;else render(event.data.result);};
 worker.onerror=()=>{clearTimeout(timer);worker.terminate();view.textContent='控件脚本执行失败';};worker.postMessage({entity:input,entities:${encode(entities)}});
@@ -93,11 +95,49 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, bin
   const snapshotState=React.useRef(null);snapshotState.current={entity,entities:binding.entities,theme};
   React.useEffect(()=>{const listener=event=>{if(event.source===frame.current?.contentWindow && event.data?.type==='ha3d-widget-height' && Number.isFinite(event.data.height)){setNaturalHeight(Math.min(100000,Math.max(40,event.data.height)));return;}if(event.source===frame.current?.contentWindow && event.data?.type==='ha3d-open-detail' && !presentation){setDetail({expanded:true,section:String(event.data.section),accountId:String(event.data.accountId || '')});}};window.addEventListener('message',listener);return()=>window.removeEventListener('message',listener);},[presentation]);
   React.useEffect(()=>{if(!detail)return;const escape=e=>{if(e.key==='Escape')setDetail(null);};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[detail]);
+  const frameVisible = React.useRef(true);
+  const sent = React.useRef(null);
   const sendSnapshot = () => {
-    const target=frame.current?.contentWindow;if(!target)return;
-    const push=()=>{if(frame.current?.contentWindow!==target)return;const state=snapshotState.current;const snap=e=>{if(!e)return;const data=entitySnapshot(e),picture=pictureCache.current.read(e);return {...data,pictureData:picture,attributes:picture?{...data.attributes,entity_picture:picture}:data.attributes};};target.postMessage({type:"ha3d-theme",theme:state.theme},"*");target.postMessage({type:"ha3d-entities",entity:snap(state.entity)||{state:"unavailable",attributes:{}},entities:state.entities.map(snap)},"*");};
-    push();Promise.all(snapshotState.current.entities.map(e=>pictureCache.current.load(e))).then(push);
+    const target = frame.current?.contentWindow;
+    if (!target || !frameVisible.current || document.hidden) return;
+    const push = () => {
+      if (frame.current?.contentWindow !== target || !frameVisible.current || document.hidden) return;
+      const state = snapshotState.current;
+      const previous = sent.current;
+      if (previous?.target !== target || previous.theme !== state.theme) {
+        target.postMessage({ type: "ha3d-theme", theme: state.theme }, "*");
+      }
+      const pictures = state.entities.map(entity => pictureCache.current.read(entity));
+      const unchanged = previous?.target === target &&
+        previous.entities.length === state.entities.length &&
+        state.entities.every((entity, index) => entity === previous.entities[index] && pictures[index] === previous.pictures[index]);
+      if (!unchanged) {
+        const entities = state.entities.map((entity, index) => {
+          const data = entitySnapshot(entity);
+          const picture = pictures[index];
+          return { ...data, pictureData: picture, attributes: picture ? { ...data.attributes, entity_picture: picture } : data.attributes };
+        });
+        target.postMessage({ type: "ha3d-entities", entity: entities[0] || {state:"unavailable",attributes:{}}, entities }, "*");
+      }
+      sent.current = { target, theme: state.theme, entities: state.entities, pictures };
+    };
+    push();
+    Promise.all(snapshotState.current.entities.map(entity => pictureCache.current.load(entity))).then(push);
   };
+  React.useEffect(() => {
+    const node = frame.current;
+    if (!node) return;
+    const observer = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(([entry]) => {
+      frameVisible.current = entry.isIntersecting;
+      if (entry.isIntersecting) sendSnapshot();
+    });
+    observer?.observe(node);
+    document.addEventListener("visibilitychange", sendSnapshot);
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener("visibilitychange", sendSnapshot);
+    };
+  }, []);
   React.useEffect(() => {sendSnapshot();}, [entity,entities,widget,theme]);
   const srcDoc = React.useMemo(
     () =>
@@ -111,7 +151,7 @@ export function WidgetRenderer({ widget, entityId, entityIds, entities = {}, bin
       style={{height:naturalHeight, flex:"0 0 auto"}}
       scrolling="no"
       ref={frame}
-      onLoad={sendSnapshot}
+      onLoad={() => { sent.current = null; sendSnapshot(); }}
       className="sb-custom-frame"
       title={`控件：${widget.name}`}
       sandbox="allow-scripts"

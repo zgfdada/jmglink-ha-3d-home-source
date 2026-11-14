@@ -1018,6 +1018,31 @@ function ir(s, i, o = {}, d = {}) {
     if (f && wc(i, c, f)) return { type: "opening", id: c.id };
   }
 }
+function findOverlappingPlanObjects(floor, point, entities, includeDevices) {
+  const hits = [];
+  if (includeDevices) {
+    for (const item of [...floor.devices].reverse()) {
+      const entity = entities[item.entityId];
+      if (entity && $c(point, item, entity)) {
+        hits.push({ type: "device", id: item.id, label: item.name || entity.deviceDisplayName || entity.name || item.entityId, group: "设备" });
+      }
+    }
+  }
+  for (const item of [...floor.furniture].reverse()) {
+    if (Kr(point, item)) hits.push({ type: "furniture", id: item.id, label: item.name || gt[item.kind]?.label || "自定义家具", group: "家具" });
+  }
+  for (const item of [...floor.openings].reverse()) {
+    const wall = floor.walls.find(candidate => candidate.id === item.wallId);
+    if (wall && wc(point, item, wall)) hits.push({ type: "opening", id: item.id, label: item.name || (item.kind === "door" ? "门" : "窗"), group: "门窗" });
+  }
+  for (const wall of [...floor.walls].reverse()) {
+    if (Nc(point, wall.start, wall.end) <= Math.max(0.1, (wall.thickness ?? 0.14) / 2)) {
+      hits.push({ type: "wall", id: wall.id, label: wall.name || "墙体", group: "墙体" });
+    }
+  }
+  return hits;
+}
+
 function Sc(s, i) {
   const o = Br(s, i),
     d = i.width / 2,
@@ -2934,6 +2959,8 @@ function vd({
     [L, We] = x.useState("select"),
     [D, Is] = x.useState(),
     [curtainSession, setCurtainSession] = x.useState(null),
+    [overlapPick, setOverlapPick] = x.useState(false),
+    [overlapMenu, setOverlapMenu] = x.useState(null),
     [pe, _s] = x.useState([]),
     [ne, cs] = x.useState(),
     [fe, Pe] = x.useState(),
@@ -2962,6 +2989,10 @@ function vd({
         window.localStorage.getItem("ha3d:show-device-labels") === "true",
     ),
     [Ls, jn] = x.useState("iso"),
+    [floorWallDisplayHeights, setFloorWallDisplayHeights] = x.useState({}),
+    changeWallDisplayHeight = x.useCallback((floorKey, height) => {
+      setFloorWallDisplayHeights(previous => previous[floorKey] === height ? previous : { ...previous, [floorKey]: height });
+    }, []),
     [Si, Ye] = x.useState(),
     [Ue, ve] = x.useState(!1),
     [Ut, ki] = x.useState(!1),
@@ -3676,7 +3707,7 @@ function vd({
         const a = e(n);
         return a === n
           ? n
-          : (he((r) => [...r.slice(-49), tt(n)]), it([]), ve(!0), a);
+          : (he((r) => [...r.slice(-49), n]), it([]), ve(!0), a);
       });
     }, []),
     F = x.useCallback(
@@ -4010,7 +4041,7 @@ function vd({
         he((e) => {
           const n = e.at(-1);
           return n
-            ? (U((a) => (it((r) => [tt(a), ...r].slice(0, 50)), tt(n))),
+            ? (U((a) => (it((r) => [a, ...r].slice(0, 50)), n)),
               ve(!0),
               e.slice(0, -1))
             : e;
@@ -4021,7 +4052,7 @@ function vd({
         it((e) => {
           const n = e[0];
           return n
-            ? (U((a) => (he((r) => [...r.slice(-49), tt(a)]), tt(n))),
+            ? (U((a) => (he((r) => [...r.slice(-49), a]), n)),
               ve(!0),
               e.slice(1))
             : e;
@@ -4848,6 +4879,32 @@ function vd({
       hitObject: !!ir(b, ss(e, !1).point, i, { requireKnownDeviceEntity: true }),
     });
   }
+  x.useEffect(() => {
+    setOverlapMenu(null);
+    setOverlapPick(false);
+  }, [b.id, L, rt]);
+  function shouldPickOverlap(event) {
+    return L === "select" && event.button === 0 && (overlapPick || event.altKey);
+  }
+  function openOverlapMenu(event) {
+    if (!shouldPickOverlap(event)) {
+      setOverlapMenu(null);
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const hits = findOverlappingPlanObjects(b, ss(event, false).point, i, ue);
+    if (hits.length === 1) {
+      setOverlapMenu(null);
+      es(hits[0]);
+      return;
+    }
+    setOverlapMenu({
+      hits,
+      left: Math.max(8, Math.min(event.clientX + 10, window.innerWidth - 274)),
+      top: Math.max(8, Math.min(event.clientY + 10, window.innerHeight - 250)),
+    });
+  }
   function Fo(e) {
     if (
       e.pointerType === "touch" &&
@@ -5088,7 +5145,7 @@ function vd({
       setAlignmentGuides([]),
       setCabinetRelationFeedback(void 0),
       (Ze.current = {
-        original: tt(P),
+        original: P,
         changed: !1,
         affectsTopology:
           e.type === "wall-start" ||
@@ -5568,7 +5625,7 @@ function vd({
   }
   function ca() {
     const e = Ze.current;
-    (e != null && e.changed && (U(tt(e.original)), ve(e.initialDirty)),
+    (e != null && e.changed && (U(e.original), ve(e.initialDirty)),
       ze.current.clear(),
       (xs.current = void 0),
       (Ze.current = void 0),
@@ -6492,6 +6549,46 @@ function vd({
                 children: t.jsx(Ul, { size: 18 }),
               }),
               t.jsx("span", { className: "toolbar-separator" }),
+              rt === "2d" && t.jsx("button", {
+                type: "button",
+                className: `snap-button ${overlapPick ? "active" : ""}`,
+                "aria-pressed": overlapPick,
+                disabled: L !== "select",
+                title: "开启后点击重叠位置，也可按住 Alt 点击",
+                onClick: () => {
+                  setOverlapMenu(null);
+                  setOverlapPick(previous => !previous);
+                },
+                children: "图层选择",
+              }),
+              overlapMenu && t.jsxs("div", {
+                role: "dialog",
+                "aria-label": "选择重叠对象",
+                style: { position: "fixed", zIndex: 1000, width: 250, maxWidth: "calc(100vw - 16px)", maxHeight: 230, overflow: "auto", left: overlapMenu.left, top: overlapMenu.top, background: "#fff", color: "#19263b", border: "1px solid #d4e0ee", borderRadius: 14, padding: 8, boxShadow: "0 8px 30px #1b365129", display: "grid", gap: 4 },
+                onKeyDown: event => {
+                  if (event.key === "Escape") {
+                    event.stopPropagation();
+                    setOverlapMenu(null);
+                  }
+                },
+                children: [
+                  t.jsxs("div", {
+                    style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "3px 5px" },
+                    children: [
+                      t.jsx("strong", { children: "选择此处的对象" }),
+                      t.jsx("button", { type: "button", className: "snap-button", onClick: () => setOverlapMenu(null), children: "关闭" }),
+                    ],
+                  }),
+                  overlapMenu.hits.length ? overlapMenu.hits.map((item, index) => t.jsx("button", {
+                    type: "button",
+                    className: "snap-button",
+                    autoFocus: index === 0,
+                    style: { textAlign: "left", justifyContent: "flex-start", minHeight: 32 },
+                    onClick: () => { setOverlapMenu(null); es(item); },
+                    children: `${index + 1}. ${item.label} · ${item.group}`,
+                  }, `${item.type}:${item.id}`)) : t.jsx("span", { style: { padding: "4px 5px" }, children: "此处没有可选对象" }),
+                ],
+              }),
               t.jsxs("button", {
                 className: `snap-button ${Xe ? "active" : ""}`,
                 onClick: () => to((e) => !e),
@@ -6934,7 +7031,7 @@ function vd({
                         entities: js,
                         floorId: b.id,
                         cameraPreset: Ls,
-                        wallMode: "full",
+                        editorWalls: { heights: floorWallDisplayHeights, onChange: changeWallDisplayHeight },
                         showDevices: ue,
                         showGrid: !0,
                         quality: "balanced",
@@ -6944,6 +7041,7 @@ function vd({
                       t.jsxs("div", {
                         className: "three-view-toolbar",
                         "aria-label": "3D 视角",
+                        style: { bottom: 62, whiteSpace: "nowrap" },
                         children: [
                           t.jsx("button", {
                             className: Ls === "iso" ? "active" : "",
@@ -6969,6 +7067,13 @@ function vd({
                     className: "floorplan-canvas",
                     viewBox: Yo,
                     preserveAspectRatio: "xMidYMid meet",
+                    onPointerDownCapture: event => {
+                      if (shouldPickOverlap(event)) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }
+                    },
+                    onClickCapture: openOverlapMenu,
                     onPointerDown: Fo,
                     onClick: To,
                     onPointerMove: zo,
@@ -11068,7 +11173,9 @@ function vd({
                         }),
                         t.jsx("p", { children: Js.body }),
                         t.jsx("ol", {
-                          children: Js.steps.map((e, n) =>
+                          children: (rt === "2d" && L === "select"
+                            ? [...Js.steps, "点击顶部「图层选择」后点重叠处，或按住 Alt 点击，再从列表选对象"]
+                            : Js.steps).map((e, n) =>
                             t.jsxs(
                               "li",
                               {

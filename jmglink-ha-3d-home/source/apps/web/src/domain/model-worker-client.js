@@ -1,7 +1,7 @@
 import {ObjectLoader} from 'three';
 
 // Terminate actual decoding, rather than merely ignoring its eventual result.
-export function runModelWorker(data,{signal,workerFactory=()=>new Worker(new URL('./model-decode-worker.js',import.meta.url),{type:'module'})}={}) {
+export function runModelWorker(data,{signal,textureEdge,workerFactory=()=>new Worker(new URL('./model-decode-worker.js',import.meta.url),{type:'module'})}={}) {
   return new Promise((resolve,reject)=>{
     if(signal?.aborted){reject(new DOMException('Model load cancelled','AbortError'));return;}
     const worker=workerFactory();let finished=false;
@@ -15,7 +15,7 @@ export function runModelWorker(data,{signal,workerFactory=()=>new Worker(new URL
       if(event.data.error){reject(new Error(event.data.error));return;}
       resolve(event.data);
     };
-    try{worker.postMessage(data,typeof data==='string'?[]:[data]);}catch(error){finished=true;cleanup();reject(error);}
+    try{worker.postMessage(textureEdge ? {data,textureEdge} : data,typeof data==='string'?[]:[data]);}catch(error){finished=true;cleanup();reject(error);}
   });
 }
 

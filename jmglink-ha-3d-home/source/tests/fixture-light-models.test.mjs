@@ -14,11 +14,12 @@ const renderer=ast.body.find(node=>node.type==='FunctionDeclaration'&&node.id.na
 const element=(type,props)=>({type,props});
 const material=()=>null;
 const shellMaterial=()=>null;
+const chandelierShade=()=>null;
 function render(modelId,on,style){
- const names=['t','useBeamSettings','resolveBeamAngle','ue','$','Cs','dt','Pt','q','Se','D','Y','FixtureGlowMaterial','FixtureHaloMaterial','FixtureShellMaterial','je','fixtureEmissiveOutput'];
+ const names=['t','useBeamSettings','resolveBeamAngle','ue','$','Cs','dt','Pt','q','Se','D','Y','FixtureGlowMaterial','FixtureHaloMaterial','FixtureShellMaterial','je','fixtureEmissiveOutput','ChandelierShade'];
  const values=[{jsx:element,jsxs:element,Fragment:Symbol.for('fragment')},()=>({}),resolveBeamAngle,()=>style,
   (a,b,t)=>'#'+new Color(a).lerp(new Color(b),t).getHexString(),x=>x,()=>({color:'#888888',opacity:.1,threshold:22}),x=>x,
-  2,1,material,material,material,material,shellMaterial,material,fixtureEmissiveOutput];
+  2,1,material,material,material,material,shellMaterial,material,fixtureEmissiveOutput,chandelierShade];
  const model=new Function(...names,`return (${source.slice(renderer.start,renderer.end)});`)(...values);
  return model({modelId,bodyColor:'#eeeeee',appearance:{isOn:on,brightness:on?1:0,color:'#ffbd7a'},unavailable:false,presentation:true,selected:false});
 }
@@ -65,5 +66,18 @@ test('巡检清单覆盖全部内置灯型及开关控制的映射',()=>{
 });
 
 test('支撑杆与底座保持原色，灯罩和灯面继续发光',()=>{
- for(const model of ['light.chandelier','light.wall_sconce','light.floor_lamp'])for(const style of ['cream','cartoon']){const shells=[];const walk=n=>{if(!n||typeof n!=='object')return;if(n.type===shellMaterial)shells.push(n.props);const c=n.props?.children;for(const child of Array.isArray(c)?c:[c])walk(child);};walk(render(model,true,style));assert.ok(shells.some(m=>m.glowEnabled===false),model+' support must not glow');if(model!=='light.wall_sconce')assert.ok(shells.some(m=>m.glowEnabled===true),model+' shade must glow');}
+ for(const model of ['light.chandelier','light.wall_sconce','light.floor_lamp'])for(const style of ['cream','cartoon']){
+  const shells=[];
+  let chandelierShades=0;
+  const walk=node=>{
+   if(!node||typeof node!=='object')return;
+   if(node.type===shellMaterial)shells.push(node.props);
+   if(node.type===chandelierShade)chandelierShades++;
+   const children=node.props?.children;
+   for(const child of Array.isArray(children)?children:[children])walk(child);
+  };
+  walk(render(model,true,style));
+  assert.ok(shells.some(shell=>shell.glowEnabled===false),model+' support must not glow');
+  assert.equal(chandelierShades,1,model+' shade must follow the light transition');
+ }
 });
