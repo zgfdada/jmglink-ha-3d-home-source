@@ -68,6 +68,8 @@ test("资源库API数据展开保留引用元数据，12种控件列表与预览
     jsxFactory: "React.createElement", jsxFragment: "React.Fragment",
     loader: { ".css": "empty" },
     plugins: [{ name: "render-test-hooks", setup(builder) {
+      // Offscreen thumbnail roots are browser-only; local card rendering must not mount one.
+      builder.onLoad({filter:/vendor[\\/]three\.js$/},()=>({contents:"export const c={createRoot(){throw Error('Unexpected thumbnail mount during render')}};",loader:"js"}));
       builder.onLoad({ filter: /vendor[\\/]react\.js$/ }, () => ({ contents: `
         let first = true;
         export const a = {

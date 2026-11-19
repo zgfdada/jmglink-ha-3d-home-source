@@ -1,4 +1,7 @@
 configuration:
+  resource_center_url:
+    name: 在线资源中心地址
+    description: 可选的 HTTPS 资源中心根地址；留空关闭在线连接。注册验证在服务端完成，下载后的资源保留在本地。
   mcp_enabled:
     name: 启用 MCP 服务
     description: 随App镜像提供，升级时一同更新；默认关闭。启用后在网络设置映射8102/tcp，仅供可信客户端免密连接。

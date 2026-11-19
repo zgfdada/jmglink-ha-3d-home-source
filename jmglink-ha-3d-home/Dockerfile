@@ -15,6 +15,7 @@ COPY source/package.json source/package-lock.json ./
 COPY source/apps/server/package.json apps/server/package.json
 COPY source/apps/web/package.json apps/web/package.json
 COPY source/packages/schema/package.json packages/schema/package.json
+COPY source/packages/resource-protocol/package.json packages/resource-protocol/package.json
 
 RUN npm ci
 
@@ -55,6 +56,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.release/apps/server ./apps/server
 COPY --from=build /app/.release/apps/web/dist ./apps/web/dist
 COPY --from=build /app/.release/packages/schema ./packages/schema
+COPY --from=build /app/.release/packages/resource-protocol ./packages/resource-protocol
 COPY --from=build /app/.release/release-manifest.json ./release-manifest.json
 COPY LICENSE NOTICE.md ./
 COPY addon-entry.js addon-runtime-options.mjs addon-run.sh ./

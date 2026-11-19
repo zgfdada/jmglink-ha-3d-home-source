@@ -1,3 +1,7 @@
+import Preview from './control-preview.jsx';
+import ResourceDiscovery from '../resource-center/discovery.jsx';
+import {uploadPortable} from '../resource-center/portable-upload.jsx';
+import PortablePreview from '../resource-center/portable-preview.jsx';
 import { a as React } from "../../vendor/react.js";
 import ControlProperties from "../../components/control-properties.jsx";
 import DevicePanel from "../../components/device-panel.jsx";
@@ -48,73 +52,6 @@ function download(controls, name = "控件库.json") {
   anchor.download = name;
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-function Preview({ definition, configure = false, onDefaultChange }) {
-  const [values, setValues] = React.useState({});
-  const [props, setProps] = React.useState({});
-
-  const cap = {
-    capabilityId: "demo",
-    name: "示例能力",
-    kind:
-      definition.dataTypes[0] === "number"
-        ? "number"
-        : definition.dataTypes[0] === "boolean"
-          ? "toggle"
-          : definition.dataTypes[0] === "action"
-            ? "action"
-            : definition.dataTypes[0] === "enum"
-              ? "enum"
-              : "status",
-    dataType: definition.dataTypes[0],
-    access: "read-write",
-    unit: "",
-    enumValues: [
-      { value: "standard", label: "标准" },
-      { value: "quick", label: "速洗" },
-      { value: "gentle", label: "轻柔" },
-    ],
-  };
-  const control = attachLibraryControl(
-    {
-      id: "preview",
-      label: definition.name,
-      icon: definition.icon,
-      capabilityId: "demo",
-      props,
-      grid: { x: 0, y: 0, w: 4 },
-    },
-    definition,
-  );
-  return (
-    <>
-      <div className="cl-preview">
-        <DevicePanel
-          panel={{
-            layoutMode: "grid",
-            sections: [{ id: "preview", controls: [control] }],
-          }}
-          states={samplePanelStates([cap], values)}
-          interactive
-          onAction={(id, value) =>
-            setValues((current) => ({ ...current, [id]: value }))
-          }
-        />
-      </div>
-      {configure && (
-        <div className="cl-preview-properties">
-          <h4>{onDefaultChange ? "控件默认属性（需应用并保存）" : "预览属性（仅本地模拟）"}</h4>
-          <ControlProperties
-            definition={definition}
-            control={control}
-            onChange={(key, value) => onDefaultChange
-              ? onDefaultChange(key, value)
-              : setProps((current) => ({ ...current, [key]: value }))}
-          />
-        </div>
-      )}
-    </>
-  );
 }
 function Editor({ initial, creating, onClose, onSave, notify }) {
   const [draft, setDraft] = React.useState(() =>
@@ -465,6 +402,8 @@ function Editor({ initial, creating, onClose, onSave, notify }) {
 }
 export default function ControlLibrary({
   globalQuery = "",
+  platform,
+  onAccount,
   notify,
   onChanged,
 }) {
@@ -475,6 +414,7 @@ export default function ControlLibrary({
     [editor, setEditor] = React.useState(null),
     [view, setView] = React.useState(null),
     [busy, setBusy] = React.useState(false);
+  const [source,setSource]=React.useState("local");
   const input = React.useRef();
   const load = async () => {
     setItems((await api(endpoint)).controls.map(editableLibraryControl));
@@ -589,6 +529,8 @@ export default function ControlLibrary({
           />
         </div>
       </header>
+      <nav className="ddc-model-tabs" aria-label="控件与面板来源">{[["local","本地控件"],["panels","本地控制面板"],["online","在线控件 / 面板"]].map(([id,label])=><button key={id} className={source===id?"active":""} onClick={()=>setSource(id)}>{label}</button>)}</nav>
+      {source==="online"?<ResourceDiscovery resourceType="device-control" searchQuery={globalQuery||query} onChanged={changed} onAccount={onAccount}/>:source==="panels"?<div className="cl-grid">{(platform?.controlPanels||[]).map(panel=><article key={panel.id}><h3>{panel.name}</h3><PortablePreview entry={{kind:"panel",panel,capabilities:platform.deviceTemplates.find(d=>d.id===panel.deviceTemplateId)?.capabilities||[]}}/><button onClick={()=>uploadPortable({type:"device-control",sourceKind:"panel",sourceId:panel.id},notify)}>上传到资源中心</button><p>安装的面板可在设备项目的控制面板中选用。</p></article>)}{!platform?.controlPanels?.length&&<p>暂无控制面板，请先在设备项目中创建。</p>}</div>:<>
       <div className="cl-toolbar">
         <input
           aria-label="搜索控件"
@@ -633,6 +575,7 @@ export default function ControlLibrary({
             <Preview definition={item} />
             <p>{item.description || "暂无说明"}</p>
             <div className="cl-card-actions">
+              {!item.builtin&&<button onClick={()=>uploadPortable({type:"device-control",sourceKind:"control",sourceId:item.id},notify)}>上传到资源中心</button>}
               <button onClick={() => setView(item)}>查看</button>
               <button onClick={() => setEditor({ item, creating: false })}>
                 编辑
@@ -659,6 +602,7 @@ export default function ControlLibrary({
       {!filtered.length && (
         <p className="cl-empty">没有匹配的控件。可以新建或导入 UI 文件。</p>
       )}
+      </>}
       {editor && (
         <Editor
           key={editor.item.id}

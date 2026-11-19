@@ -31,6 +31,7 @@ map:
   - type: share
     read_only: false
 options:
+  resource_center_url: ""
   mcp_enabled: false
   mcp_public_port: 8112
   log_level: info
@@ -39,6 +40,7 @@ options:
   nice_level: 10
   resource_log_interval_minutes: 5
 schema:
+  resource_center_url: str?
   mcp_enabled: bool
   mcp_public_port: port
   log_level: list(trace|debug|info|warning|error)

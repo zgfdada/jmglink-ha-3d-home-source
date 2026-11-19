@@ -24,6 +24,9 @@ try {
 }
 
 Object.assign(process.env, addonMcpEnvironment(addonOptions));
+if (typeof addonOptions.resource_center_url === 'string') {
+  process.env.HA3D_RESOURCE_CENTER_URL = addonOptions.resource_center_url.trim();
+}
 
 process.env.HA3D_MODE = "addon";
 process.env.PORT ??= "8099";

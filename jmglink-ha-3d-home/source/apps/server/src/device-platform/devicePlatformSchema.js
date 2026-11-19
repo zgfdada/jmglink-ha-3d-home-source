@@ -1,3 +1,4 @@
+import {normalizeResourceSharing} from '../../../../packages/schema/src/resource-sharing.js';
 import {normalizePartLabels} from "../../../../packages/schema/src/model-part-labels.js";
 import {normalizePartMotionRules} from "../../../../packages/schema/src/part-motion.js";
 import { normalizeControlValues } from "../../../../packages/schema/src/control-library.js";
@@ -399,6 +400,7 @@ export function normalizeModelTemplate(
                 : "work,working,running,washing,rinse,rinsing,spin,spinning,on",
           }
         : undefined,
+    ...(source.resourceSharing ? {resourceSharing:normalizeResourceSharing(source.resourceSharing)} : {}),
     library:
       text(library.repository) && text(library.id)
         ? {

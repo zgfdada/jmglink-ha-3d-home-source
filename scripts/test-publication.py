@@ -104,6 +104,24 @@ class WorkspaceVersions(unittest.TestCase):
                 self.assertEqual(lock["packages"][name]["dependencies"]["@ha3d/schema"], dependency)
 
 
+class ResourceCenterPublication(unittest.TestCase):
+    def test_public_addon_exposes_optional_resource_center(self):
+        files, _ = M.snapshot()
+        addon = "jmglink-ha-3d-home"
+        config = files[f"{addon}/config.yaml"].decode()
+        self.assertIn('  resource_center_url: ""', config.split("schema:", 1)[0])
+        self.assertIn("  resource_center_url: str?", config.split("schema:", 1)[1])
+        for locale in ("en", "zh-Hans"):
+            with self.subTest(locale=locale):
+                self.assertIn(b"  resource_center_url:", files[f"{addon}/translations/{locale}.yaml"])
+
+    def test_release_compose_forwards_the_optional_resource_center(self):
+        files, _ = M.snapshot()
+        variable = 'HA3D_RESOURCE_CENTER_URL: "${HA3D_RESOURCE_CENTER_URL:-}"'
+        self.assertIn(variable, files["docker-compose.release.yml"].decode())
+        self.assertIn(variable, (M.ROOT / "docker-compose.release.yml").read_text(encoding="utf-8"))
+
+
 class McpAppPublication(unittest.TestCase):
     def test_app_includes_optional_mcp_and_persistent_private_directory(self):
         config = (M.ROOT / "jmglink-ha-3d-home/config.yaml").read_text(encoding="utf-8")

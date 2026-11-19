@@ -1,7 +1,13 @@
+import SharingFields from '../resource-center/sharing-fields.jsx';
+import {defaultResourceSharing} from '../../../../../packages/schema/src/resource-sharing.js';
+import OnlineResources from '../resource-center/index.jsx';
+import ResourceDiscovery from '../resource-center/discovery.jsx';
 import { a as React } from "../../vendor/react.js";
 import { loadModelAsset, createLatestModelTask } from "../../domain/model-assets.js";
 import { inspectGltfModelParameters } from "../../domain/model-file-parameters.js";
 import ModelPreview from "./model-preview.jsx";
+import {generateModelThumbnail} from './model-thumbnail.jsx';
+import {scheduleModelLibrarySync} from '../resource-center/model-sync-background.js';
 import {
   buildModelCards,
   createModelDraft,
@@ -33,6 +39,29 @@ function readAsDataUrl(file) {
   });
 }
 
+export async function syncModelLibraryOnExit(onProgress=()=>{},context={}){
+  const status=await api('./api/resource-center/status');
+  if(!status.configured)return {items:[]};
+  const owner=status.user?.username||(status.defaultUserEnabled?'desktop-default':null);
+  if(context.expectedOwner&&owner!==context.expectedOwner)throw Error('请登录原账号 '+context.expectedOwner+' 后继续同步');
+  context.onOwner?.(owner);
+  const current=await api('./api/device-platform');
+  const models=current.modelTemplates.filter(model=>!model.builtin&&(!model.library||model.resourceSharing));
+  const snapshots=[];
+  for(const [index,model]of models.entries()){
+    onProgress(`正在准备模型预览图（${index+1}/${models.length}）：${model.name}`);
+    const previewDataUrl=model.resourceSharing?.previewMode==='manual'?model.resourceSharing.previewDataUrl:await generateModelThumbnail(model);
+    if(!previewDataUrl)throw Error(`${model.name}：请先选择预览图`);
+    snapshots.push({id:model.id,sourceSnapshot:model,previewDataUrl});
+  }
+  if(!snapshots.length)return {items:[]};
+  onProgress('正在保存模型同步任务…');
+  const result=await api('./api/resource-center/sync-model-library',{method:'POST',body:JSON.stringify({models:snapshots,expectedOwner:owner})});
+  const failed=result.items.filter(item=>item.error);
+  if(failed.length)throw Error(failed.map(item=>`${item.name}：${item.error}`).join('；'));
+  return result;
+}
+
 function ModelCard({
   card,
   favorite,
@@ -60,6 +89,7 @@ function ModelCard({
         </div>
         <div className="ddc-model-card-actions">
           <button onClick={() => onPreview(card)}>预览</button>
+
           {card.origin === "local" && (
             <button
               className={`ddc-model-furniture-toggle ${card.model.furnitureEnabled ? "enabled" : ""}`}
@@ -131,13 +161,16 @@ function NumberField({
 
 function ModelEditor({
   initial,
+  flushRef,
   platform,
   onBack,
   onSaved,
   onDeleted,
   notify,
 }) {
-  const [draft, setDraft] = React.useState(() => createModelDraft(initial));
+  const [draft, setDraft] = React.useState(() => ({...createModelDraft(initial),resourceSharing:initial?.resourceSharing||defaultResourceSharing()}));
+  const thumbnail=React.useRef('');
+  const acceptThumbnail=React.useCallback(value=>{thumbnail.current=value;},[]);
   const [upload, setUpload] = React.useState(null);
   const [preparedAsset, setPreparedAsset] = React.useState(null);
   const [loadingFile, setLoadingFile] = React.useState(Boolean(initial?.source?.url));
@@ -213,34 +246,44 @@ function ModelEditor({
       if (task.isCurrent()) setLoadingFile(false);
     }
   };
-  const save = async () => {
+  const save = async ({scheduleSync=true}={}) => {
+    if(working||loadingFile)return false;
     if (!draft.name.trim()) {
       notify("请输入模型名称", "error");
-      return;
+      return false;
     }
     if (draft.source?.type === "upload" && !upload && !initial?.source?.url) {
       notify("请先上传模型文件；当前配置已保留。", "error");
-      return;
+      return false;
     }
     setWorking(true);
     try {
-      await api(
+      const previewDataUrl=draft.resourceSharing.previewMode==='manual'?draft.resourceSharing.previewDataUrl:thumbnail.current||draft.resourceSharing.previewDataUrl||'';
+      const result=await api(
         `./api/device-platform/model-templates/${encodeURIComponent(draft.id)}`,
         {
           method: "PUT",
           body: JSON.stringify({
-            model: { ...draft, name: draft.name.trim() },
+            model: { ...draft, name: draft.name.trim(),resourceSharing:{...draft.resourceSharing,previewDataUrl} },
             file: upload ? {name:upload.name,dataUrl:await readAsDataUrl(upload.file)} : null,
+            deferResourceSync:true,
           }),
         },
       );
-      await onSaved(`模型“${draft.name.trim()}”已保存。`);
+      const refreshed=onSaved(`模型“${draft.name.trim()}”已保存。`);
+      if(scheduleSync)await refreshed;
+      else void Promise.resolve(refreshed).catch(error=>notify(error.message,'error'));
+      if(scheduleSync)scheduleModelLibrarySync();
+      return true;
     } catch (error) {
-      notify(error.message, "error");
+      notify(error.message, "error");return false;
     } finally {
       setWorking(false);
     }
   };
+  React.useEffect(()=>{const flush=()=>save({scheduleSync:false});if(flushRef)flushRef.current=flush;return()=>{if(flushRef?.current===flush)flushRef.current=null;};},[save,flushRef]);
+  const initialDraft=React.useRef(JSON.stringify(draft));
+  React.useEffect(()=>{const warn=event=>{if(JSON.stringify(draft)!==initialDraft.current){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[draft]);
   const remove = async () => {
     if (referenceCount) {
       if (
@@ -286,7 +329,7 @@ function ModelEditor({
   return (
     <div className="ddc-model-editor">
       <nav className="ddc-model-breadcrumb">
-        <button onClick={onBack}>3D 模型资源库</button>
+        <button disabled={working||loadingFile} onClick={save}>保存并返回资源库</button>
         <span>›</span>
         <span>{initial ? "配置模型" : "上传本地模型"}</span>
       </nav>
@@ -296,12 +339,12 @@ function ModelEditor({
           <p>设置模型基础信息、摆放参数和可交互预览</p>
         </div>
         <div>
-          <button onClick={onBack}>取消</button>
+          <button disabled={working} onClick={()=>{if(window.confirm("放弃本次编辑？未保存的修改不会上传。"))onBack();}}>放弃修改</button>
           <button onClick={() => setShowPreview((value) => !value)}>
             {showPreview ? "隐藏预览" : "预览模型"}
           </button>
           <button className="primary" disabled={working || loadingFile} onClick={save}>
-            保存模型
+            保存并退出
           </button>
         </div>
       </div>
@@ -317,7 +360,7 @@ function ModelEditor({
             <label>
               <span>模型名称</span>
               <input
-                maxLength="120"
+                maxLength="80"
                 value={draft.name}
                 onChange={(event) => change("name", event.target.value)}
                 placeholder="例如：智能洗衣机"
@@ -357,6 +400,7 @@ function ModelEditor({
               />
             </label>
           </section>
+          <SharingFields model value={draft.resourceSharing} onChange={value=>change("resourceSharing",value)}/>
           <section>
             <h2>模型文件</h2>
             <label
@@ -525,7 +569,7 @@ function ModelEditor({
         {showPreview && (
           <aside className="ddc-model-editor-preview">
             <h2>模型预览</h2>
-            {loadingFile ? <p role="status">正在解析模型…</p> : <ModelPreview model={previewModel} preparedAsset={preparedAsset} />}
+            {loadingFile ? <p role="status">正在解析模型…</p> : <ModelPreview model={previewModel} preparedAsset={preparedAsset} onThumbnail={acceptThumbnail} />}
             <p>
               上传后自动读取尺寸；可拖动旋转、滚轮缩放。预览仅反映当前草稿，保存后才会用于设备。
             </p>
@@ -541,7 +585,9 @@ export default function ModelLibrary({
   reload,
   notify,
   globalQuery = "",
+  flushRef,
 }) {
+  const [accountOpen,setAccountOpen]=React.useState(false);
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState("all");
   const [sort, setSort] = React.useState("recent");
@@ -559,6 +605,18 @@ export default function ModelLibrary({
   const [applyTarget, setApplyTarget] = React.useState(null);
   const [selectedProjectId, setSelectedProjectId] = React.useState("");
   const [working, setWorking] = React.useState(false);
+  const editorFlushRef=React.useRef(null),syncing=React.useRef(false);
+  const flushLibrary=async()=>{
+    if(syncing.current)return false;
+    syncing.current=true;setWorking(true);
+    try{
+      if(editorFlushRef.current&&await editorFlushRef.current()===false)return false;
+      scheduleModelLibrarySync();
+      return true;
+    }catch(error){notify(error.message,'error');return false;}
+    finally{syncing.current=false;setWorking(false);}
+  };
+  React.useEffect(()=>{if(flushRef)flushRef.current=flushLibrary;return()=>{if(flushRef?.current===flushLibrary)flushRef.current=null;};},[flushRef,flushLibrary]);
   const toggleFavorite = (key) =>
     setFavorites((current) => {
       const next = current.includes(key)
@@ -649,6 +707,7 @@ export default function ModelLibrary({
       <ModelEditor
         key={editor.id ?? "new"}
         initial={editor.id ? editor : null}
+        flushRef={editorFlushRef}
         platform={platform}
         onBack={() => setEditor(null)}
         onSaved={async (message) => {
@@ -697,6 +756,7 @@ export default function ModelLibrary({
           ["all", "全部"],
           ["local", "本地模型"],
           ["favorites", "收藏"],
+          ["online", "在线模型"],
         ].map(([value, label]) => (
           <button
             key={value}
@@ -707,7 +767,7 @@ export default function ModelLibrary({
           </button>
         ))}
       </div>
-      {!platform ? (
+      {filter==='online'?<ResourceDiscovery resourceType="model" searchQuery={globalQuery||query} sort={sort} onChanged={reload} onAccount={()=>setAccountOpen(true)}/>:!platform ? (
         <div className="ddc-next-loading">正在加载模型…</div>
       ) : cards.length ? (
         <div className="ddc-model-grid">
@@ -731,6 +791,7 @@ export default function ModelLibrary({
           <span>尝试切换筛选条件，或上传本地模型。</span>
         </div>
       )}
+      {accountOpen&&<OnlineResources initialTab="submissions" onClose={()=>setAccountOpen(false)}/>}
       {preview && (
         <div
           className="ddc-model-modal-backdrop"

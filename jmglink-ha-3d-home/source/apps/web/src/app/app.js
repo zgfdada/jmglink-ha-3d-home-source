@@ -1,4 +1,8 @@
 import {saveProjectRequest} from "../domain/project-save-request.js";
+import {resumeModelLibrarySync} from './resource-center/model-sync-background.js';
+void resumeModelLibrarySync();
+import {resumeSidebarSync} from './resource-center/sidebar-sync-background.js';
+resumeSidebarSync();
 /**
  * Recovered application module from official 0.1.5 Vite artifact: index-CWMUN1IG.js
  * Original identifiers, TypeScript types, comments, and module boundaries were not present.

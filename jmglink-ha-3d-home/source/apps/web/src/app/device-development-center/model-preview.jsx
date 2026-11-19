@@ -30,7 +30,7 @@ function disposeObject(root) {
 
 export default function ModelPreview({
   model,
-  preparedAsset,
+  preparedAsset, onThumbnail, onThumbnailError,
   compact = false,
   animated = false,
   command,
@@ -38,6 +38,8 @@ export default function ModelPreview({
   rotationPreview, onPivotChange,
   motionRules, motionValues, motionPlaying=true, selectedPart, selectedParts, onParts, onSelectPart, pathPicking=false, onPathPoint,onMotionValidation,
 }) {
+  const thumbnailCallback=React.useRef(onThumbnail);thumbnailCallback.current=onThumbnail;
+  const thumbnailErrorCallback=React.useRef(onThumbnailError);thumbnailErrorCallback.current=onThumbnailError;
   const motionRef = React.useRef({});
   motionRef.current={rules:motionRules??[],values:motionValues??{},playing:motionPlaying,rotationPreview,onPivotChange,selectedPart,selectedParts,onParts,onSelectPart,pathPicking,onPathPoint,onMotionValidation};
   const container = React.useRef(null);
@@ -72,7 +74,7 @@ export default function ModelPreview({
     let disposeRenderer;
     let releaseSlot = () => {};
     setLoading(true);
-    const failPreview=message=>{if(disposed)return;setError(message);setLoading(false);queueMicrotask(()=>{disposeRenderer?.();disposeRenderer=undefined;releaseSlot();});};
+    const failPreview=message=>{if(disposed)return;setError(message);setLoading(false);thumbnailErrorCallback.current?.(message);queueMicrotask(()=>{disposeRenderer?.();disposeRenderer=undefined;releaseSlot();});};
     releaseSlot = webglPreviewPool.request(() => {
       if (disposed || !container.current?.isConnected) return false;
       disposeRenderer = startPreview(modelRef.current);
@@ -357,9 +359,9 @@ export default function ModelPreview({
       controls.update();
       renderer.render(scene, camera);
       if(motionEngine){const state=motionEngine.codeStatus(),message=shaderIssue||state.errors.join('；');if(message&&lastCodeStatus!==message){motion.onMotionValidation?.({pending:false,error:message});lastCodeStatus=message;}else if(!message&&!state.pending&&lastCodeStatus!=='ok'){motion.onMotionValidation?.({pending:false,error:''});lastCodeStatus='ok';}else if(!lastCodeStatus&&state.pending){motion.onMotionValidation?.({pending:true,error:''});lastCodeStatus='pending';}}
-      if(staticThumbnail&&modelReady&&!captured&&++readyFrames>=2){
+      if((staticThumbnail||thumbnailCallback.current)&&modelReady&&!captured&&++readyFrames>=2){
         captured=true;
-        try{setThumbnail({key:modelKey,url:renderer.domElement.toDataURL('image/png')});}
+        try{const canvas=document.createElement('canvas'),source=renderer.domElement,ratio=Math.min(1,480/source.width,320/source.height);canvas.width=Math.max(1,Math.round(source.width*ratio));canvas.height=Math.max(1,Math.round(source.height*ratio));canvas.getContext('2d').drawImage(source,0,0,canvas.width,canvas.height);const url=canvas.toDataURL('image/png');if(staticThumbnail)setThumbnail({key:modelKey,url});thumbnailCallback.current?.(url);}
         catch{failPreview('缩略图生成失败，请点击预览查看模型');}
       }
       frame=requestAnimationFrame(animate);

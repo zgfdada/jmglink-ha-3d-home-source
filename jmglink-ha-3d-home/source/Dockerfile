@@ -8,6 +8,7 @@ COPY package.json package-lock.json ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/schema/package.json packages/schema/package.json
+COPY packages/resource-protocol/package.json packages/resource-protocol/package.json
 
 RUN npm ci --include=optional
 
@@ -34,6 +35,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/server ./apps/server
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/packages/schema ./packages/schema
+COPY --from=build /app/packages/resource-protocol ./packages/resource-protocol
 
 EXPOSE 8099
 

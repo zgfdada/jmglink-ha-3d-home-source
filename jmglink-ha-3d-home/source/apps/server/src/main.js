@@ -1,4 +1,5 @@
 import {startMcp} from './mcp/server.js';
+import {ResourceCenter,registerResourceCenterRoutes} from './resource-center/ResourceCenter.js';
 import {createAccessPolicy,registerAccessPolicy} from "./config/access-policy.js";
 import {createInstanceWriteGate,registerInstanceWriteGate} from "./instance-write-gate.js";
 import {collectInstanceLiveEntityIds} from "./ha/liveSubscriptions.js";
@@ -88,6 +89,14 @@ await registerControlLibraryRoutes(app, controlLibrary);
 const motionLibrary=await MotionLibraryStore.create(config.dataDir);
 devicePlatformStore.motionLibrary=motionLibrary;
 await registerMotionLibraryRoutes(app,motionLibrary);
+const resourceCenter = await ResourceCenter.create({
+  origin:process.env.HA3D_RESOURCE_CENTER_URL,
+  defaultUser:process.env.HA3D_DEFAULT_USER==='true',
+  directory:path.join(config.dataDir,'resource-center-private'),
+  platform:devicePlatformStore,sidebars:sidebarStore,projects:projectStore,
+});
+devicePlatformStore.resourceCenter=resourceCenter;sidebarStore.resourceCenter=resourceCenter;
+await registerResourceCenterRoutes(app,resourceCenter);
 function collectBoundEntityIds(project) {
   const ids = new Set();
   for (const floor of project.floors) {

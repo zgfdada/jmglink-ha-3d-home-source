@@ -12,10 +12,11 @@ export default function MotionResourcePreview({
   active = true,
   playing = true,
   onValidation,
+  onThumbnail,
 }) {
   const host = React.useRef(null),
-    state = React.useRef({ resource, active, playing,onValidation });
-  state.current = { resource, active, playing,onValidation };
+    state = React.useRef({ resource, active, playing,onValidation,onThumbnail });
+  state.current = { resource, active, playing,onValidation,onThumbnail };
   const [error, setError] = React.useState("");
   const [pageVisible,setPageVisible]=React.useState(()=>document.visibilityState!=="hidden");
   React.useEffect(()=>{const update=()=>setPageVisible(document.visibilityState!=="hidden");document.addEventListener('visibilitychange',update);return()=>document.removeEventListener('visibilitychange',update);},[]);
@@ -51,7 +52,7 @@ export default function MotionResourcePreview({
       renderer.domElement.addEventListener('webglcontextlost',lost);
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
-      let shaderError='',lastValidation='';
+      let shaderError='',lastValidation='',thumbnailKey='';
       renderer.debug.onShaderError=(gl,program,vertex,fragment)=>{shaderError=('着色器编译失败：'+(gl.getShaderInfoLog(fragment)||gl.getShaderInfoLog(vertex)||gl.getProgramInfoLog(program)||'请检查 GLSL 代码')).slice(0,1500);};
       host.current.appendChild(renderer.domElement);
       scene = new THREE.Scene();
@@ -125,6 +126,7 @@ export default function MotionResourcePreview({
         renderer.render(scene, camera);
         const codeState=engine?.codeStatus();
         const validation=shaderError||codeState?.errors.join('；')||'';
+        if(time>0.2&&engine&&!codeState?.pending&&!validation&&thumbnailKey!==signature&&current.onThumbnail){thumbnailKey=signature;current.onThumbnail(renderer.domElement.toDataURL('image/png'));}
         if(validation){if(lastValidation!==validation){setError(validation);current.onValidation?.({key:signature,error:validation});lastValidation=validation;}}
         else if(engine&&!codeState?.pending&&lastValidation!=='ok'){current.onValidation?.({key:signature,error:''});lastValidation='ok';setError('');}
         frame=requestAnimationFrame(tick);

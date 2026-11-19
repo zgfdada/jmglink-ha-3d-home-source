@@ -1,3 +1,4 @@
+import {normalizeResourceSharing} from './resource-sharing.js';
 import { normalizeWidgetActions } from "./widget-actions.js";
 import { weatherWidgetCode } from "./weather-widget.js";
 export const SIDEBAR_FORMAT = "ha3d-sidebar-v1";
@@ -85,6 +86,7 @@ export function normalizeSidebar(raw) {
       kind: "custom",
       actions: normalizeWidgetActions(w.actions),
       accountNames: Object.fromEntries(Object.entries(w.accountNames ?? {}).slice(0,100).map(([key,value])=>[text(key,255,"实体标识"),text(value,80,"显示名称")])),
+      ...(w.resourceSharing ? {resourceSharing:normalizeResourceSharing(w.resourceSharing)} : {}),
       scriptMode: w.scriptMode === "dom" ? "dom" : "transform",
       entityAttribute: text(w.entityAttribute ?? "",80,"自动选择属性"),
       entityDomain: text(w.entityDomain ?? (w.kind === "weather" ? "weather" : ""), 80, "自动选择实体域"),

@@ -11,6 +11,7 @@ services:
       - "${HA3D_MCP_PUBLIC_PORT:-8112}:${HA3D_MCP_PORT:-8102}"
     environment:
       HA3D_MODE: standalone
+      HA3D_RESOURCE_CENTER_URL: "${HA3D_RESOURCE_CENTER_URL:-}"
       PORT: 8099
       HA3D_DATA_DIR: /data
       HA3D_ASSET_DIR: /assets

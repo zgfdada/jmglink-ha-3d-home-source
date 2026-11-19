@@ -1,4 +1,7 @@
 configuration:
+  resource_center_url:
+    name: Online resource center URL
+    description: Optional HTTPS origin of the resource center. Leave empty to disable online connections. Downloaded resources stay local.
   mcp_enabled:
     name: Enable MCP service
     description: Bundled and updated with the App. Disabled by default. Map 8102/tcp in Network settings; only expose to trusted clients.

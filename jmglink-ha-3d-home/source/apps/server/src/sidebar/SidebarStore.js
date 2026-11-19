@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile, rename, copyFile } from "node:fs/promises";
 import path from "node:path";
+import { defaultResourceSharing } from '../../../../packages/schema/src/resource-sharing.js';
 import { emptyFloorSidebar, resolveSidebarFloor } from '../../../../packages/schema/src/sidebar-floors.js';
 import {
   defaultSidebar,
@@ -130,7 +131,7 @@ export async function registerSidebarRoutes(
   for (const action of ["draft", "publish"])
     app.put(
       `/api/sidebar/:project/${action}`,
-      { bodyLimit: 1024 * 1024 },
+      { bodyLimit: 22 * 1024 * 1024 },
       async (req) => {
         const workspaceKey = check(req);
         const site = req.headers["sec-fetch-site"];
@@ -149,11 +150,29 @@ export async function registerSidebarRoutes(
         // JSON-only mutations: a foreign HTML form cannot submit executable widget definitions.
         if (!req.headers["content-type"]?.startsWith("application/json"))
           throw Object.assign(new Error("需要 JSON 文档"), { statusCode: 415 });
+        const shouldSync = (action === 'publish' || req.body?.syncOnExit === true) && req.body?.deferResourceSync !== true;
+        const payload = { ...(req.body ?? {}) };
+        if (shouldSync) {
+          payload.draft = normalizeSidebar(payload.draft);
+          for (const widget of payload.draft.widgets) {
+            if (widget.scriptMode !== 'dom' && !widget.actions?.length)
+              widget.resourceSharing ||= defaultResourceSharing();
+          }
+        }
         const result = await store.update(
           workspaceKey,
-          req.body ?? {},
+          payload,
           action === "publish",
         );
+        if(shouldSync){
+          const sync=[];
+          for(const widget of result.draft.widgets){
+            if(!widget.resourceSharing)continue;
+            try{sync.push(await store.resourceCenter?.enqueue({type:'sidebar-widget',sourceId:widget.id,projectId:req.params.project,floorId:req.query?.floorId||projects.getProject(req.params.project).floors[0]?.id},widget));}
+            catch(error){sync.push({state:'blocked',name:widget.name,error:error.message});}
+          }
+          result.sync=sync.filter(Boolean);
+        }
         onChange();
         return result;
       },
