@@ -1,0 +1,8 @@
+.rc-sharing-fields{display:grid;gap:12px;min-width:0;margin-block:16px;color:inherit}
+.rc-sharing-fields h3{margin:0 0 4px;font-size:16px}
+.rc-sharing-fields>label{display:grid;gap:6px;min-width:0;font-size:13px}
+.rc-sharing-fields input,.rc-sharing-fields select,.rc-sharing-fields textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%;border:1px solid #cbdcf3;border-radius:8px;padding:9px 11px;color:#244367;background:#fff;font:inherit}
+.rc-sharing-fields textarea{display:block;min-height:76px;resize:vertical;line-height:1.6}
+.rc-sharing-fields input[type=file]{font-size:12px;background:#f7faff}
+.rc-sharing-fields>small{font-size:12px;line-height:1.7;color:#71849d;overflow-wrap:anywhere}
+.rc-sharing-fields>button{justify-self:start}

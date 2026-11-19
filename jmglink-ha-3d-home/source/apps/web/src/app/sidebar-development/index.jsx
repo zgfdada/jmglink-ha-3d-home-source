@@ -1,5 +1,12 @@
+import SharingFields from '../resource-center/sharing-fields.jsx';
+import WidgetThumbnail from '../resource-center/widget-thumbnail.jsx';
+import {scheduleSidebarSync} from '../resource-center/sidebar-sync-background.js';
+import {defaultResourceSharing} from '../../../../../packages/schema/src/resource-sharing.js';
+import WidgetLibraryHeader from './widget-library-header.jsx';
 import {reorderSidebarPages} from "../../../../../packages/schema/src/sidebar-order.js";
 import CodeEditor from "./code-editor.jsx";
+import OnlineResources from '../resource-center/index.jsx';
+import ResourceDiscovery from '../resource-center/discovery.jsx';
 import { exportSidebarPart, importSidebarPart } from "../../../../../packages/schema/src/sidebar-transfer.js";
 import { sidebarFloorOptions, SIDEBAR_OVERVIEW_ID } from "../../../../../packages/schema/src/sidebar-floors.js";
 import { ActionEditor } from "./action-editor.jsx";
@@ -75,6 +82,7 @@ export default function SidebarDevelopmentCenter({
   onClose,
 }) {
   const floors = sidebarFloorOptions(project.floors);
+  const [onlineOpen,setOnlineOpen] = React.useState(false);
   const workspaces = [...floors].reverse();
   if (floors.length > 1) workspaces.push({ id: SIDEBAR_OVERVIEW_ID, label: "ALL", name: "多楼层总览" });
   const [floorId,setFloorId] = React.useState(workspaces.some(floor=>floor.id===initialFloorId) ? initialFloorId : project.floors?.[0]?.id);
@@ -100,6 +108,7 @@ export default function SidebarDevelopmentCenter({
     [addSearch,setAddSearch]=React.useState(""),
     [draggedNav,setDraggedNav]=React.useState(null),
     [previewWidth,setPreviewWidth]=React.useState(380);
+  const thumbnails=React.useRef({});
   const importKind = React.useRef("widget");
   const chooseImport=kind=>{importKind.current=kind;file.current.click();};
   const editorActions = React.useRef(null);
@@ -157,7 +166,8 @@ export default function SidebarDevelopmentCenter({
   const selectedEntity = effectiveBinding.entities[0];
   const patchWidget = (key, value) =>
     change((d) => {
-      d.widgets.find((w) => w.id === widget.id)[key] = value;
+      const target=d.widgets.find(w=>w.id===widget.id);
+      target.resourceSharing||=defaultResourceSharing();target[key]=value;
     });
   const patchPage = (key, value) =>
     change((d) => {
@@ -169,38 +179,46 @@ export default function SidebarDevelopmentCenter({
         key
       ] = value;
     });
-  const save = async (publish) => {
+  const save = async (publish,syncOnExit=false) => {
+    if(busy||!workspace)return false;
     setBusy(true);
     setMessage("");
     try {
       const normalized = normalizeSidebar(draft);
+      const previous=JSON.parse(saved.current||'{}').widgets||[];
+      for(const w of normalized.widgets){
+        const before=previous.find(old=>old.id===w.id);
+        if(w.resourceSharing||JSON.stringify(w)!==JSON.stringify(before)||((publish||syncOnExit)&&w.scriptMode!=='dom'&&!w.actions?.length)){
+          w.resourceSharing||=defaultResourceSharing();
+          if(w.resourceSharing.previewMode!=='manual')w.resourceSharing.previewDataUrl=thumbnails.current[w.id]||w.resourceSharing.previewDataUrl||'';
+        }
+      }
       const result = await sidebarApi(
         project.id,
         publish ? "publish" : "draft",
-        { revision: workspace.revision, draft: normalized },
+        { revision: workspace.revision, draft: normalized, syncOnExit, deferResourceSync:publish||syncOnExit },
         floorId,
       );
       setWorkspace(result);
       setDraft(result.draft);
       saved.current = JSON.stringify(result.draft);
+      if(publish||syncOnExit)scheduleSidebarSync(project.id,floorId);
       setMessage(
         publish
           ? "已发布，返回主页即可查看。其他终端刷新后生效。"
           : "草稿已保存，主页保持当前已发布版本。",
       );
+      if(result.sync?.some(j=>j.error)){setMessage('本地已保存；部分资源同步待处理：'+result.sync.filter(j=>j.error).map(j=>j.error).join('；'));return false;}
+      return true;
     } catch (e) {
-      setMessage(e.message);
+      setMessage(e.message);return false;
     } finally {
       setBusy(false);
     }
   };
-  const close = () => {
-    if (
-      !dirty ||
-      window.confirm("还有未保存的修改，确定放弃并返回主页吗？")
-    )
-      onClose();
-  };
+  const close = async () => {if(await save(false,true))onClose();};
+  const sharePreview=React.useMemo(()=>widget?Object.fromEntries(['name','kind','scriptMode','html','css','js','entityDomain','entityAttribute'].map(k=>[k,widget[k]])):null,[widget?.id,widget?.name,widget?.scriptMode,widget?.html,widget?.css,widget?.js,widget?.entityDomain,widget?.entityAttribute]);
+
 
   const entitySelect = () => <EntityPicker key={`${tab}-${widget?.id}-${item?.id}`} entities={entities} widget={selectedWidget} override={tab === "widgets" ? {} : item} emptyLabel={tab === "widgets" ? "恢复自动选择" : "跟随控件默认绑定"} onChange={ids=>change(d=>{
     const target=tab === "widgets" ? d.widgets.find(w=>w.id===widget.id) : d.pages.find(p=>p.id===page.id).items.find(i=>i.id===item.id);
@@ -264,12 +282,12 @@ export default function SidebarDevelopmentCenter({
       aria-label="侧边栏开发中心"
     >
       {deleteTarget&&<div className="sb-delete-backdrop" onClick={event=>{event.stopPropagation();if(event.target===event.currentTarget)setDeleteTarget(null);}}><section role="alertdialog" aria-modal="true" aria-labelledby="sb-delete-title" aria-describedby="sb-delete-description" className="sb-delete-dialog"><h2 id="sb-delete-title">{deleteTarget.type==='widget'?'删除控件':'移除页面实例'}“{deleteTarget.name}”？</h2><p id="sb-delete-description">{deleteTarget.type==='widget'?'此控件将从控件库中删除。保存或发布后生效。':'仅移除当前页面的这个实例，控件库和其他页面实例会保留。保存或发布后生效。'}</p><div><button autoFocus onClick={()=>setDeleteTarget(null)}>取消</button><button className="sb-danger-button" onClick={()=>{const target=deleteTarget;if(target.type==='widget'){if(draft.pages.some(p=>p.items.some(i=>i.widgetId===target.id))){setMessage('该控件仍被页面引用，请先移除引用');setDeleteTarget(null);return;}change(d=>d.widgets=d.widgets.filter(w=>w.id!==target.id));setWidgetId(draft.widgets.find(w=>w.id!==target.id)?.id);}else{change(d=>{const p=d.pages.find(p=>p.id===target.pageId);if(p)p.items=p.items.filter(i=>i.id!==target.id);});setItemId(null);}setDeleteTarget(null);}}>确认{deleteTarget.type==='widget'?'删除控件':'移除实例'}</button></div></section></div>}
-      <div className={`sb-dev ${tab === "widgets" ? "sb-widget-redesign" : "sb-page-redesign"}`}>
+      <div className={`sb-dev ${tab !== "pages" ? "sb-widget-redesign" : "sb-page-redesign"}`}>
         <header className="sb-dev-header">
           <div className="sb-editor-brand"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1686fa" strokeWidth="2"><path d="M3 10 12 2l9 8v11h-6v-7H9v7H3Z"/></svg><div><strong>HA 3DHome</strong><small>侧边栏开发中心</small></div></div>
           <nav aria-label="开发页面">
             <button
-              className={tab === "widgets" ? "active" : ""}
+              className={tab !== "pages" ? "active" : ""}
               onClick={() => setTab("widgets")}
             >
               控件开发
@@ -302,7 +320,9 @@ export default function SidebarDevelopmentCenter({
             >
               发布到主页
             </button>
-            <button onClick={close}>返回主页</button>
+            <button disabled={busy} onClick={close}>保存并返回主页</button>
+            <button disabled={busy} onClick={()=>{if(!dirty||window.confirm("放弃未保存修改并返回主页？"))onClose();}}>放弃修改</button>
+            <button disabled={busy||dirty} title={dirty?'请先保存草稿，再打开在线资源中心':'登录、上传或安装资源'} aria-label="账号与登录" onClick={()=>setOnlineOpen(true)}>账号</button>
           </div>
         </header>
         <div className={`sb-dev-notice ${!message ? "sb-notice-quiet" : ""}`} role="status">
@@ -311,29 +331,17 @@ export default function SidebarDevelopmentCenter({
               ? "正在加载…"
               : "主页仅展示和使用；这里编辑草稿并发布。三个预览区域使用同一个控件渲染器。")}
         </div>
-        {!workspace ? (
+        {tab==='online'?<ResourceDiscovery resourceType="sidebar-widget" destination={{projectId:project.id,floorId}} onChanged={load} onAccount={()=>setOnlineOpen(true)} onLocal={()=>setTab('widgets')} onCreate={()=>{const w=customWidget();change(d=>d.widgets.push(w));setWidgetId(w.id);setTab('widgets');}}/>:!workspace ? (
           <div className="sb-empty">
             {busy ? "正在读取服务端配置" : "配置读取失败，请重新加载"}
           </div>
         ) : (
           <div className="sb-dev-body" inert={busy ? "" : undefined}>
-            {tab==='pages'&&<nav className="sb-design-floor-rail" aria-label="设计楼层">{workspaces.map(floor=><button key={floor.id} title={floor.name} aria-label={`设计楼层 ${floor.label} ${floor.name}`} aria-current={floor.id===floorId?'page':undefined} className={floor.id===floorId?'active':''} onClick={()=>{if(dirty&&!window.confirm('当前楼层有未保存修改，放弃并切换楼层？'))return;setWorkspace(null);setFloorId(floor.id);}}>{floor.label}</button>)}</nav>}
+            {tab==='pages'&&<nav className="sb-design-floor-rail" aria-label="设计楼层">{workspaces.map(floor=><button key={floor.id} title={floor.name} aria-label={`设计楼层 ${floor.label} ${floor.name}`} aria-current={floor.id===floorId?'page':undefined} className={floor.id===floorId?'active':''} onClick={async()=>{if(!await save(false,true))return;setWorkspace(null);setFloorId(floor.id);}}>{floor.label}</button>)}</nav>}
             <aside className="sb-dev-library">
               {tab === "widgets" ? (
                 <>
-                  <h2>
-                    控件库{" "}
-                    <button
-                      onClick={() => {
-                        const w = customWidget();
-                        change((d) => d.widgets.push(w));
-                        setWidgetId(w.id);
-                      }}
-                    >
-                      ＋ 新建
-                    </button>
-                  </h2>
-                  <input type="search" aria-label="搜索控件" placeholder="搜索控件" value={widgetSearch} onChange={e=>setWidgetSearch(e.target.value)}/>
+                  <WidgetLibraryHeader disabled={busy} dirty={dirty} query={widgetSearch} onQuery={setWidgetSearch} onLocal={()=>setTab('widgets')} onOnline={()=>setTab('online')} onCreate={()=>{const w=customWidget();change(d=>d.widgets.push(w));setWidgetId(w.id);}}/>
                   {draft.widgets.filter(w=>w.name.toLocaleLowerCase().includes(widgetSearch.toLocaleLowerCase())).map((w) => (
                     <button
                       className={`sb-library-row ${widget?.id === w.id ? "active" : ""}`}
@@ -476,6 +484,8 @@ export default function SidebarDevelopmentCenter({
                         />
                       </label>
                       <label>脚本模式<select value={widget.scriptMode || "transform"} onChange={e=>patchWidget("scriptMode",e.target.value)}><option value="transform">数据转换（Worker）</option><option value="dom">交互界面（隔离沙箱）</option></select><small>{widget.scriptMode==='dom'?'通过已声明动作进行交互':'在 Worker 中处理数据，无设备控制权限。'}</small></label></div>
+                      <SharingFields value={widget.resourceSharing} onChange={value=>patchWidget("resourceSharing",value)}/>
+                      {widget.scriptMode==='dom'&&<p role="status">交互型控件暂不支持在线同步，本地保存与使用不受影响。</p>}
                       <h3>默认实体</h3>{entitySelect()}
                       {widget.entityAttribute && <fieldset className="sb-account-names"><legend>实体显示名称</legend>{Object.values(entities).filter(e=>Object.hasOwn(e.attributes || {},widget.entityAttribute)).map((entity,i)=><label key={entity.entityId}>{entity.name || entity.entityId}<input value={widget.accountNames?.[entity.entityId] || ''} placeholder={`用电账户 ${i+1}`} onChange={event=>patchWidget('accountNames',{...widget.accountNames,[entity.entityId]:event.target.value})} /></label>)}</fieldset>}
                       {widget.scriptMode === "dom" && <ActionEditor widget={widget} entities={effectiveBinding.entities} onChange={actions=>patchWidget("actions",actions)} onInsert={html=>patchWidget("html",widget.html+"\n"+html)}/>}
@@ -510,6 +520,7 @@ export default function SidebarDevelopmentCenter({
                   <div className={`sb-widget-live-preview sb-preview-${previewTheme} sb-preview-${previewDevice}`}>
                     {widget && <WidgetRenderer widget={widget} entities={entities} bindingContext={{projectId:project.id,floorId,workspace:"draft"}} theme={previewTheme==='day'?'day':'night'} />}
                   </div>
+                  {sharePreview&&widget.scriptMode!=='dom'&&<details open><summary>分享预览（模拟数据）</summary><WidgetThumbnail key={widget.id} widget={sharePreview} onThumbnail={value=>{thumbnails.current[widget.id]=value;}}/></details>}
                   <EntityProperties key={widget?.id} entity={selectedEntity}/>
                 </aside>
               </>
@@ -671,6 +682,7 @@ export default function SidebarDevelopmentCenter({
             )}
           </div>
         )}
+        {onlineOpen && <OnlineResources initialTab="submissions" resourceType="sidebar-widget" onClose={()=>{setOnlineOpen(false);load();}}/>}
       </div>
     </div>
   );

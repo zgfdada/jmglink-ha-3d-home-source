@@ -15,12 +15,12 @@ async function files(dir) {
   }
   return result.sort();
 }
-const sources=['apps/server/src','packages/schema/src'];
+const sources=['apps/server/src','packages/schema/src','packages/resource-protocol'];
 const before=new Map();
 for(const dir of [...sources,'apps/web/src']) for(const name of await files(path.join(root,dir))) before.set(name,sha(await readFile(name)));
 // Only the fixed, generated directory inside this package is replaced.
 await rm(output,{recursive:true,force:true});await mkdir(output,{recursive:true});
-for(const name of ['apps/server','apps/web/dist','packages/schema'])
+for(const name of ['apps/server','apps/web/dist','packages/schema','packages/resource-protocol'])
   await cp(path.join(root,name),path.join(output,name),{recursive:true,filter:source=>!source.endsWith('.map') && !/[\\/](concept|tutorials)([\\/]|$)/.test(source)});
 const manifest={version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version,obfuscated:true,sourceMaps:false,files:[]};
 for(const dir of [...sources,'apps/web/dist']) for(const file of await files(path.join(output,dir))) {

@@ -42,15 +42,19 @@ test("sidebar fragments retain code and remap conflicting widget references", ()
   assert.throws(() => importSidebarPart(original, {}));
 });
 
-test("instance import keeps JSON limits and errors isolated, rejects a concurrent upload and recovers after disconnect", async () => {
+test("instance import keeps JSON limits and errors isolated, rejects a concurrent upload and recovers after disconnect", {timeout:30000}, async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "ha3d-instance-http-"));
   const app = Fastify({ bodyLimit: 1024 });
-  let slowStarted;
+  let slowStarted, slowAborted;
+  const serverAborted = new Promise(resolve => { slowAborted = resolve; });
   const started = new Promise((resolve) => {
     slowStarted = resolve;
   });
   app.addHook("preParsing", async (req, reply, payload) => {
-    if (req.headers["x-test-slow"]) slowStarted();
+    if (req.headers["x-test-slow"]) {
+      req.raw.once("aborted", slowAborted);
+      slowStarted();
+    }
     return payload;
   });
   app.post("/ordinary", async (req) => req.body);
@@ -136,6 +140,9 @@ test("instance import keeps JSON limits and errors isolated, rejects a concurren
       slow.once("close", resolve);
       slow.destroy();
     });
+    // Client close can precede the server receiving TCP abort under build load.
+    // The route registers its release listener before this preParsing observer.
+    await serverAborted;
     const retry = await fetch(base + "/api/instance-backup", {
       method: "POST",
       headers: { "content-type": "application/json" },

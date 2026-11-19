@@ -649,7 +649,7 @@ export class DevicePlatformStore {
     };
   }
 
-  async importProjectPackage(bundle) {
+  async importProjectPackage(bundle, {namespace} = {}) {
     if (
       bundle?.format !== "ha3d-device-project" ||
       bundle.schemaVersion !== 1 ||
@@ -659,7 +659,7 @@ export class DevicePlatformStore {
       throw new Error("设备项目包格式无效");
     if (bundle.manifest?.allowFork === false)
       throw new Error("此版本不允许从设备包创建新草稿");
-    const nonce = createHash("sha256")
+    const nonce = namespace ? namespace.slice(0,16) : createHash("sha256")
       .update(`${Date.now()}-${Math.random()}`)
       .digest("hex")
       .slice(0, 16);

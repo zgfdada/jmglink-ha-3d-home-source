@@ -1,8 +1,12 @@
+import ResourceDiscovery from '../resource-center/discovery.jsx';
+import {uploadPortable} from '../resource-center/portable-upload.jsx';
 import ControlLibrary from "./control-library.jsx";
+import OnlineResources, {ResourceAccountButton} from '../resource-center/index.jsx';
 import MotionLibrary from './motion-library.jsx';
 import { a as React } from "../../vendor/react.js";
 import "../../styles/device-development-center.css";
 import ModelLibrary from "./model-library.jsx";
+import {scheduleModelLibrarySync} from '../resource-center/model-sync-background.js';
 import ProjectDetail from "./project-detail.jsx";
 import ModelPreview from "./model-preview.jsx";
 import { exportFilename } from "../../../../../packages/schema/src/export-filename.js";
@@ -90,7 +94,7 @@ function Notice({ notice, onClose }) {
   );
 }
 
-function ProjectCard({ device, view, onOpen, onExport, onDelete, onCopy }) {
+function ProjectCard({ device, view, onOpen, onExport, onDelete, onCopy, onUpload }) {
   const health = resolveProjectHealth(device);
   return (
     <article className="ddc-next-project-card">
@@ -118,6 +122,7 @@ function ProjectCard({ device, view, onOpen, onExport, onDelete, onCopy }) {
           <details>
             <summary aria-label={`${device.name}更多操作`}>•••</summary>
             <div className="ddc-next-action-menu">
+              <button onClick={()=>onUpload(device)}>上传到资源中心</button>
               <button onClick={() => onExport(device)}>
                 <Icon name="download" />
                 导出设备包
@@ -210,6 +215,8 @@ function CreateProjectDialog({ onClose, onCreate }) {
 }
 
 export default function DeviceDevelopmentCenter({ open, onClose }) {
+  const [projectSource,setProjectSource]=React.useState("local");
+  const [onlineOpen,setOnlineOpen] = React.useState(false);
   const [platform, setPlatform] = React.useState(null);
   const [devices, setDevices] = React.useState([]);
   const [query, setQuery] = React.useState("");
@@ -219,6 +226,9 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
   const [notice, setNotice] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const leaving=React.useRef(false);
+  const [closing,setClosing]=React.useState(false);
+  const modelFlushRef=React.useRef(null);
   const [section, setSection] = React.useState("projects");
   const [activeProjectId, setActiveProjectId] = React.useState(null);
   const projectFlushRef = React.useRef(null);
@@ -264,6 +274,10 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
     window.localStorage.setItem(PROJECT_VIEW_KEY, next);
   };
   const changeSection = async (next) => {
+    if(leaving.current)return;
+    leaving.current=true;
+    try{
+    if(section==='models'&&modelFlushRef.current&&await modelFlushRef.current()===false)return;
     if(section==='motions'&&libraryGuardRef.current?.()===false)return;
     if (activeProjectId && projectFlushRef.current) {
       const saved = await projectFlushRef.current();
@@ -272,14 +286,22 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
     setQuery("");
     setSection(next);
     setActiveProjectId(null);
+    }finally{leaving.current=false;}
   };
   const closeCenter = async () => {
+    if(leaving.current)return;
+    leaving.current=true;setClosing(true);
+    try{
+    if(section==='models'&&modelFlushRef.current&&await modelFlushRef.current()===false)return;
     if(section==='motions'&&libraryGuardRef.current?.()===false)return;
     if (activeProjectId && projectFlushRef.current) {
       const saved = await projectFlushRef.current();
       if (saved === false) return;
     }
+    if(section!=='models'||!modelFlushRef.current)scheduleModelLibrarySync();
     onClose();
+    }catch(error){setNotice({type:'error',message:error.message});}
+    finally{leaving.current=false;setClosing(false);}
   };
   const createProject = async ({ name, description }) => {
     setBusy(true);
@@ -436,12 +458,11 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
           <button className="ddc-next-icon-button" aria-label="通知">
             <Icon name="bell" />
           </button>
-          <button className="ddc-next-avatar" aria-label="当前用户">
-            D
-          </button>
+          <ResourceAccountButton className="ddc-next-avatar" onClick={()=>setOnlineOpen(true)}/>
           <button
             className="ddc-next-close"
             onClick={closeCenter}
+            disabled={busy||closing}
             aria-label="关闭设备开发中心"
           >
             <Icon name="close" />
@@ -473,11 +494,13 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
           <button className={section==='motions'?'active':''} onClick={()=>changeSection('motions')}>
             <Icon name="motion"/><span><b>动效资源库</b><small>内置 &amp; 自定义动效</small></span>
           </button>
+
         </aside>
         <main className="ddc-next-main" aria-busy={busy}>
           <Notice notice={notice} onClose={() => setNotice(null)} />
-          {section === 'motions' ? <MotionLibrary globalQuery={query} notify={(message,type='success')=>setNotice({message,type})} registerGuard={registerLibraryGuard}/> : section === "controls" ? <ControlLibrary globalQuery={query} notify={(message,type="success")=>setNotice({message,type})} onChanged={reload}/> : section === "models" ? (
+          {section === 'motions' ? <MotionLibrary onAccount={()=>setOnlineOpen(true)} globalQuery={query} notify={(message,type='success')=>setNotice({message,type})} registerGuard={registerLibraryGuard}/> : section === "controls" ? <ControlLibrary platform={platform} onAccount={()=>setOnlineOpen(true)} globalQuery={query} notify={(message,type="success")=>setNotice({message,type})} onChanged={reload}/> : section === "models" ? (
             <ModelLibrary
+              flushRef={modelFlushRef}
               platform={platform}
               reload={reload}
               globalQuery={query}
@@ -532,6 +555,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
                   />
                 </div>
               </section>
+              <nav className="ddc-model-tabs" aria-label="设备项目来源">{[["local","本地项目"],["online","在线项目"]].map(([id,label])=><button key={id} className={projectSource===id?"active":""} onClick={()=>setProjectSource(id)}>{label}</button>)}</nav>
               <section className="ddc-next-toolbar">
                 <label className="ddc-next-search">
                   <Icon name="search" />
@@ -558,7 +582,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
                   </button>
                 </div>
               </section>
-              {!platform ? (
+              {projectSource==="online"?<ResourceDiscovery resourceType="device-project" searchQuery={query} onChanged={reload} onAccount={()=>setOnlineOpen(true)}/>:!platform ? (
                 <div className="ddc-next-loading">
                   <span />
                   <b>正在加载设备项目…</b>
@@ -574,6 +598,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
                       onExport={exportPackage}
                       onDelete={deleteProject}
                       onCopy={copyProject}
+                      onUpload={device=>uploadPortable({type:"device-project",sourceId:device.id},(message,type="success")=>setNotice({message,type}))}
                     />
                   ))}
                 </section>
@@ -608,6 +633,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
             onCreate={createProject}
           />
         )}
+        {onlineOpen && <OnlineResources initialTab="submissions" onClose={()=>setOnlineOpen(false)} onChanged={reload}/>}
       </div>
     </div>
   );

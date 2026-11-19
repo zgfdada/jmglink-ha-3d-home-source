@@ -1,3 +1,5 @@
+import ResourceDiscovery from '../resource-center/discovery.jsx';
+import {uploadPortable} from '../resource-center/portable-upload.jsx';
 import { a as React } from "../../vendor/react.js";
 import { MOTION_EFFECTS } from "../../../../../packages/schema/src/part-motion.js";
 import {
@@ -27,7 +29,9 @@ export default function MotionLibrary({
   globalQuery = "",
   notify,
   registerGuard,
+  onAccount,
 }) {
+  const [source,setSource]=React.useState("local");
   const { resources, revision, error, reload } = useMotionResources();
   const [search, setSearch] = React.useState(""),
     [filter, setFilter] = React.useState("all");
@@ -222,6 +226,8 @@ export default function MotionLibrary({
           ＋ 新增动效
         </button>
       </header>
+      <nav className="ddc-model-tabs" aria-label="动效来源">{[["local","本地动效"],["online","在线动效"]].map(([id,label])=><button key={id} className={source===id?"active":""} onClick={()=>{if(canLeave())setSource(id);}}>{label}</button>)}</nav>
+      {source==="online"?<ResourceDiscovery resourceType="motion" searchQuery={globalQuery} onChanged={reload} onAccount={onAccount}/>:<>
       <div className="motion-library-guide">
         <b>选择动效资源</b>
         <span>→</span>
@@ -313,6 +319,7 @@ export default function MotionLibrary({
                     : "新增自定义动效"}
                 </small>
                 <h2>{draft.name || "未命名动效"}</h2>
+                {draft.id&&!draft.builtin&&<button disabled={dirty||busy} onClick={()=>uploadPortable({type:"motion",sourceId:draft.id},notify)}>上传到资源中心</button>}
               </div>
               <span>{dirty ? "未保存" : "已保存"}</span>
             </header>
@@ -473,6 +480,7 @@ export default function MotionLibrary({
           </aside>
         )}
       </div>
+      </>}
     </section>
   );
 }

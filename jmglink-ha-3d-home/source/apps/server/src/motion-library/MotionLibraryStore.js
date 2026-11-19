@@ -91,6 +91,10 @@ export class MotionLibraryStore {
       return item;
     });
   }
+  async importOnline(raw,id) {
+    if(!/^custom\.motion\.online-[a-f0-9]{24}$/.test(id))throw Error('在线动效 ID 无效');
+    return this.mutate(undefined,items=>{if(this.list().some(r=>r.id===id))throw Error('动效目标已存在');const item=normalizeMotionResource({...raw,id,builtin:false,version:1});items.push(item);return item;});
+  }
   async remove(id, expected) {
     return this.mutate(expected, (items) => {
       const current = this.list().find((r) => r.id === id);
