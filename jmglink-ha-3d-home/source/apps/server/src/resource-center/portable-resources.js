@@ -1,5 +1,10 @@
 import {canonical,sha256,portableModel,portableControl,portablePanel,portableMotion,portableDeviceProject,validateModelBytes,fail} from '../../../../packages/resource-protocol/index.js';
 export const ADDITIONAL_TYPES=['device-control','motion','device-project'];
+export function requireStandaloneResource(type, kind) {
+  if (type === 'device-control' && kind === 'panel') {
+    fail('控制面板随完整设备一起分享和安装', 422, 'panel_requires_device');
+  }
+}
 export async function buildPortableSource(store,input){
  const platform=store.platform;let entry,assets=[],previewModel=null;
  if(input.type==='device-control'){
@@ -23,3 +28,36 @@ export async function buildPortableSource(store,input){
  const signature=sha256(canonical({entry,assets:assets.map(a=>({path:a.path,sha256:sha256(a.bytes)}))}));return {entry,assets,signature,previewModel};
 }
 export function portableSourceKey(input){return sha256(canonical([input.type,input.sourceId,input.sourceKind||'']));}
+
+export function portableSyncSources(store, type) {
+  const {platform} = store;
+  const installations = Object.values(store.installations);
+  const sources = [];
+  function add(type, records, sourceKind) {
+    const installed = new Set(installations.filter(i =>
+      i.type === type && (!i.sourceKind || i.sourceKind === sourceKind)
+    ).map(i => i.localId));
+    for (const item of records) {
+      if (item.builtin || item.id.startsWith('builtin.') || installed.has(item.id)) continue;
+      sources.push({type, sourceId:item.id, name:item.name, ...(sourceKind ? {sourceKind} : {})});
+    }
+  }
+  if (!type || type === 'device-project') add('device-project', platform.getDeviceTemplates());
+  if (!type || type === 'device-control') {
+    add('device-control', platform.controlLibrary?.list() || [], 'control');
+  }
+  if (!type || type === 'motion') add('motion', platform.motionLibrary?.list() || []);
+  return sources;
+}
+
+// Queues from earlier clients already contain the portable JSON and asset hashes in their manifests.
+export function samePortableSnapshot(job, source) {
+  if (!job || job.state === 'superseded') return false;
+  if (job.sourceSignature) return job.sourceSignature === source.signature;
+  const {entry, files} = job.manifest;
+  if (files.find(f => f.path === entry)?.sha256 !== sha256(canonical(source.entry))) return false;
+  const assets = files.filter(f => f.mediaType.startsWith('model/'));
+  return assets.length === source.assets.length && source.assets.every(asset =>
+    assets.some(f => f.path === asset.path && f.sha256 === sha256(asset.bytes))
+  );
+}

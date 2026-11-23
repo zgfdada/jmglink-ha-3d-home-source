@@ -75,7 +75,8 @@ export function validateManifest(input) {
     keys(binding,['key','kind','domains','multiple','required'],['key','kind','domains','multiple','required']);
     if(binding.key!=='primary'||binding.kind!=='entity'||typeof binding.multiple!=='boolean'||typeof binding.required!=='boolean'||!Array.isArray(binding.domains)||binding.domains.length>20||binding.domains.some(d=>typeof d!=='string'||!/^[a-z][a-z0-9_]{0,63}$/.test(d))) fail('绑定槽位定义无效');
   }
-  const permissions=['model','motion','device-control','device-project'].includes(input.type)?[]:['entities.read'];
+  const actionPermission=input.type==='sidebar-widget' && input.permissions?.includes('actions.invoke');
+  const permissions=['model','motion','device-control','device-project'].includes(input.type)?[]:actionPermission?['entities.read','actions.invoke']:['entities.read'];
   if(JSON.stringify(input.permissions)!==JSON.stringify(permissions)) fail('权限声明与资源类型不一致');
   if(input.type==='sidebar-widget'&&input.bindings.length!==1) fail('侧栏控件需要 primary 绑定槽位');
   return JSON.parse(canonical(input));
@@ -83,10 +84,35 @@ export function validateManifest(input) {
 
 export const WIDGET_FIELDS=['name','kind','scriptMode','entityDomain','entityAttribute','html','css','js'];
 export const MODEL_FIELDS=['name','enabled','furnitureEnabled','furnitureKind','tags','source','dimensions','scale','anchor','placement','elevation','color','roughness','metalness','partLabels'];
+const actionFields=['id','label','domain','service','target','data'];
+const bindingKeys=/^(entity_?ids?|device_?ids?|area_?ids?|floor_?ids?|target|__proto__|constructor|prototype|access_?token|password|secret)$/i;
+function portableActionData(value, depth=0) {
+  if (depth>16) fail('动作参数嵌套过深');
+  if (Array.isArray(value)) return value.map(item=>portableActionData(item,depth+1));
+  if (value && typeof value==='object') return Object.fromEntries(Object.entries(value)
+    .filter(([key])=>!bindingKeys.test(key)).map(([key,item])=>[key,portableActionData(item,depth+1)]));
+  return value;
+}
+function validateActions(actions) {
+  if (!Array.isArray(actions) || actions.length>200) fail('控件动作数量无效');
+  const ids=new Set();
+  for (const action of actions) {
+    keys(action,actionFields,actionFields);
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(action.id) || ids.has(action.id)) fail('动作标识无效');
+    ids.add(action.id);
+    text(action.label,80,'动作名称');
+    for(const field of ['domain','service']) if(typeof action[field]!=='string'||!/^[a-z0-9_]{1,80}$/.test(action[field])) fail('动作服务无效');
+    if(!['all','primary'].includes(action.target)) fail('动作目标需要使用绑定槽位');
+    if(!action.data||typeof action.data!=='object'||Array.isArray(action.data)||JSON.stringify(action.data).length>16000 ||
+        canonical(action.data)!==canonical(portableActionData(action.data))) fail('动作参数无效');
+  }
+}
 export function portableWidget(widget) {
-  if(widget.scriptMode==='dom'||widget.actions?.length) fail('第一阶段仅支持无设备控制动作的数据转换控件',422,'unsupported_widget');
+  const actions=(widget.actions || []).map(a=>({id:a.id,label:a.label || a.id,domain:a.domain,service:a.service,
+    target:a.target==='all'?'all':'primary',data:portableActionData(a.data || {})}));
+  validateActions(actions);
   const result=Object.fromEntries(WIDGET_FIELDS.filter(k=>widget[k]!==undefined).map(k=>[k,widget[k]]));
-  return {format:'ha3d-sidebar-widget-template-v1',widget:{...result,kind:'custom',scriptMode:'transform'}};
+  return {format:'ha3d-sidebar-widget-template-v1',widget:{...result,kind:'custom',scriptMode:widget.scriptMode==='dom'?'dom':'transform',...(actions.length?{actions}:{})}};
 }
 export function portableModel(model, asset=null) {
   const result=Object.fromEntries(MODEL_FIELDS.filter(k=>model[k]!==undefined).map(k=>[k,model[k]]));
@@ -99,8 +125,10 @@ export function validateEntry(manifest, bytes) {
   if(manifest.type==='sidebar-widget') {
     keys(payload,['format','widget'],['format','widget']);
     if(payload.format!=='ha3d-sidebar-widget-template-v1') fail('侧栏入口格式无效');
-    const w=payload.widget; keys(w,WIDGET_FIELDS,['name','kind','scriptMode','html','css','js']);
-    if(w.kind!=='custom'||w.scriptMode!=='transform') fail('只支持 Worker 数据转换控件');
+    const w=payload.widget; keys(w,[...WIDGET_FIELDS,'actions'],['name','kind','scriptMode','html','css','js']);
+    if(w.kind!=='custom'||!['dom','transform'].includes(w.scriptMode)) fail('侧栏控件模式无效');
+    validateActions(w.actions ?? []);
+    if(Boolean(w.actions?.length)!==manifest.permissions.includes('actions.invoke')) fail('动作与权限声明不一致');
     text(w.name,80,'控件名称');text(w.html,24000,'HTML',true);text(w.css,24000,'CSS',true);text(w.js,900000,'JS',true);
     text(w.entityAttribute??'',80,'实体属性',true);text(w.entityDomain??'',80,'实体领域',true);
     if(w.entityDomain&&!/^[a-z][a-z0-9_]{0,63}$/.test(w.entityDomain)) fail('实体领域无效');

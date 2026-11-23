@@ -90,7 +90,7 @@ const motionLibrary=await MotionLibraryStore.create(config.dataDir);
 devicePlatformStore.motionLibrary=motionLibrary;
 await registerMotionLibraryRoutes(app,motionLibrary);
 const resourceCenter = await ResourceCenter.create({
-  origin:process.env.HA3D_RESOURCE_CENTER_URL,
+  origin:process.env.HA3D_RESOURCE_CENTER_URL || 'https://resources.700117.xyz',
   defaultUser:process.env.HA3D_DEFAULT_USER==='true',
   directory:path.join(config.dataDir,'resource-center-private'),
   platform:devicePlatformStore,sidebars:sidebarStore,projects:projectStore,

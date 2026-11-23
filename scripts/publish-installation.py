@@ -45,8 +45,9 @@ def snapshot(root=ROOT):
             raise ValueError("Source/public configuration mismatch: " + key)
     if "image: ghcr.io/zgfdada/" + IMAGE_NAME not in config:
         raise ValueError("Public image endpoint changed")
-    if ("image: ghcr.io/zgfdada/" + IMAGE_NAME + ":latest") not in result["docker-compose.release.yml"].decode():
-        raise ValueError("Public Compose must use latest")
+    compose_tag = version if "-beta." in version else "latest"
+    if ("image: ghcr.io/zgfdada/" + IMAGE_NAME + ":" + compose_tag) not in result["docker-compose.release.yml"].decode():
+        raise ValueError("Public Compose image does not match the release channel")
     for name in ["README.md", "RELEASE_NOTES.md",
                  "jmglink-ha-3d-home/RELEASE_NOTES.md", "jmglink-ha-3d-home/CHANGELOG.md"]:
         if version not in result[name].decode():
@@ -129,7 +130,14 @@ def publish(client, files, version, docs_only=False):
     metadata = client.request(repo)
     if metadata["private"] or metadata["owner"]["login"] != "zgfdada":
         raise ValueError("Installation destination must be the public zgfdada repository")
-    head = client.request(repo + "/git/ref/heads/main")["object"]["sha"]
+    beta = "-beta." in version
+    branch = "beta" if beta else "main"
+    branch_ref = client.request(repo + "/git/ref/heads/" + branch, missing=beta)
+    if not branch_ref:
+        stable = client.request(repo + "/git/ref/heads/main")
+        client.request(repo + "/git/refs", "POST", {"ref": "refs/heads/beta", "sha": stable["object"]["sha"]})
+        branch_ref = stable
+    head = branch_ref["object"]["sha"]
     tree = client.request(repo + "/git/trees/" + head + "?recursive=1")
     if tree.get("truncated"):
         raise ValueError("Incomplete installation tree")
@@ -152,9 +160,9 @@ def publish(client, files, version, docs_only=False):
             entries.append({"path": name, "mode": "100644", "type": "blob", "sha": sha})
         new_tree = client.request(repo + "/git/trees", "POST", {"tree": entries})
         commit = client.request(repo + "/git/commits", "POST", {"message": f"docs(release): 更新 {version} 安装配置与用户说明", "tree": new_tree["sha"], "parents": [head]})
-        client.request(repo + "/git/refs/heads/main", "PATCH", {"sha": commit["sha"], "force": False})
+        client.request(repo + "/git/refs/heads/" + branch, "PATCH", {"sha": commit["sha"], "force": False})
         head = commit["sha"]
-    verified = client.request(repo + "/git/trees/main?recursive=1")
+    verified = client.request(repo + "/git/trees/" + branch + "?recursive=1")
     if verified.get("truncated") or {x["path"]: x["sha"] for x in verified["tree"] if x["type"] == "blob"} != wanted:
         raise ValueError("Published installation snapshot differs")
     if docs_only:
@@ -172,7 +180,9 @@ def publish(client, files, version, docs_only=False):
     if not match:
         raise ValueError("Missing user release notes")
     body = match.group(1).strip() + f"\n\n### 容器镜像\n\n```shell\ndocker pull {IMAGE}:{version}\n```\n\n支持平台：`linux/amd64`、`linux/arm64`\n\n[查看容器软件包](https://github.com/users/zgfdada/packages/container/package/{IMAGE_NAME})\n"
-    payload = {"tag_name": tag, "name": "JMGLink HA 3D Home Custom " + tag, "body": body, "draft": False, "prerelease": False}
+    payload = {"tag_name": tag, "name": "JMGLink HA 3D Home Custom " + tag, "body": body, "draft": False, "prerelease": beta}
+    if beta:
+        payload.update(name=payload["name"] + " · 测试版", make_latest="false")
     release = client.request(repo + "/releases/tags/" + tag, missing=True)
     client.request(repo + ("/releases/" + str(release["id"]) if release else "/releases"), "PATCH" if release else "POST", payload)
     print(f"Published and verified {len(files)} installation files, versioned docs/wiki, {tag}")

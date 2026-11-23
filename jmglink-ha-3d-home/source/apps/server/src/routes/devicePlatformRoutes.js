@@ -508,7 +508,7 @@ export async function registerDevicePlatformRoutes(app, platform, ha) {
         if (request.body?.id !== request.params.id)
           return reply.code(400).send({ error: "路径 ID 与模板 ID 不一致" });
         const item=await platform.upsertDeviceTemplate(request.body);
-        let sync;try{if(item.modelTemplateId)sync=await platform.resourceCenter?.enqueue({type:'model',sourceId:item.modelTemplateId});}catch(error){sync={state:'blocked',error:error.message};}
+        let sync;try{if(item.modelTemplateId)sync=await platform.resourceCenter?.enqueue({automatic:true,type:'model',sourceId:item.modelTemplateId});}catch(error){sync={state:'blocked',error:error.message};}
         return {item,sync};
       } catch (error) {
         return handleError(reply, error);
@@ -525,7 +525,7 @@ export async function registerDevicePlatformRoutes(app, platform, ha) {
         const item=await platform.upsertModelTemplate(request.body.model,request.body.file);
         let sync;
         if(request.body.deferResourceSync===true)sync={deferred:true};
-        else try{sync=await platform.resourceCenter?.enqueue({type:'model',sourceId:item.id},item,request.body.file);}catch(error){sync={state:'blocked',error:error.message};}
+        else try{sync=await platform.resourceCenter?.enqueue({automatic:true,type:'model',sourceId:item.id},item,request.body.file);}catch(error){sync={state:'blocked',error:error.message};}
         return {item,sync};
       } catch (error) {
         return handleError(reply, error);

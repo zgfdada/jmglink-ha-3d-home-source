@@ -1,7 +1,9 @@
+import ManualLibraryUpload from '../resource-center/manual-library-upload.jsx';
 import SharingFields from '../resource-center/sharing-fields.jsx';
 import {defaultResourceSharing} from '../../../../../packages/schema/src/resource-sharing.js';
 import OnlineResources from '../resource-center/index.jsx';
 import ResourceDiscovery from '../resource-center/discovery.jsx';
+import ResourceClassificationFilters, {useResourceClassification} from './resource-classification-filters.jsx';
 import { a as React } from "../../vendor/react.js";
 import { loadModelAsset, createLatestModelTask } from "../../domain/model-assets.js";
 import { inspectGltfModelParameters } from "../../domain/model-file-parameters.js";
@@ -12,7 +14,6 @@ import {
   buildModelCards,
   createModelDraft,
   filterModelCards,
-  MODEL_FAVORITES_KEY,
   modelReferenceCount,
 } from "./model-library.js";
 
@@ -41,7 +42,7 @@ function readAsDataUrl(file) {
 
 export async function syncModelLibraryOnExit(onProgress=()=>{},context={}){
   const status=await api('./api/resource-center/status');
-  if(!status.configured)return {items:[]};
+  if(!status.configured||!status.silentUpload)return {items:[]};
   const owner=status.user?.username||(status.defaultUserEnabled?'desktop-default':null);
   if(context.expectedOwner&&owner!==context.expectedOwner)throw Error('请登录原账号 '+context.expectedOwner+' 后继续同步');
   context.onOwner?.(owner);
@@ -56,7 +57,7 @@ export async function syncModelLibraryOnExit(onProgress=()=>{},context={}){
   }
   if(!snapshots.length)return {items:[]};
   onProgress('正在保存模型同步任务…');
-  const result=await api('./api/resource-center/sync-model-library',{method:'POST',body:JSON.stringify({models:snapshots,expectedOwner:owner})});
+  const result=await api('./api/resource-center/sync-model-library',{method:'POST',body:JSON.stringify({automatic:true,models:snapshots,expectedOwner:owner})});
   const failed=result.items.filter(item=>item.error);
   if(failed.length)throw Error(failed.map(item=>`${item.name}：${item.error}`).join('；'));
   return result;
@@ -64,8 +65,9 @@ export async function syncModelLibraryOnExit(onProgress=()=>{},context={}){
 
 function ModelCard({
   card,
-  favorite,
-  onFavorite,
+  facts,
+  reload,
+  notify,
   onPreview,
   onConfigure,
   onApply,
@@ -80,7 +82,9 @@ function ModelCard({
       </div>
       <div className="ddc-model-card-body">
         <h3 title={card.name}>{card.name}</h3>
-        <p>{card.author}</p>
+        <p>{[facts.category, facts.subcategory].filter(Boolean).join(' / ')}{facts.productType === '标准品' && <span className="ddc-catalog-standard">标准品</span>}</p>
+        <p className="ddc-catalog-identity">{facts.brand ? facts.brand + " · " : ""}型号：{facts.model || "未填写"}</p>
+        {card.model.library?.repository && <p>{card.author}</p>}
         <div className="ddc-model-tags">
           {card.tags.slice(0, 3).map((tag) => (
             <span key={tag}>{tag}</span>
@@ -119,13 +123,8 @@ function ModelCard({
               <button onClick={() => onConfigure(card)}>配置</button>
             )}
           </>
-          <button
-            className={`ddc-model-favorite ${favorite ? "active" : ""}`}
-            onClick={() => onFavorite(card.key)}
-            aria-label={favorite ? "取消收藏" : "收藏模型"}
-          >
-            {favorite ? "♥" : "♡"}
-          </button>
+          {!card.model.builtin && (!card.model.library || card.model.resourceSharing) &&
+            <ManualLibraryUpload model={card.model} notify={notify} onSaved={reload}/>}
         </div>
       </div>
     </article>
@@ -331,7 +330,7 @@ function ModelEditor({
       <nav className="ddc-model-breadcrumb">
         <button disabled={working||loadingFile} onClick={save}>保存并返回资源库</button>
         <span>›</span>
-        <span>{initial ? "配置模型" : "上传本地模型"}</span>
+        <span>{initial ? "配置模型" : "导入到本地资源库"}</span>
       </nav>
       <div className="ddc-model-editor-heading">
         <div>
@@ -585,21 +584,13 @@ export default function ModelLibrary({
   reload,
   notify,
   globalQuery = "",
+  onSearchChange,
   flushRef,
 }) {
   const [accountOpen,setAccountOpen]=React.useState(false);
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState("all");
   const [sort, setSort] = React.useState("recent");
-  const [favorites, setFavorites] = React.useState(() => {
-    try {
-      return JSON.parse(
-        window.localStorage.getItem(MODEL_FAVORITES_KEY) ?? "[]",
-      );
-    } catch {
-      return [];
-    }
-  });
   const [editor, setEditor] = React.useState(null);
   const [preview, setPreview] = React.useState(null);
   const [applyTarget, setApplyTarget] = React.useState(null);
@@ -617,14 +608,6 @@ export default function ModelLibrary({
     finally{syncing.current=false;setWorking(false);}
   };
   React.useEffect(()=>{if(flushRef)flushRef.current=flushLibrary;return()=>{if(flushRef?.current===flushLibrary)flushRef.current=null;};},[flushRef,flushLibrary]);
-  const toggleFavorite = (key) =>
-    setFavorites((current) => {
-      const next = current.includes(key)
-        ? current.filter((item) => item !== key)
-        : [...current, key];
-      window.localStorage.setItem(MODEL_FAVORITES_KEY, JSON.stringify(next));
-      return next;
-    });
   const showPreview = (card) => setPreview({ card, model: card.model });
   const toggleFurniture = async (card) => {
     if (card.model.builtin) return;
@@ -688,14 +671,13 @@ export default function ModelLibrary({
       setWorking(false);
     }
   };
-  const cards = filterModelCards(
-    filterModelCards(buildModelCards(platform), {
-      query,
-      filter,
-      favorites,
-    }),
-    { query: globalQuery },
+  const search = [globalQuery, query].filter(Boolean).join(' ');
+  const localCards = React.useMemo(
+    () => filterModelCards(buildModelCards(platform), {filter}),
+    [platform, filter],
   );
+  const catalog = useResourceClassification(localCards, 'model', search);
+  const cards = catalog.items;
   cards.sort((a, b) =>
     sort === "name"
       ? a.name.localeCompare(b.name, "zh")
@@ -731,10 +713,10 @@ export default function ModelLibrary({
           <p>管理本地及已安装模型，为设备选择合适的 3D 外观</p>
         </div>
         <button className="primary" onClick={() => setEditor({})}>
-          ＋ 上传本地模型
+          ＋ 导入到本地资源库
         </button>
       </div>
-      <div className="ddc-model-library-toolbar">
+      {!onSearchChange && <div className="ddc-model-library-toolbar">
         <label className="ddc-next-search">
           <input
             value={query}
@@ -742,20 +724,12 @@ export default function ModelLibrary({
             placeholder="搜索模型名称、标签或作者…"
           />
         </label>
-        <select
-          value={sort}
-          onChange={(event) => setSort(event.target.value)}
-          aria-label="模型排序"
-        >
-          <option value="recent">最近更新</option>
-          <option value="name">名称排序</option>
-        </select>
-      </div>
+      </div>}
+      <section className="ddc-catalog-tabbar">
       <div className="ddc-model-tabs">
         {[
           ["all", "全部"],
           ["local", "本地模型"],
-          ["favorites", "收藏"],
           ["online", "在线模型"],
         ].map(([value, label]) => (
           <button
@@ -767,7 +741,13 @@ export default function ModelLibrary({
           </button>
         ))}
       </div>
-      {filter==='online'?<ResourceDiscovery resourceType="model" searchQuery={globalQuery||query} sort={sort} onChanged={reload} onAccount={()=>setAccountOpen(true)}/>:!platform ? (
+      <select value={sort} onChange={event => setSort(event.target.value)} aria-label="模型排序">
+        <option value="recent">最近更新</option>
+        <option value="name">名称排序</option>
+      </select>
+      </section>
+      {filter !== 'online' && platform && <ResourceClassificationFilters catalog={catalog}/>}
+      {filter==='online'?<ResourceDiscovery resourceType="model" searchQuery={search} sort={sort} onChanged={reload} onAccount={()=>setAccountOpen(true)}/>:!platform ? (
         <div className="ddc-next-loading">正在加载模型…</div>
       ) : cards.length ? (
         <div className="ddc-model-grid">
@@ -775,8 +755,9 @@ export default function ModelLibrary({
             <ModelCard
               key={card.key}
               card={card}
-              favorite={favorites.includes(card.key)}
-              onFavorite={toggleFavorite}
+              facts={catalog.factsByItem.get(card)}
+              notify={notify}
+              reload={reload}
               onPreview={showPreview}
               onConfigure={(item) => setEditor(item.model)}
               onApply={apply}
@@ -788,7 +769,10 @@ export default function ModelLibrary({
       ) : (
         <div className="ddc-next-empty">
           <b>没有匹配的模型</b>
-          <span>尝试切换筛选条件，或上传本地模型。</span>
+          <span>尝试切换筛选条件，或导入新的本地模型。</span>
+          {(search || catalog.active) && <button type="button" onClick={() => {
+            setQuery(""); onSearchChange?.(""); catalog.reset();
+          }}>清除搜索和筛选</button>}
         </div>
       )}
       {accountOpen&&<OnlineResources initialTab="submissions" onClose={()=>setAccountOpen(false)}/>}

@@ -1,4 +1,5 @@
 import {normalizeResourceSharing} from '../../../../packages/schema/src/resource-sharing.js';
+import {projectProductError} from "../../../../packages/schema/src/project-product.js";
 import {normalizePartLabels} from "../../../../packages/schema/src/model-part-labels.js";
 import {normalizePartMotionRules} from "../../../../packages/schema/src/part-motion.js";
 import { normalizeControlValues } from "../../../../packages/schema/src/control-library.js";
@@ -199,6 +200,8 @@ function normalizeMatchRules(value) {
 
 export function normalizeDeviceTemplate(value, { builtin = false } = {}) {
   const source = record(value);
+  const productError = projectProductError(source);
+  if (productError) throw new Error(productError);
   const statusDisplay = record(source.statusDisplay);
   const runtimeDisplay = record(source.runtimeDisplay);
   const appearance = record(source.appearance);
@@ -222,6 +225,7 @@ export function normalizeDeviceTemplate(value, { builtin = false } = {}) {
     name: text(source.name, id),
     category: text(source.category, "generic"),
     subCategory: text(source.subCategory) || undefined,
+    ...(typeof source.isStandardProduct === "boolean" ? {isStandardProduct:source.isStandardProduct} : {}),
     manufacturer: text(source.manufacturer) || undefined,
     model: text(source.model) || undefined,
     icon: text(source.icon, "mdi:devices"),

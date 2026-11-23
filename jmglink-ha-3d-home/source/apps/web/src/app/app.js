@@ -1,6 +1,8 @@
 import {saveProjectRequest} from "../domain/project-save-request.js";
 import {resumeModelLibrarySync} from './resource-center/model-sync-background.js';
 void resumeModelLibrarySync();
+import {portableLibrarySync} from './resource-center/portable-sync-background.js';
+void portableLibrarySync().resume();
 import {resumeSidebarSync} from './resource-center/sidebar-sync-background.js';
 resumeSidebarSync();
 /**

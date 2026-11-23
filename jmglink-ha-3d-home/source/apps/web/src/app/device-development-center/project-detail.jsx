@@ -1,4 +1,5 @@
 import { a as React } from "../../vendor/react.js";
+import {projectProductError} from "../../../../../packages/schema/src/project-product.js";
 import ModelPreview from "./model-preview.jsx";
 import ProjectCapabilities from "./project-capabilities.jsx";
 import ExtraEntitySelection from "./extra-entity-selection.jsx";
@@ -267,8 +268,7 @@ export default function ProjectDetail({
     draft.name?.trim() &&
     DEVICE_CATEGORIES[draft.category] &&
     draft.subCategory &&
-    draft.manufacturer?.trim() &&
-    draft.model?.trim() &&
+    !projectProductError(draft) &&
     binding,
   );
   const n4State = n4Validation?.issues?.some(
@@ -349,6 +349,10 @@ export default function ProjectDetail({
     if (!snapshot.name?.trim()) {
       setSaveStatus("error");
       notify("设备名称不能为空，未保存当前更改。", "error");
+      return Promise.resolve(false);
+    }
+    if (projectProductError(snapshot)) {
+      setSaveStatus("error");
       return Promise.resolve(false);
     }
     setSaveStatus("saving");
@@ -795,7 +799,18 @@ export default function ProjectDetail({
                   </select>
                 </label>
                 <label>
-                  <span>厂商 *</span>
+                  <span>产品属性</span>
+                  <select
+                    value={draft.isStandardProduct == null ? "" : String(draft.isStandardProduct)}
+                    onChange={event => updateDraft({isStandardProduct: event.target.value === "" ? undefined : event.target.value === "true"})}
+                  >
+                    <option value="">未标注</option>
+                    <option value="true">标准品</option>
+                    <option value="false">通用/非标</option>
+                  </select>
+                </label>
+                <label>
+                  <span>厂商{draft.isStandardProduct === true && " *"}</span>
                   <input
                     value={draft.manufacturer ?? ""}
                     onChange={(event) =>
@@ -805,7 +820,7 @@ export default function ProjectDetail({
                   />
                 </label>
                 <label>
-                  <span>型号 *</span>
+                  <span>型号{draft.isStandardProduct === true && " *"}</span>
                   <input
                     value={draft.model ?? ""}
                     onChange={(event) =>
@@ -814,6 +829,7 @@ export default function ProjectDetail({
                     placeholder="例如：TB12U2"
                   />
                 </label>
+                {projectProductError(draft) && <p role="alert" className="ddc-project-alert error">{projectProductError(draft)}</p>}
                 <div className="ddc-project-model-tile">
                   <ProjectThumbnail model={model} />
                   <div>

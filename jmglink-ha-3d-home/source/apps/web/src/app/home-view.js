@@ -1,5 +1,6 @@
 import HomePresence from "./home-presence.jsx";
 import HomeAmbientPanel from "./home-ambient-panel.js";
+import { ResourceCenterSettings } from "./resource-center-settings.jsx";
 import { McpConnectionGuide } from "./mcp-connection-guide.jsx";
 import {useIdleRotation} from "../components/use-idle-rotation.js";
 import { bindFloatingPanelDismiss } from "../domain/floating-panel-dismiss.js";
@@ -2658,6 +2659,7 @@ function Qn({
     writeHomePreference("furnitureColorFill", value);
   };
   const [styleDraft, setStyleDraft] = l.useState(null);
+  const [resourceSettingsOpen,setResourceSettingsOpen]=l.useState(false);
   const [mcpGuideOpen, setMcpGuideOpen] = l.useState(false);
   const sceneAngle = l.useRef(null);
   const [shadowIntensity, setShadowIntensity] = l.useState(readShadowIntensity);
@@ -3037,7 +3039,7 @@ function Qn({
       },
       [k, Q, F],
     );
-  const {rootRef:rotationRootRef,autoRotate:idleAutoRotate}=useIdleRotation(sceneSuspended || walkthrough.mode!=='idle' || lightSettingsOpen || !!styleDraft || transferOpen || developmentMenuOpen || ee || E || !!v || !!L || !!q || !!cameraMonitorId);
+  const {rootRef:rotationRootRef,autoRotate:idleAutoRotate}=useIdleRotation(sceneSuspended || walkthrough.mode!=='idle' || lightSettingsOpen || resourceSettingsOpen || !!styleDraft || transferOpen || developmentMenuOpen || ee || E || !!v || !!L || !!q || !!cameraMonitorId);
   const sidebarRef = useFloatingPanelDismiss(Ve, () => {G(false);k(undefined);ie(undefined);});
   const style = styleDraft ?? savedStyle;
   const sidebarVisible = !sidebarHidden && !styleDraft && walkthrough.mode === "idle";
@@ -3149,13 +3151,13 @@ function Qn({
             }),
           A && !sidebarVisible && walkthrough.mode === "idle" && e.jsx(HomePresence,{users:Ns,fallback:e.jsx(qt,{size:14})}),
           mt && e.jsx(On, { controls: ye, entityCount: _e, onChange: ds }),
-          e.jsxs("div", {className: "home-action-bar", children: [e.jsx(SidebarVisibilityToggle, {hidden: sidebarHidden, onToggleVisibility: toggleSidebarVisibility}), (ee || lightSettingsOpen) && e.jsx("div", {className:"home-tools-backdrop", onPointerDown:event=>event.stopPropagation(), onClick:()=>{I(false);setLightSettingsOpen(false);}}), e.jsxs("div", {
+          e.jsxs("div", {className: "home-action-bar", children: [e.jsx(SidebarVisibilityToggle, {hidden: sidebarHidden, onToggleVisibility: toggleSidebarVisibility}), (ee || lightSettingsOpen || resourceSettingsOpen) && e.jsx("div", {className:"home-tools-backdrop", onPointerDown:event=>event.stopPropagation(), onClick:()=>{I(false);setLightSettingsOpen(false);setResourceSettingsOpen(false);}}), e.jsxs("div", {
             className: `home-tools ${ee ? "tools-open" : ""}`,
             "aria-label": "页面工具",
             children: [
               e.jsx("button", {
                 className: "home-tools-toggle",
-                onClick: () => I((n) => !n),
+                onClick: () => {setLightSettingsOpen(false);setResourceSettingsOpen(false);I((n) => !n);},
                 "aria-label": ee ? "收起页面工具" : "展开页面工具",
                 "aria-expanded": ee,
                 "aria-haspopup": "menu",
@@ -3167,6 +3169,7 @@ function Qn({
                 role: "menu",
                 children: [
                   e.jsx("button", {className: "home-tools-item", role: "menuitem", onClick: () => {I(false);setLightSettingsOpen(true);}, children: "☀ 环境光"}),
+                  e.jsx("button",{className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setResourceSettingsOpen(true);},children:"资源中心配置"}),
                   e.jsx("button", {className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setMcpGuideOpen(true);},children:[e.jsx("span",{"aria-hidden":true,children:"⇄"}),"MCP 连接与权限"]}),
                   e.jsx("button", {className:"home-tools-item",role:"menuitem",onClick:()=>{I(false);setLightSettingsOpen(false);if(walkthrough.mode!=='idle'){exitWalk();return;}k(void 0);ie(void 0);setWalkNotice('');setShowAllFloors(false);setWalkthrough({mode:'placing',spawn:null});},children:walkthrough.mode==='idle'?'🚶 室内漫游':'退出室内漫游'}),
                   e.jsxs("button", {
@@ -3218,7 +3221,7 @@ function Qn({
                 ],
               }),
             ],
-          }), mcpGuideOpen && e.jsx(McpConnectionGuide,{onClose:()=>setMcpGuideOpen(false)}), styleDraft && e.jsx(HomeStyleEditor, {
+          }), resourceSettingsOpen && e.jsx(ResourceCenterSettings,{onClose:()=>setResourceSettingsOpen(false)}), mcpGuideOpen && e.jsx(McpConnectionGuide,{onClose:()=>setMcpGuideOpen(false)}), styleDraft && e.jsx(HomeStyleEditor, {
             draft: styleDraft, styles: ue, onChange: setStyleDraft, onCancel: () => setStyleDraft(null),
             onCaptureAngle: () => sceneAngle.current?.(),
             onApply: () => {

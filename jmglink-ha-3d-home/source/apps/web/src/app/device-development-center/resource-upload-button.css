@@ -1,0 +1,4 @@
+.motion-resource-row { position: relative; min-width: 0; flex: 0 0 155px; }
+.motion-resource-row > .motion-library-card { width: 100%; height: 100%; }
+.motion-resource-row:has(.ddc-resource-upload) .motion-library-card small { padding-right: 42px; }
+.motion-resource-row > .ddc-resource-upload { position: absolute; right: 8px; bottom: 5px; padding: 2px 7px; }

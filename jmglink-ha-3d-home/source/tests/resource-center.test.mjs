@@ -17,12 +17,14 @@ for (const action of ['exit', 'publish']) test(`旧天气控件${action}无需�
   const projects = {getProject: id => id === 'p' ? {id, floors:[{id:'f'}]} : undefined, listProjects:()=>[{id:'p'}]};
   const center = await ResourceCenter.create({directory:path.join(directory,'center'),origin:'https://resources.example.com',sidebars,projects,platform:{},fetchImpl:()=>{throw Error('local save must not fetch');}});
   await center.stopSync();
+  assert.equal(center.status().silentUpload, false);
+  await center.setSilentUpload(true);
   sidebars.resourceCenter = center;
   t.after(async()=>{await app.close();await center.stopSync();await rm(directory,{recursive:true,force:true});});
   await registerSidebarRoutes(app,sidebars,projects);
   const draft = defaultSidebar();
   draft.widgets[0].entityIds = ['weather.private_home'];
-  draft.widgets.push({...structuredClone(draft.widgets[0]),id:'unsupported',scriptMode:'dom'});
+  draft.widgets.push({...structuredClone(draft.widgets[0]),id:'interactive',scriptMode:'dom',name:'照明开关',actions:[{id:'toggle',label:'开关',domain:'light',service:'toggle',target:'primary',data:{}}]});
   const save = (revision, value, sync = false) => app.inject({method:'PUT',url:`/api/sidebar/p/${sync && action === 'publish' ? 'publish':'draft'}?floorId=f`,payload:{revision,draft:value,syncOnExit:sync && action === 'exit'}});
   const ordinary = await save(0,draft);
   assert.equal(ordinary.statusCode,200);
@@ -32,9 +34,9 @@ for (const action of ['exit', 'publish']) test(`旧天气控件${action}无需�
   assert.equal(first.statusCode,200,first.body);
   const result = first.json();
   assert.equal(result.draft.widgets[0].resourceSharing.version,'1.0.0');
-  assert.equal(result.draft.widgets[1].resourceSharing,undefined);
+  assert.equal(result.draft.widgets[1].resourceSharing.version,'1.0.0');
   assert.deepEqual(result.draft.widgets[0].entityIds,['weather.private_home']);
-  assert.equal(Object.keys(center.outbox).length,1);
+  assert.equal(Object.keys(center.outbox).length,2);
   const job = Object.values(center.outbox)[0];
   assert.equal(job.manifest.name,draft.widgets[0].name);
   assert.equal(job.state,'queued');
@@ -44,7 +46,7 @@ for (const action of ['exit', 'publish']) test(`旧天气控件${action}无需�
   assert.equal('entityId' in portable.widget,false);
   const second = await save(2,result.draft,true);
   assert.equal(second.statusCode,200);
-  assert.equal(Object.keys(center.outbox).length,1);
+  assert.equal(Object.keys(center.outbox).length,2);
   assert.equal(second.json().sync[0].id,result.sync[0].id);
   const reloaded = await SidebarStore.create(directory);
   assert.equal(reloaded.get('p').draft.widgets[0].resourceSharing.version,'1.0.0');
@@ -53,11 +55,11 @@ for (const action of ['exit', 'publish']) test(`旧天气控件${action}无需�
   withPreview.widgets[0].resourceSharing.previewDataUrl='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1sAAAAASUVORK5CYII=';
   const repair=await save(3,withPreview,true);
   assert.equal(repair.statusCode,200);
-  assert.equal(Object.keys(center.outbox).length,2,'缺图旧快照应允许一次带图补传');
-  assert.ok(Object.values(center.outbox)[1].manifest.preview);
+  assert.equal(Object.keys(center.outbox).length,3,'缺图旧快照应允许一次带图补传');
+  assert.ok(Object.values(center.outbox)[2].manifest.preview);
   const again=await save(4,repair.json().draft,true);
   assert.equal(again.statusCode,200);
-  assert.equal(Object.keys(center.outbox).length,2,'已有图片后再次退出继续去重');
+  assert.equal(Object.keys(center.outbox).length,3,'已有图片后再次退出继续去重');
 });
 
 test('在线资源默认关闭且不联网，路由继承本地鉴权并拒绝跨站修改',async t=>{

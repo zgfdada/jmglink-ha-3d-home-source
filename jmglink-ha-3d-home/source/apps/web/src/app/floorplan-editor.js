@@ -1,3 +1,5 @@
+import {placedModelDimensions,placementScale,footprintCorner,dragDeviceSize} from "../domain/placement-dimensions.js";
+import {PlacementDimensions} from "../components/placement-dimensions.jsx";
 import {createProjectSaveSession,finishProjectSave} from "../domain/project-save-session.js";
 import {formatProjectSaveError} from "../domain/project-save-error.js";
 import SaveErrorToast from "../components/save-error-toast.jsx";
@@ -5072,7 +5074,7 @@ function vd({
         selectedModel = selectedModelId
           ? customFurnitureModels.find((model) => model.id === selectedModelId)
           : void 0,
-        p = selectedModel?.dimensions ?? gt[Qt];
+        p = selectedModel?.dimensions ? placedModelDimensions(selectedModel) : gt[Qt];
       if (!p) return;
       const furnitureKind = selectedModel ? "custom_model" : Qt,
         N = b.rooms.find((g) => _e(a, g.polygon)),
@@ -5574,6 +5576,9 @@ function vd({
                           ),
                         };
                       })
+                    : E.type === "custom-device-resize"
+                      ? Ct(floor=>({...floor,devices:floor.devices.map(device=>device.id!==E.id?device:
+                          {...device,scale:dragDeviceSize(E.originDevice,E.footprint,E.start,u,Xe?qn:0)})}))
                     : E.type === "furniture-resize"
                       ? Ct((M) => {
                           const I = E.originFurniture,
@@ -5584,18 +5589,18 @@ function vd({
                             ke = V * z + G * se,
                             et = -V * se + G * z,
                             Ce = Math.max(
-                              0.2,
+                              I.kind==="custom_model"?0.05:0.2,
                               Xe ? Ss(Math.abs(ke) * 2, qn) : Math.abs(ke) * 2,
                             ),
                             en = Math.max(
-                              0.2,
+                              I.kind==="custom_model"?0.05:0.2,
                               Xe ? Ss(Math.abs(et) * 2, qn) : Math.abs(et) * 2,
                             );
                           return {
                             ...M,
                             furniture: M.furniture.map((It) =>
                               It.id === I.id
-                                ? { ...It, width: Ce, depth: en }
+                                ? { ...It, width: I.kind==="custom_model"?Math.min(20,Ce):Ce, depth: I.kind==="custom_model"?Math.min(20,en):en }
                                 : It,
                             ),
                           };
@@ -6247,6 +6252,7 @@ function vd({
     Ea = pt && w && !Rn ? tn(w) : void 0,
     Qo = pt && w ? Lt(w).length : 0,
     Jo = pt && w ? (Bt(w) === "ring" ? "环形" : "线型") : "",
+    placedModel = w && resolveDeviceModelFootprint(q,w)?.model,
     qs = w && !pt ? Vc(w, te == null ? void 0 : te.id) : void 0,
     ut = vr.find((e) => e.id === L),
     La = w ? [w.position[0], w.position[2]] : void 0,
@@ -7821,6 +7827,13 @@ function vd({
                                               className: "device-glyph-ring",
                                             }),
                                       t.jsx(li, { device: e, entity: n }),
+                                      a && modelFootprint && !u && t.jsx("circle",{
+                                        cx:footprintCorner(modelFootprint)[0],cy:footprintCorner(modelFootprint)[1],
+                                        r:0.085,className:"placement-size-handle",
+                                        children:t.jsx("title",{children:"拖动调整宽度和深度"}),
+                                        onClick:event=>event.stopPropagation(),
+                                        onPointerDown:event=>Qe({type:"custom-device-resize",id:e.id,originDevice:e,footprint:modelFootprint,start:ss(event,false).point},event)
+                                      }),
                                     ],
                                   }),
                                   Z &&
@@ -8764,10 +8777,10 @@ function vd({
                               }),
                             R.kind !== "cabinet" &&
                               t.jsx("rect", {
-                                x: R.width / 2 - 0.025,
-                                y: R.depth / 2 - 0.025,
-                                width: "0.05",
-                                height: "0.05",
+                                x: R.width / 2 - (R.kind==="custom_model"?0.085:0.025),
+                                y: R.depth / 2 - (R.kind==="custom_model"?0.085:0.025),
+                                width: R.kind==="custom_model"?0.17:0.05,
+                                height: R.kind==="custom_model"?0.17:0.05,
                                 className: "furniture-handle-hitarea resize",
                                 onClick: (e) => e.stopPropagation(),
                                 onPointerDown: (e) => {
@@ -8783,10 +8796,10 @@ function vd({
                               }),
                             R.kind !== "cabinet" &&
                               t.jsx("rect", {
-                                x: R.width / 2 - 0.025,
-                                y: R.depth / 2 - 0.025,
-                                width: "0.05",
-                                height: "0.05",
+                                x: R.width / 2 - (R.kind==="custom_model"?0.085:0.025),
+                                y: R.depth / 2 - (R.kind==="custom_model"?0.085:0.025),
+                                width: R.kind==="custom_model"?0.17:0.05,
+                                height: R.kind==="custom_model"?0.17:0.05,
                                 className: "furniture-resize-handle",
                                 onClick: (e) => e.stopPropagation(),
                                 onPointerDown: (e) => {
@@ -9649,7 +9662,8 @@ function vd({
                       className: "property-section",
                       children: [
                         t.jsx("h3", { children: "尺寸与位置" }),
-                        (R.kind === "cabinet"
+                        R.kind === "custom_model" && t.jsx(PlacementDimensions,{size:R,maxHeight:12,onChange:(axis,value)=>F(floor=>({...floor,furniture:floor.furniture.map(item=>item.id===R.id?{...item,[axis]:value}:item)}))}),
+                        (R.kind === "custom_model" ? [] : R.kind === "cabinet"
                           ? ["height"]
                           : R.kind === "vanity_mirror_cabinet"
                             ? ["width", "depth"]
@@ -10529,7 +10543,10 @@ function vd({
                       }),
                     q?.domain === "camera" && t.jsx(CameraSettings,{placement:w,modelId:te?.id,entity:q,entities:i,onChange:settings=>F(floor=>({...floor,devices:floor.devices.map(device=>device.id===w.id?{...device,cameraSettings:settings}:device)}))}),
                     q && t.jsx(fl, { compact: !0, entity: q }),
-                    qs !== void 0 && !Ca &&
+                    placedModel && t.jsx(PlacementDimensions,{size:placedModelDimensions(placedModel,w.scale),
+                      onChange:(axis,value)=>F(floor=>({...floor,devices:floor.devices.map(device=>device.id!==w.id?device:
+                        {...device,scale:placementScale(placedModel,{...placedModelDimensions(placedModel,device.scale),[axis]:value},device.scale)})}))}),
+                    !placedModel && qs !== void 0 && !Ca &&
                       t.jsxs("div", {
                         className: "property-section device-scale-property",
                         children: [

@@ -5,7 +5,7 @@ import {customDocument} from '../sidebar-development/renderer.jsx';
 function snapshotScript(){
   const view=document.getElementById('view');let timer;
   const capture=()=>{
-    if(!view?.textContent?.trim())return;
+    if(!view || (!view.textContent.trim() && !view.childElementCount))return;
     const clone=view.cloneNode(true),original=[view,...view.querySelectorAll('*')],copies=[clone,...clone.querySelectorAll('*')];
     if(original.length>1000)return;
     const properties='display position box-sizing width height min-width min-height max-width max-height margin padding border border-radius background-color background-image color font font-family font-size font-weight line-height letter-spacing text-align white-space overflow flex flex-direction flex-wrap align-items align-content justify-content gap grid-template-columns grid-template-rows grid-column grid-row opacity box-shadow transform vertical-align'.split(' ');
@@ -21,7 +21,9 @@ function snapshotScript(){
 }
 function thumbnailDocument(widget){
   const entity={state:'sunny',name:'示例天气',attributes:{friendly_name:'示例天气',temperature:23,humidity:50,temperature_unit:'°C',wind_speed:3,wind_speed_unit:'km/h',forecast:Array.from({length:5},(_,i)=>({temperature:25+i,templow:16+i,condition:'sunny',precipitation:0}))}};
-  return customDocument({...widget,kind:'custom',scriptMode:'transform'},entity,[],{theme:'night'}).replace('</body>','<script>('+snapshotScript.toString()+')();<'+ '/script></body>');
+  const documentHtml=customDocument({...widget,kind:'custom'},entity,[entity],{theme:'night'});
+  const capture='<script>('+snapshotScript.toString()+')();</script>';
+  return documentHtml.includes('</body>') ? documentHtml.replace('</body>',()=>capture+'</body>') : documentHtml+capture;
 }
 // Independent of the selected editor tab. Every save gets a completed image of its exact snapshot.
 export function generateWidgetThumbnail(widget,{timeout=8000}={}){

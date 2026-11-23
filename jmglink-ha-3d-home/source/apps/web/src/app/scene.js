@@ -1,3 +1,4 @@
+import {placementScale} from "../domain/placement-dimensions.js";
 import LightColorCapabilitySection from '../components/light-color-capability-section.jsx';
 import {detectLightColorCapability} from '../domain/light-color-capability.js';
 import {FixtureLightTransition,FixtureGlowMaterial,FixtureHaloMaterial,FixtureShellMaterial,ChandelierShade} from '../components/fixture-light-transition.jsx';
@@ -8330,7 +8331,7 @@ const ii = L.memo(function ({
     return t.jsxs("group", {
       position: curtainTrack ? [s.position[0], a - curtainTrack.drop, s.position[2]] : ye,
       rotation: curtainTrack ? [0, s.rotation?.[1] || 0, 0] : K,
-      scale: curtainTrack ? [1, 1, 1] : ee,
+      scale: configuredModel?.source && !s.scale ? [1,1,1] : curtainTrack ? [1, 1, 1] : ee,
       onClick: (ae) => {
         (ae.stopPropagation(),
           Xt(),
@@ -9128,7 +9129,7 @@ function FurnitureBody({
         e.kind === "cinema_screen" && t.jsx(CinemaScreen, { item: e, active: cinemaActive }),
         e.kind === "cinema_speaker" && t.jsx(CinemaSpeaker, { item: e, active: cinemaActive }),
         e.customModel?.source &&
-          t.jsx(ConfiguredDeviceModel, { config: e.customModel }),
+          t.jsx("group",{scale:placementScale(e.customModel,e),children:t.jsx(ConfiguredDeviceModel,{config:e.customModel})}),
         e.kind === "sofa" &&
           t.jsxs(t.Fragment, {
             children: [

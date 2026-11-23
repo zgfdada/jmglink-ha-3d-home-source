@@ -1,17 +1,15 @@
+import ResourceUploadButton from './resource-upload-button.jsx';
 import Preview from './control-preview.jsx';
+import ResourceClassificationFilters, {useResourceClassification} from './resource-classification-filters.jsx';
 import ResourceDiscovery from '../resource-center/discovery.jsx';
 import {uploadPortable} from '../resource-center/portable-upload.jsx';
-import PortablePreview from '../resource-center/portable-preview.jsx';
+import {portableLibrarySync} from '../resource-center/portable-sync-background.js';
 import { a as React } from "../../vendor/react.js";
 import ControlProperties from "../../components/control-properties.jsx";
-import DevicePanel from "../../components/device-panel.jsx";
-import { samplePanelStates } from "../../domain/device-panel.js";
 import {
   builtinControls,
   normalizeLibraryControl,
   normalizeLibraryPackage,
-  attachLibraryControl,
-  PANEL_COMPONENTS,
   editableLibraryControl,
   DATA_TYPES,
   CONTROL_PACKAGE_FORMAT,
@@ -152,7 +150,7 @@ function Editor({ initial, creating, onClose, onSave, notify }) {
       setValidatedSource("");
       setPreviewError("");
       await onSave();
-      notify("已回退上一版并保存；已有面板快照保持原样。");
+      notify("已将控件恢复为上一版。");
     } catch (e) {
       notify(e.message, "error");
     } finally {
@@ -186,7 +184,7 @@ function Editor({ initial, creating, onClose, onSave, notify }) {
         <header>
           <div>
             <h2>{creating ? "新建控件" : "编辑控件"}</h2>
-            <small>已有面板保留原版本；编辑只生成库内新版本。</small>
+            <small>修改后会生成控件新版本，已引用的控件保留原版本。</small>
           </div>
           <button onClick={onClose} disabled={busy}>
             关闭
@@ -349,7 +347,7 @@ function Editor({ initial, creating, onClose, onSave, notify }) {
           <aside>
             <h3>实时预览</h3>
             <p>
-              与全屋共用渲染器，仅使用本地模拟状态。标题和图标来自面板实例，可通过
+              预览使用本地模拟状态。标题和图标取自控件实例，可通过
               label / icon 节点调整位置和样式。
             </p>
             {preview ? (
@@ -402,19 +400,33 @@ function Editor({ initial, creating, onClose, onSave, notify }) {
 }
 export default function ControlLibrary({
   globalQuery = "",
-  platform,
+  registerGuard,
   onAccount,
   notify,
   onChanged,
 }) {
   const [items, setItems] = React.useState([]),
     [query, setQuery] = React.useState(""),
-    [category, setCategory] = React.useState("all"),
-    [type, setType] = React.useState("all"),
     [editor, setEditor] = React.useState(null),
     [view, setView] = React.useState(null),
     [busy, setBusy] = React.useState(false);
   const [source,setSource]=React.useState("local");
+  const canLeave = React.useCallback(() => {
+    if (editor || busy) {
+      notify(editor ? "请先保存或关闭控件编辑器。" : "控件正在更新，请稍候。", "error");
+      return false;
+    }
+    return true;
+  }, [editor, busy, notify]);
+  React.useEffect(() => {
+    registerGuard?.(canLeave);
+    return () => registerGuard?.(null);
+  }, [registerGuard, canLeave]);
+  const chooseSource = (next) => {
+    if (next === source || !canLeave()) return;
+    if (source === "local") portableLibrarySync().request({type: "device-control"});
+    setSource(next);
+  };
   const input = React.useRef();
   const load = async () => {
     setItems((await api(endpoint)).controls.map(editableLibraryControl));
@@ -457,7 +469,7 @@ export default function ControlLibrary({
       });
       await changed();
       if (view?.id === item.id) setView(null);
-      notify("控件已删除，已有面板保持原样。");
+      notify("控件已删除，已有引用仍可使用。");
     } catch (e) {
       notify(e.message, "error");
     } finally {
@@ -484,21 +496,8 @@ export default function ControlLibrary({
       if (input.current) input.current.value = "";
     }
   };
-  const search = `${globalQuery} ${query}`
-    .toLowerCase()
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  const filtered = items.filter(
-    (item) =>
-      (category === "all" || item.category === category) &&
-      (type === "all" || item.type === type) &&
-      search.every((q) =>
-        `${item.name} ${item.description} ${item.author} ${item.id}`
-          .toLowerCase()
-          .includes(q),
-      ),
-  );
+  const catalog = useResourceClassification(items, 'device-control', `${globalQuery} ${query}`);
+  const filtered = catalog.items;
   return (
     <div className="cl-page">
       <header className="cl-heading">
@@ -506,11 +505,11 @@ export default function ControlLibrary({
           <h1>控件资源库</h1>
           <p>
             管理数据控件与通用控件，当前 {items.length}{" "}
-            个风格；已有面板使用固定版本。
+            种样式。已引用的控件保留原版本。
           </p>
         </div>
-        <div>
-          <button onClick={() => setEditor({ item: copy(), creating: true })}>
+        {source === "local" && <div>
+        <button onClick={() => setEditor({ item: copy(), creating: true })}>
             ＋ 新建控件
           </button>
           <button disabled={busy} onClick={() => input.current.click()}>
@@ -527,40 +526,22 @@ export default function ControlLibrary({
             hidden
             onChange={(e) => importFile(e.target.files?.[0])}
           />
-        </div>
+        </div>}
       </header>
-      <nav className="ddc-model-tabs" aria-label="控件与面板来源">{[["local","本地控件"],["panels","本地控制面板"],["online","在线控件 / 面板"]].map(([id,label])=><button key={id} className={source===id?"active":""} onClick={()=>setSource(id)}>{label}</button>)}</nav>
-      {source==="online"?<ResourceDiscovery resourceType="device-control" searchQuery={globalQuery||query} onChanged={changed} onAccount={onAccount}/>:source==="panels"?<div className="cl-grid">{(platform?.controlPanels||[]).map(panel=><article key={panel.id}><h3>{panel.name}</h3><PortablePreview entry={{kind:"panel",panel,capabilities:platform.deviceTemplates.find(d=>d.id===panel.deviceTemplateId)?.capabilities||[]}}/><button onClick={()=>uploadPortable({type:"device-control",sourceKind:"panel",sourceId:panel.id},notify)}>上传到资源中心</button><p>安装的面板可在设备项目的控制面板中选用。</p></article>)}{!platform?.controlPanels?.length&&<p>暂无控制面板，请先在设备项目中创建。</p>}</div>:<>
+      <nav className="ddc-model-tabs" aria-label="控件来源">
+        <button className={source === "local" ? "active" : ""} onClick={() => chooseSource("local")}>本地控件</button>
+        <button className={source === "online" ? "active" : ""} onClick={() => chooseSource("online")}>在线控件</button>
+      </nav>
+      {source==="online"?<ResourceDiscovery resourceType="device-control" searchQuery={globalQuery} onChanged={changed} onAccount={onAccount}/>:<>
       <div className="cl-toolbar">
         <input
           aria-label="搜索控件"
-          placeholder="搜索名称、说明、作者…"
+          placeholder="搜索属性、控件名称或作者…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select
-          aria-label="控件分类"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option value="all">全部分类</option>
-          <option value="data">数据控件</option>
-          <option value="general">通用控件</option>
-        </select>
-        <select
-          aria-label="控件类型筛选"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        >
-          <option value="all">全部类型</option>
-          {PANEL_COMPONENTS.map((item) => (
-            <option key={item.type} value={item.type}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <span>{filtered.length} 个结果</span>
       </div>
+      <ResourceClassificationFilters catalog={catalog}/>
       <div className="cl-grid">
         {filtered.map((item) => (
           <article key={item.id}>
@@ -572,10 +553,13 @@ export default function ControlLibrary({
               {item.enabled ? "已启用" : "已停用"} · {item.references.length}{" "}
               处引用
             </div>
+            <div className="cl-card-meta">
+              支持属性：{catalog.factsByItem.get(item).attributes.join('、')}
+            </div>
             <Preview definition={item} />
             <p>{item.description || "暂无说明"}</p>
             <div className="cl-card-actions">
-              {!item.builtin&&<button onClick={()=>uploadPortable({type:"device-control",sourceKind:"control",sourceId:item.id},notify)}>上传到资源中心</button>}
+              {!item.builtin&&<ResourceUploadButton name={item.name} disabled={busy} onClick={()=>uploadPortable({type:"device-control",sourceKind:"control",sourceId:item.id},notify)}/>}
               <button onClick={() => setView(item)}>查看</button>
               <button onClick={() => setEditor({ item, creating: false })}>
                 编辑
@@ -639,7 +623,7 @@ export default function ControlLibrary({
                     </p>
                   ))
                 ) : (
-                  <p>尚未被面板使用</p>
+                  <p>暂无设备引用此控件</p>
                 )}
               </div>
               <pre>

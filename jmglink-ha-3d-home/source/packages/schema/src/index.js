@@ -209,8 +209,8 @@ export function normalizeFurniture(value, floorId) {
     const cabinetSectionOneHeight = kind === "cabinet" && cabinetStyle === "segmented" ? finite(source.cabinetSectionOneHeight, cabinetHeight * 0.38, 0.1, Math.max(0.1, cabinetHeight - 0.1)) : undefined;
     const cabinetHollowHeight = kind === "cabinet" && cabinetStyle === "segmented" ? finite(source.cabinetHollowHeight, cabinetHeight * 0.24, 0, Math.max(0, cabinetHeight - cabinetSectionOneHeight - 0.1)) : undefined;
     const cabinetUpperDepth = kind === "cabinet" && cabinetStyle === "segmented" ? finite(source.cabinetUpperDepth, cabinetDepth, 0.1, 4) : undefined;
-    const width = vanityDimensions?.width ?? cabinetBounds?.width ?? finite(legacyToiletDefault ? undefined : source.width, size.width, kind.startsWith("cinema_") ? 0.05 : 0.2, 20);
-    const depth = vanityDimensions?.depth ?? cabinetBounds?.depth ?? finite(legacyToiletDefault ? undefined : source.depth, size.depth, kind.startsWith("cinema_") ? 0.05 : 0.2, 20);
+    const width = vanityDimensions?.width ?? cabinetBounds?.width ?? finite(legacyToiletDefault ? undefined : source.width, size.width, kind === "custom_model" || kind.startsWith("cinema_") ? 0.05 : 0.2, 20);
+    const depth = vanityDimensions?.depth ?? cabinetBounds?.depth ?? finite(legacyToiletDefault ? undefined : source.depth, size.depth, kind === "custom_model" || kind.startsWith("cinema_") ? 0.05 : 0.2, 20);
     const showerStyle = kind === "shower_enclosure" && ["diamond", "rectangular", "curved"].includes(source.showerStyle)
         ? source.showerStyle : "diamond";
     const showerCornerCut = kind === "shower_enclosure"
@@ -225,7 +225,7 @@ export function normalizeFurniture(value, floorId) {
         rotation: finite(source.rotation, 0, -Math.PI * 4, Math.PI * 4),
         width,
         depth,
-        height: vanityDimensions?.height ?? (kind === "cabinet" ? cabinetHeight : finite(legacyToiletDefault ? undefined : source.height, size.height, 0.1, 12)),
+        height: vanityDimensions?.height ?? (kind === "cabinet" ? cabinetHeight : finite(legacyToiletDefault ? undefined : source.height, size.height, kind === "custom_model" ? 0.05 : 0.1, 12)),
         ...(vanityDimensions ? { vanityHeight: vanityDimensions.vanityHeight, basinWidth: vanityDimensions.basinWidth, basinDepth: vanityDimensions.basinDepth, mirrorWidth: vanityDimensions.mirrorWidth, mirrorDepth: vanityDimensions.mirrorDepth, mirrorHeight: vanityDimensions.mirrorHeight, mirrorGap: vanityDimensions.mirrorGap } : {}),
         ...(kind === "shower_enclosure" ? { showerStyle, showerCornerCut } : {}),
         ...(kind === "cabinet" ? { cabinetDepth, cabinetSegments, cabinetStyle: cabinetStyle ?? "base", cabinetDoorCount, ...(cabinetStyle === "segmented" ? { cabinetSectionOneHeight, cabinetHollowHeight, cabinetUpperDepth } : {}) } : {}),

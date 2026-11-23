@@ -1,5 +1,7 @@
+import ResourceUploadButton from './resource-upload-button.jsx';
 import ResourceDiscovery from '../resource-center/discovery.jsx';
 import {uploadPortable} from '../resource-center/portable-upload.jsx';
+import {portableLibrarySync} from '../resource-center/portable-sync-background.js';
 import { a as React } from "../../vendor/react.js";
 import { MOTION_EFFECTS } from "../../../../../packages/schema/src/part-motion.js";
 import {
@@ -48,13 +50,16 @@ export default function MotionLibrary({
       key: "",
       error: "",
     });
+  const savedEffect = React.useRef("");
   const dirty =
     Boolean(draft) && (JSON.stringify(draft) !== baseline || codeDirty);
   const codeValidated =
     Boolean(draft) &&
-    codeValidation.key === JSON.stringify(draft) &&
-    !codeValidation.error;
+    (codeValidation.key === JSON.stringify(draft)
+      ? !codeValidation.error
+      : JSON.stringify(draft.effect) === savedEffect.current);
   const load = (resource) => {
+    savedEffect.current = JSON.stringify(resource.effect);
     setCodeDirty(false);
     setCodeReset((v) => v + 1);
     setCodeValidation({ key: "", error: "" });
@@ -100,9 +105,10 @@ export default function MotionLibrary({
       ...structuredClone(resource ?? builtinMotionResources()[0]),
       id: "",
       builtin: false,
-      name: resource ? `${resource.name}（副本）` : "新动效",
+      name: resource ? `${resource.name.slice(0, 76)}（副本）` : "新动效",
       version: 1,
     };
+    savedEffect.current = JSON.stringify(next.effect);
     setCodeReset((v) => v + 1);
     setCodeDirty(false);
     setCodeValidation({ key: "", error: "" });
@@ -122,9 +128,9 @@ export default function MotionLibrary({
   } catch (error) {
     issue = error.message;
   }
-  const save = async () => {
-    if (!checked || busy || revision === null || codeDirty || !codeValidated)
-      return;
+  const canSave = dirty && checked && !busy && revision !== null && !codeDirty && codeValidated;
+  const save = async (share = false) => {
+    if (!canSave) return;
     setBusy(true);
     setMessage("");
     try {
@@ -139,8 +145,11 @@ export default function MotionLibrary({
         },
       );
       load(result.item);
+      if (share) {
+        void uploadPortable({ type: "motion", sourceId: result.item.id }, notify);
+      }
       await reload();
-      notify?.("动效资源已保存，已有设备规则保留原参数。", "success");
+      if (!share) notify?.("动效资源已保存，已有设备规则保留原参数。", "success");
       setMessage("保存成功，可在部件动效的“动效资源”中选择。");
     } catch (error) {
       setMessage(error.message);
@@ -226,7 +235,15 @@ export default function MotionLibrary({
           ＋ 新增动效
         </button>
       </header>
-      <nav className="ddc-model-tabs" aria-label="动效来源">{[["local","本地动效"],["online","在线动效"]].map(([id,label])=><button key={id} className={source===id?"active":""} onClick={()=>{if(canLeave())setSource(id);}}>{label}</button>)}</nav>
+      <nav className="ddc-model-tabs" aria-label="动效来源">
+        {[["local","本地动效"],["online","在线动效"]].map(([id,label]) => (
+          <button key={id} className={source === id ? "active" : ""} onClick={() => {
+            if (source === id || !canLeave()) return;
+            if (source === "local") portableLibrarySync().request({type:"motion"});
+            setSource(id);
+          }}>{label}</button>
+        ))}
+      </nav>
       {source==="online"?<ResourceDiscovery resourceType="motion" searchQuery={globalQuery} onChanged={reload} onAccount={onAccount}/>:<>
       <div className="motion-library-guide">
         <b>选择动效资源</b>
@@ -272,8 +289,8 @@ export default function MotionLibrary({
           </div>
           <div className="motion-library-grid">
             {visible.map((resource) => (
+              <div key={resource.id} className="motion-resource-row">
               <button
-                key={resource.id}
                 className={`motion-library-card ${resource.id === draft?.id ? "selected" : ""}`}
                 onClick={() => choose(resource)}
                 aria-label={`编辑动效 ${resource.name}`}
@@ -296,6 +313,11 @@ export default function MotionLibrary({
                   <span>配置与预览 →</span>
                 </small>
               </button>
+              {!resource.builtin && <ResourceUploadButton name={resource.name}
+                disabled={busy || (resource.id === draft?.id && (dirty || codeDirty) && !canSave)}
+                onClick={() => resource.id === draft?.id && dirty ? save(true) :
+                  uploadPortable({type:"motion", sourceId:resource.id}, notify)}/>}
+              </div>
             ))}
           </div>
           {!visible.length && (
@@ -319,7 +341,13 @@ export default function MotionLibrary({
                     : "新增自定义动效"}
                 </small>
                 <h2>{draft.name || "未命名动效"}</h2>
-                {draft.id&&!draft.builtin&&<button disabled={dirty||busy} onClick={()=>uploadPortable({type:"motion",sourceId:draft.id},notify)}>上传到资源中心</button>}
+                {draft.builtin ? (
+                  <button disabled={dirty || busy} onClick={() => create(draft)}>
+                    另存为自定义动效
+                  </button>
+                ) : dirty && !draft.id && (
+                  <ResourceUploadButton name={draft.name} disabled={!canSave} title="保存并上传此动效" onClick={() => save(true)}/>
+                )}
               </div>
               <span>{dirty ? "未保存" : "已保存"}</span>
             </header>
@@ -427,33 +455,23 @@ export default function MotionLibrary({
                   <footer>
                     <button
                       className="primary"
-                      onClick={save}
-                      disabled={
-                        busy ||
-                        !dirty ||
-                        !checked ||
-                        revision === null ||
-                        codeDirty ||
-                        !codeValidated
-                      }
+                      onClick={() => save()}
+                      disabled={!canSave}
                     >
                       {busy ? "正在保存…" : "保存动效"}
                     </button>
                     <button onClick={cancel} disabled={busy || !dirty}>
                       取消修改
                     </button>
-                    <button
-                      onClick={() => create(draft)}
-                      disabled={busy || dirty}
-                    >
-                      复制动效
-                    </button>
                     {draft.builtin ? (
                       <button onClick={reset} disabled={busy || dirty}>
                         恢复默认
                       </button>
-                    ) : (
-                      draft.id && (
+                    ) : draft.id && (
+                      <>
+                        <button onClick={() => create(draft)} disabled={busy || dirty}>
+                          复制动效
+                        </button>
                         <button
                           className="danger"
                           onClick={remove}
@@ -461,7 +479,7 @@ export default function MotionLibrary({
                         >
                           {deleting ? "确认删除资源" : "删除资源"}
                         </button>
-                      )
+                      </>
                     )}
                   </footer>
                   {deleting && (

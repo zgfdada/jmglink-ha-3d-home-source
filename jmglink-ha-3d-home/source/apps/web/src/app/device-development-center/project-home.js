@@ -123,6 +123,7 @@ export function buildCustomDeviceProjects(platform = {}, devices = []) {
 
       return {
         ...template,
+        sourceTemplate: template,
         deviceTemplateId: template.id,
         deviceTemplateName: template.name,
         configured: true,

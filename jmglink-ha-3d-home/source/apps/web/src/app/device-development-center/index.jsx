@@ -1,4 +1,5 @@
 import ResourceDiscovery from '../resource-center/discovery.jsx';
+import ResourceClassificationFilters, {useResourceClassification} from './resource-classification-filters.jsx';
 import {uploadPortable} from '../resource-center/portable-upload.jsx';
 import ControlLibrary from "./control-library.jsx";
 import OnlineResources, {ResourceAccountButton} from '../resource-center/index.jsx';
@@ -7,6 +8,7 @@ import { a as React } from "../../vendor/react.js";
 import "../../styles/device-development-center.css";
 import ModelLibrary from "./model-library.jsx";
 import {scheduleModelLibrarySync} from '../resource-center/model-sync-background.js';
+import {portableLibrarySync} from '../resource-center/portable-sync-background.js';
 import ProjectDetail from "./project-detail.jsx";
 import ModelPreview from "./model-preview.jsx";
 import { exportFilename } from "../../../../../packages/schema/src/export-filename.js";
@@ -14,7 +16,6 @@ import {
   buildCustomDeviceProjects,
   createDeviceProjectId,
   createDeviceProjectPayload,
-  filterDeviceProjects,
   PROJECT_VIEW_KEY,
   projectVisualKind,
   resolveProjectHealth,
@@ -94,7 +95,7 @@ function Notice({ notice, onClose }) {
   );
 }
 
-function ProjectCard({ device, view, onOpen, onExport, onDelete, onCopy, onUpload }) {
+function ProjectCard({ device, facts, view, onOpen, onExport, onDelete, onCopy, onUpload }) {
   const health = resolveProjectHealth(device);
   return (
     <article className="ddc-next-project-card">
@@ -102,9 +103,8 @@ function ProjectCard({ device, view, onOpen, onExport, onDelete, onCopy, onUploa
       <div className="ddc-next-project-body">
         <div className="ddc-next-project-main">
           <h3>{device.name}</h3>
-          <p>
-            {device.manufacturer || "未知厂商"} · {device.model || "未知型号"}
-          </p>
+          <p>{[facts.category, facts.subcategory].filter(Boolean).join(' / ')}{facts.productType === '标准品' && <span className="ddc-catalog-standard">标准品</span>}</p>
+          <small className="ddc-catalog-identity">{facts.brand ? facts.brand + " · " : ""}型号：{facts.model || "未填写"}</small>
           <span className={`ddc-next-health ${health.severity}`}>
             <i />
             {health.label}
@@ -263,11 +263,13 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  if (!open) return null;
-  const projects = filterDeviceProjects(
-    buildCustomDeviceProjects(platform ?? {}, devices),
-    query,
+  const projectCards = React.useMemo(
+    () => buildCustomDeviceProjects(platform ?? {}, devices),
+    [platform, devices],
   );
+  const catalog = useResourceClassification(projectCards, 'device-project', query);
+  const projects = catalog.items;
+  if (!open) return null;
 
   const setProjectView = (next) => {
     setView(next);
@@ -278,10 +280,14 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
     leaving.current=true;
     try{
     if(section==='models'&&modelFlushRef.current&&await modelFlushRef.current()===false)return;
-    if(section==='motions'&&libraryGuardRef.current?.()===false)return;
+    if(libraryGuardRef.current?.()===false)return;
     if (activeProjectId && projectFlushRef.current) {
       const saved = await projectFlushRef.current();
       if (saved === false) return;
+    }
+    if (next !== section) {
+      if (section === "motions") portableLibrarySync().request({type: "motion"});
+      if (section === "controls") portableLibrarySync().request({type: "device-control"});
     }
     setQuery("");
     setSection(next);
@@ -293,12 +299,13 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
     leaving.current=true;setClosing(true);
     try{
     if(section==='models'&&modelFlushRef.current&&await modelFlushRef.current()===false)return;
-    if(section==='motions'&&libraryGuardRef.current?.()===false)return;
+    if(libraryGuardRef.current?.()===false)return;
     if (activeProjectId && projectFlushRef.current) {
       const saved = await projectFlushRef.current();
       if (saved === false) return;
     }
     if(section!=='models'||!modelFlushRef.current)scheduleModelLibrarySync();
+    portableLibrarySync().request();
     onClose();
     }catch(error){setNotice({type:'error',message:error.message});}
     finally{leaving.current=false;setClosing(false);}
@@ -335,6 +342,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
           method: "PUT",
           body: JSON.stringify({
             ...project,
+            sourceTemplate: undefined,
             id,
             name: `${project.name} 副本`,
             createdAt: now,
@@ -449,10 +457,11 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={
-                section === "controls" ? "搜索控件名称、说明、作者…" : section === "models"
-                  ? "搜索模型名称、标签、作者…"
-                  : "搜索设备名称、型号、厂商…"
+                section === "controls" ? "搜索控件名称、类别或作者…" :
+                section === "motions" ? "搜索动效名称、类别或用途…" :
+                section === "models" ? "搜索模型、分类、厂家或型号…" : "搜索设备、分类、厂家或型号…"
               }
+              aria-label="搜索当前资源库"
             />
           </label>
           <button className="ddc-next-icon-button" aria-label="通知">
@@ -498,12 +507,13 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
         </aside>
         <main className="ddc-next-main" aria-busy={busy}>
           <Notice notice={notice} onClose={() => setNotice(null)} />
-          {section === 'motions' ? <MotionLibrary onAccount={()=>setOnlineOpen(true)} globalQuery={query} notify={(message,type='success')=>setNotice({message,type})} registerGuard={registerLibraryGuard}/> : section === "controls" ? <ControlLibrary platform={platform} onAccount={()=>setOnlineOpen(true)} globalQuery={query} notify={(message,type="success")=>setNotice({message,type})} onChanged={reload}/> : section === "models" ? (
+          {section === 'motions' ? <MotionLibrary onAccount={()=>setOnlineOpen(true)} globalQuery={query} notify={(message,type='success')=>setNotice({message,type})} registerGuard={registerLibraryGuard}/> : section === "controls" ? <ControlLibrary registerGuard={registerLibraryGuard} onAccount={()=>setOnlineOpen(true)} globalQuery={query} notify={(message,type="success")=>setNotice({message,type})} onChanged={reload}/> : section === "models" ? (
             <ModelLibrary
               flushRef={modelFlushRef}
               platform={platform}
               reload={reload}
               globalQuery={query}
+              onSearchChange={setQuery}
               notify={(message, type = "success") =>
                 setNotice({ message, type })
               }
@@ -555,17 +565,9 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
                   />
                 </div>
               </section>
-              <nav className="ddc-model-tabs" aria-label="设备项目来源">{[["local","本地项目"],["online","在线项目"]].map(([id,label])=><button key={id} className={projectSource===id?"active":""} onClick={()=>setProjectSource(id)}>{label}</button>)}</nav>
-              <section className="ddc-next-toolbar">
-                <label className="ddc-next-search">
-                  <Icon name="search" />
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="搜索设备名称、型号、厂商…"
-                  />
-                </label>
-                <div className="ddc-next-view-toggle" aria-label="项目展示方式">
+              <section className="ddc-catalog-tabbar">
+                <nav className="ddc-model-tabs" aria-label="设备项目来源">{[["local","本地项目"],["online","在线项目"]].map(([id,label])=><button key={id} className={projectSource===id?"active":""} onClick={()=>setProjectSource(id)}>{label}</button>)}</nav>
+                {projectSource === "local" && <div className="ddc-next-view-toggle" aria-label="项目展示方式">
                   <button
                     className={view === "grid" ? "active" : ""}
                     onClick={() => setProjectView("grid")}
@@ -580,8 +582,9 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
                   >
                     <Icon name="list" />
                   </button>
-                </div>
+                </div>}
               </section>
+              {projectSource === "local" && platform && <ResourceClassificationFilters catalog={catalog}/>}
               {projectSource==="online"?<ResourceDiscovery resourceType="device-project" searchQuery={query} onChanged={reload} onAccount={()=>setOnlineOpen(true)}/>:!platform ? (
                 <div className="ddc-next-loading">
                   <span />
@@ -593,6 +596,7 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
                     <ProjectCard
                       key={device.id}
                       device={device}
+                      facts={catalog.factsByItem.get(device)}
                       view={view}
                       onOpen={openProject}
                       onExport={exportPackage}
@@ -607,14 +611,14 @@ export default function DeviceDevelopmentCenter({ open, onClose }) {
                   <div>
                     <Icon name="project" />
                   </div>
-                  <b>{query ? "没有匹配的设备项目" : "还没有自定义设备项目"}</b>
+                  <b>{query || catalog.active ? "没有匹配的设备项目" : "还没有自定义设备项目"}</b>
                   <span>
-                    {query
-                      ? "请尝试其他名称、型号或厂商关键词。"
+                    {query || catalog.active
+                      ? "请调整关键词或分类条件。"
                       : "点击“新建设备”创建第一个自定义设备项目。"}
                   </span>
-                  {query && (
-                    <button onClick={() => setQuery("")}>清除搜索</button>
+                  {(query || catalog.active) && (
+                    <button onClick={() => { setQuery(""); catalog.reset(); }}>清除搜索和筛选</button>
                   )}
                 </section>
               )}

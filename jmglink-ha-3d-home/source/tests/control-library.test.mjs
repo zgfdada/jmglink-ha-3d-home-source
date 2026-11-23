@@ -68,25 +68,35 @@ test("资源库API数据展开保留引用元数据，12种控件列表与预览
     jsxFactory: "React.createElement", jsxFragment: "React.Fragment",
     loader: { ".css": "empty" },
     plugins: [{ name: "render-test-hooks", setup(builder) {
-      // Offscreen thumbnail roots are browser-only; local card rendering must not mount one.
-      builder.onLoad({filter:/vendor[\\/]three\.js$/},()=>({contents:"export const c={createRoot(){throw Error('Unexpected thumbnail mount during render')}};",loader:"js"}));
+      // The local library can render and navigate without a remote catalog or background worker.
+      builder.onLoad({ filter: /resource-center[\\/]discovery\.jsx$/ }, () => ({ contents: "export default function Discovery(){ return null; }" }));
+      builder.onLoad({ filter: /resource-center[\\/]portable-upload\.jsx$/ }, () => ({ contents: "export function uploadPortable(){ throw Error('Unexpected upload during render'); }" }));
+      builder.onLoad({ filter: /resource-center[\\/]portable-sync-background\.js$/ }, () => ({ contents: "export const portableLibrarySync=()=>({request:({type})=>syncRequests.push(type)});" }));
       builder.onLoad({ filter: /vendor[\\/]react\.js$/ }, () => ({ contents: `
         let first = true;
         export const a = {
           Fragment: 'fragment',
           useState(initial) { const value = first ? ${JSON.stringify(controls)} : typeof initial === 'function' ? initial() : initial; first = false; return [value, () => {}]; },
-          useEffect() {}, useMemo(fn) { return fn(); }, useRef() { return { current: null }; },
+          useEffect() {}, useMemo(fn) { return fn(); }, useCallback(fn) { return fn; }, useRef() { return { current: null }; },
           createElement(type, props, ...children) { return typeof type === 'function' ? type(props || {}) : { type, props, children }; }
         };`, loader: "js" }));
     } }],
   });
   const module = { exports: {} };
-  new Function("module", "exports", result.outputFiles[0].text)(module, module.exports);
+  const syncRequests = [];
+  new Function("module", "exports", "syncRequests", result.outputFiles[0].text)(module, module.exports, syncRequests);
   const tree = module.exports.default({ notify() {} });
   const count = (node) => !node || typeof node !== "object" ? 0 :
     Array.isArray(node) ? node.reduce((sum, child) => sum + count(child), 0) :
       (node.type === "article" ? 1 : 0) + count(node.children);
   assert.equal(count(tree), 12);
+  const navigation = tree.children.find(child => child?.type === "nav");
+  const tabs = navigation.children;
+  assert.deepEqual(tabs.map(tab => tab.children[0]), ["本地控件", "在线控件"]);
+  tabs[0].props.onClick();
+  assert.deepEqual(syncRequests, []);
+  tabs[1].props.onClick();
+  assert.deepEqual(syncRequests, ["device-control"]);
 });
 test("内置大字默认居中，实例覆盖保留；环形无重复值，引用文本突出显示", async () => {
   const metric = normalizeLibraryControl(builtinControls().find((c) => c.id === "builtin.number.metric"));

@@ -893,6 +893,10 @@ App入口addon-entry.js调用addonMcpEnvironment，将mcp_enabled／mcp_public_p
 
 旧模型批量同步入口为 ResourceCenter.syncModelLibrary 与 POST /api/resource-center/sync-model-library；浏览器在模型库离开和开发中心总关闭路径复用 ModelPreview 逐个截图。请求携带源快照，服务端在预检及每次写入前核对；缺图、过期、失败都会留在界面提示。对在线安装副本维持原有不自动重新分享的约定。
 
+关闭设备开发中心时，浏览器还会请求 `GET /api/resource-center/portable-sync-plan` 检查设备项目、自定义控件与动效。控制面板由设备包序列化，沿用设备项目的审核与安装记录。客户端后端按资源中心地址、账号和本地资源 ID 对比设备包内容与模型文件摘要。浏览器只为待提交项生成预览，再调用 `POST /api/resource-center/sync-portable`；后端在入队前再次检查账号、内容和已有任务。旧队列缺少内容签名时，使用已存清单的文件摘要比对。
+
+自定义动效以动效配置计算内容签名。预览图可选，页面隐藏、WebGL 不可用、截图超时或超出大小限制时仍可提交动效 JSON。同一配置在手动上传和退出自动上传之间复用任务。因旧服务拒收而阻塞的动效可重试原任务。
+
 
 ## online-v0.1.0 源码快照（2026-11-19）
 

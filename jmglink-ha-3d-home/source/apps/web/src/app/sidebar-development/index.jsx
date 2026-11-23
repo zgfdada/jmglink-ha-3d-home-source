@@ -1,3 +1,4 @@
+import ManualLibraryUpload from '../resource-center/manual-library-upload.jsx';
 import SharingFields from '../resource-center/sharing-fields.jsx';
 import WidgetThumbnail from '../resource-center/widget-thumbnail.jsx';
 import {scheduleSidebarSync} from '../resource-center/sidebar-sync-background.js';
@@ -435,6 +436,9 @@ export default function SidebarDevelopmentCenter({
                 <section className="sb-code-area">
                   <div className="sb-section-heading">
                     <h2>{widget?.name || "请选择控件"}</h2>
+                    {widget && <ManualLibraryUpload widget={widget} scope={{projectId:project.id, floorId, revision:workspace?.revision}}
+                      notify={setMessage} disabledReason={dirty ? '请先保存草稿' :
+                        busy ? '正在加载' : ''}/>}
                     {widget && (
                       <div>
                         <button
@@ -485,7 +489,7 @@ export default function SidebarDevelopmentCenter({
                       </label>
                       <label>脚本模式<select value={widget.scriptMode || "transform"} onChange={e=>patchWidget("scriptMode",e.target.value)}><option value="transform">数据转换（Worker）</option><option value="dom">交互界面（隔离沙箱）</option></select><small>{widget.scriptMode==='dom'?'通过已声明动作进行交互':'在 Worker 中处理数据，无设备控制权限。'}</small></label></div>
                       <SharingFields value={widget.resourceSharing} onChange={value=>patchWidget("resourceSharing",value)}/>
-                      {widget.scriptMode==='dom'&&<p role="status">交互型控件暂不支持在线同步，本地保存与使用不受影响。</p>}
+
                       <h3>默认实体</h3>{entitySelect()}
                       {widget.entityAttribute && <fieldset className="sb-account-names"><legend>实体显示名称</legend>{Object.values(entities).filter(e=>Object.hasOwn(e.attributes || {},widget.entityAttribute)).map((entity,i)=><label key={entity.entityId}>{entity.name || entity.entityId}<input value={widget.accountNames?.[entity.entityId] || ''} placeholder={`用电账户 ${i+1}`} onChange={event=>patchWidget('accountNames',{...widget.accountNames,[entity.entityId]:event.target.value})} /></label>)}</fieldset>}
                       {widget.scriptMode === "dom" && <ActionEditor widget={widget} entities={effectiveBinding.entities} onChange={actions=>patchWidget("actions",actions)} onInsert={html=>patchWidget("html",widget.html+"\n"+html)}/>}
@@ -520,7 +524,7 @@ export default function SidebarDevelopmentCenter({
                   <div className={`sb-widget-live-preview sb-preview-${previewTheme} sb-preview-${previewDevice}`}>
                     {widget && <WidgetRenderer widget={widget} entities={entities} bindingContext={{projectId:project.id,floorId,workspace:"draft"}} theme={previewTheme==='day'?'day':'night'} />}
                   </div>
-                  {sharePreview&&widget.scriptMode!=='dom'&&<details open><summary>分享预览（模拟数据）</summary><WidgetThumbnail key={widget.id} widget={sharePreview} onThumbnail={value=>{thumbnails.current[widget.id]=value;}}/></details>}
+                  {sharePreview&&<details open><summary>分享预览（模拟数据）</summary><WidgetThumbnail key={widget.id} widget={sharePreview} onThumbnail={value=>{thumbnails.current[widget.id]=value;}}/></details>}
                   <EntityProperties key={widget?.id} entity={selectedEntity}/>
                 </aside>
               </>

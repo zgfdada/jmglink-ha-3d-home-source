@@ -81,7 +81,6 @@ export default function ProjectPanel({
   const [selectedId, setSelectedId] = React.useState("");
   const [expandedCapabilityId, setExpandedCapabilityId] = React.useState("");
   const [preview, setPreview] = React.useState(false);
-  const [templateId,setTemplateId]=React.useState("");
   const [libraryQuery, setLibraryQuery] = React.useState("");
   const library = (platform.controlLibrary ?? builtinControls()).filter(
     (item) => item.enabled,
@@ -395,9 +394,6 @@ export default function ProjectPanel({
       </header>
       <div className="ddc-panel-columns">
         <section className="ddc-panel-library">
-          <h3>面板模板</h3>
-          <select aria-label="应用已安装面板" value={templateId} onChange={e=>setTemplateId(e.target.value)}><option value="">选择本地已安装面板…</option>{platform.controlPanels.filter(p=>!p.deviceTemplateId).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
-          <button disabled={!templateId||preview} onClick={()=>{const panel=platform.controlPanels.find(p=>p.id===templateId);if(!panel)return;const current=draftRef.current;commit({...structuredClone(panel),id:current.id,deviceTemplateId:projectId,name:current.name});notify("已应用模板，请检查控件能力匹配；可撤销。");}}>应用模板（替换当前面板，可撤销）</button>
           <h3>控件库</h3>
           <p>选择或拖入库内控件，保存版本快照。可在左侧“控件资源库”管理。</p>
           <input

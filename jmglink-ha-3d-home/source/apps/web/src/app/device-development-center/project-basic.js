@@ -153,6 +153,7 @@ export function applyBasicProjectDraft(current, draft) {
     name: draft.name.trim(),
     category: draft.category,
     subCategory: draft.subCategory,
+    isStandardProduct: draft.isStandardProduct,
     manufacturer: draft.manufacturer,
     model: draft.model,
     matchRules: draft.matchRules,
