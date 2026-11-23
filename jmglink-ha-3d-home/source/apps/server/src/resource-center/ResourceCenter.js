@@ -3,7 +3,7 @@ import {ADDITIONAL_TYPES,buildPortableSource,portableSourceKey,portableSyncSourc
 import {githubBlobResponse} from './github-downloads.js';
 import {mkdir,readFile,writeFile,rename} from 'node:fs/promises';
 import path from 'node:path';
-import {randomUUID} from 'node:crypto';
+import {randomBytes,randomUUID} from 'node:crypto';
 import {FORMAT,HASH,RESOURCE,VERSION,LIMITS,fail,sha256,canonical,validateManifest,validateEntry,validateModelBytes,portableWidget,portableModel,resourceContentHash} from '../../../../packages/resource-protocol/index.js';
 import {normalizeModelTemplate} from '../device-platform/devicePlatformSchema.js';
 import {normalizeSidebar} from '../../../../packages/schema/src/sidebar.js';
@@ -43,7 +43,7 @@ async function atomicJson(file,value){
 }
 export class ResourceCenter {
   constructor({origin,directory,platform,sidebars,projects,fetchImpl=fetch,clock=Date.now,defaultUser=false}){
-    this.silentUpload=false;this.defaultUser=defaultUser;this.defaultLogin=null;this.defaultUserError='';
+    this.silentUpload=false;this.installationUser=resourceCenterOrigin(origin)==='https://resources.700117.xyz';this.defaultUser=defaultUser;this.defaultLogin=null;this.defaultUserError='';
     if(defaultUser&&(!origin||!['127.0.0.1','localhost','[::1]'].includes(new URL(origin).hostname)))throw Error('默认用户仅用于本机体验环境');
     this.origin=resourceCenterOrigin(origin);this.directory=directory;this.platform=platform;this.sidebars=sidebars;this.projects=projects;this.fetch=fetchImpl;this.clock=clock;this.session=null;this.installations={};this.publications={};this.queue=Promise.resolve();this.pending=null;this.prepared=new Map();this.outbox={};this.syncQueue=Promise.resolve();this.publicationQueue=Promise.resolve();this.draining=null;this.retryTimer=null;this.stopped=false;
   }
@@ -53,7 +53,7 @@ export class ResourceCenter {
       try{store[field]=JSON.parse(await readFile(path.join(store.directory,file),'utf8'));}catch(e){if(e.code!=='ENOENT')throw Error('资源中心本地记录损坏，请检查备份');}
     }
     if(store.session?.origin!==store.origin)store.session=null;
-    if(store.session?.isDefault&&!store.defaultUser)store.session=null;
+    if(store.session?.isDefault&&!store.defaultUser&&!store.installationUser)store.session=null;
     return store;
   }
   serial(task){const next=this.queue.catch(()=>{}).then(task);this.queue=next;return next;}
@@ -69,14 +69,24 @@ export class ResourceCenter {
     });
   }
   status(){return {silentUpload:this.silentUpload===true,configured:!!this.origin,origin:this.origin,loggedIn:!!(this.session&&this.session.expiresAt>this.clock()),defaultUserEnabled:this.defaultUser,isDefaultUser:!!this.session?.isDefault,defaultUserError:this.defaultUserError,user:this.session?.user||null,syncJobs:Object.values(this.outbox).filter(j=>(!j.origin||j.origin===this.origin)).map(({id,name,state,error,version,owner})=>({id,name,state,error,version,owner})),installations:Object.values(this.installations).filter(i=>i.origin===this.origin)};}
+  async installationKey(){
+    const file=path.join(this.directory,'installation.key');
+    try{return await readFile(file,'utf8');}
+    catch(error){if(error.code!=='ENOENT')throw error;}
+    const key=randomBytes(32).toString('base64url');
+    try{await writeFile(file,key,{flag:'wx',mode:0o600});return key;}
+    catch(error){if(error.code!=='EEXIST')throw error;return readFile(file,'utf8');}
+  }
   async ensureDefaultUser(){
-    if(!this.defaultUser||this.session?.expiresAt>this.clock())return;
+    if((!this.defaultUser&&!this.installationUser)||this.session?.expiresAt>this.clock())return;
     if(this.defaultLogin)return this.defaultLogin;
     this.defaultLogin=this.serial(async()=>{
       if(this.session?.expiresAt>this.clock())return;
       try{
-        const result=await this.request('/v1/auth/default-user',{method:'POST',body:{},anonymous:true});
-        if(!/^[A-Za-z0-9_-]{43}$/.test(result.accessToken)||!Number.isFinite(result.expiresIn)||result.expiresIn<=0||result.user?.username!=='desktop-default'||result.user.role!=='user')fail('默认用户响应无效',502);
+        const key=this.installationUser ? await this.installationKey() : null;
+        const username=key ? 'client-'+sha256('installation:'+key).slice(0,24) : 'desktop-default';
+        const result=await this.request(key?'/v1/auth/installation':'/v1/auth/default-user',{method:'POST',body:key?{key}:{},anonymous:true});
+        if(!/^[A-Za-z0-9_-]{43}$/.test(result.accessToken)||!Number.isFinite(result.expiresIn)||result.expiresIn<=0||result.user?.username!==username||result.user.role!=='user')fail('默认用户响应无效',502);
         this.session={origin:this.origin,accessToken:result.accessToken,expiresAt:this.clock()+Math.min(result.expiresIn,30*86400)*1000,user:{username:result.user.username,role:result.user.role},isDefault:true};
         await atomicJson(path.join(this.directory,'session.json'),this.session);this.defaultUserError='';
       }catch(error){this.defaultUserError=error.message;}
@@ -368,7 +378,7 @@ export class ResourceCenter {
     const checkOwner = () => {
       if (!owner || this.portableOwner(false) !== owner) fail('账号已变更，请重新同步', 409);
     };
-    const usesDefault = this.defaultUser && owner === 'desktop-default';
+    const usesDefault = (this.defaultUser && owner === 'desktop-default') || (this.installationUser && owner === this.session?.user?.username && this.session?.isDefault);
     const ensureOwner = async () => {
       if (usesDefault && !this.portableOwner(false)) {
         await this.ensureDefaultUser();
@@ -594,7 +604,7 @@ export async function registerResourceCenterRoutes(app,store){
   app.post('/api/resource-center/sync-model-library',{bodyLimit:22*1024*1024},async req=>store.syncModelLibrary(req.body||{}));
   app.post('/api/resource-center/sync-sidebar-library',{bodyLimit:22*1024*1024},async req=>store.syncSidebarLibrary(req.body||{}));
   app.put('/api/resource-center/settings',async req=>store.setSilentUpload(req.body?.silentUpload));
-  app.get('/api/resource-center/status',async()=>store.status());
+  app.get('/api/resource-center/status',async()=>{if(store.installationUser)await store.ensureDefaultUser();return store.status();});
   app.get('/api/resource-center/sources',async()=>store.sources());
   app.post('/api/resource-center/login/start',async()=>store.startLogin());
   app.post('/api/resource-center/login/check',async()=>store.finishLogin());

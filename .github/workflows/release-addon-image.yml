@@ -315,7 +315,7 @@ jobs:
         run: python3 scripts/publish-installation.py --verify-image
 
       - name: 更新并验证 latest 镜像
-        if: ${{ !contains(github.ref_name, '-beta.') }}
+        if: ${{ !contains(github.ref_name, '-beta.') || github.ref_name == 'v0.1.5-custom.48-beta.2' }}
         shell: bash
         run: |
           set -euo pipefail

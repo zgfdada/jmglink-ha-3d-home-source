@@ -3,7 +3,7 @@
 name: 3dhome
 services:
   ha3d-home:
-    image: ghcr.io/zgfdada/jmglink-ha-3d-home-custom:0.1.5-custom.48-beta.1
+    image: ghcr.io/zgfdada/jmglink-ha-3d-home-custom:0.1.5-custom.48-beta.2
     restart: unless-stopped
     entrypoint: ["node", "/app/apps/server/src/main.js"]
     ports:
