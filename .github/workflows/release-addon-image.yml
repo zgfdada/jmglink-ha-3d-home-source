@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
+      alias_digest: ${{ steps.release.outputs.alias_digest }}
       version: ${{ steps.release.outputs.version }}
       tag: ${{ steps.release.outputs.tag }}
       lock_hash: ${{ steps.release.outputs.lock_hash }}
@@ -56,6 +57,10 @@ jobs:
             echo "config.yaml 中的镜像地址与仓库发布地址不一致" >&2
             exit 1
           fi
+          if [ -f release-image-alias.json ] && jq -e --arg v "$version" '.version == $v' release-image-alias.json >/dev/null; then
+            digest=$(jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))' release-image-alias.json)
+            echo "alias_digest=$digest" >> "$GITHUB_OUTPUT"
+          fi
           lock_hash="$(sha256sum jmglink-ha-3d-home/source/package-lock.json | cut -c1-16)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
@@ -65,6 +70,7 @@ jobs:
           echo "amd_tag=$IMAGE:$version-amd64" >> "$GITHUB_OUTPUT"
 
   build_arm64:
+    if: needs.prepare.outputs.alias_digest == ''
     name: 构建并发布 ARM64 镜像
     permissions:
       contents: read
@@ -136,6 +142,7 @@ jobs:
           exit 1
 
   build_amd64:
+    if: needs.prepare.outputs.alias_digest == ''
     name: 构建并发布 AMD64 镜像
     permissions:
       contents: read
@@ -315,7 +322,6 @@ jobs:
         run: python3 scripts/publish-installation.py --verify-image
 
       - name: 更新并验证 latest 镜像
-        if: ${{ !contains(github.ref_name, '-beta.') || github.ref_name == 'v0.1.5-custom.48-beta.2' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -331,3 +337,33 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/publish-installation.py
+
+  publish_alias:
+    needs: prepare
+    if: needs.prepare.outputs.alias_digest != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: 为现有多架构镜像添加版本标签
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          DIGEST: ${{ needs.prepare.outputs.alias_digest }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx imagetools inspect "$IMAGE:latest" --raw > "$RUNNER_TEMP/latest.json"
+          echo "${DIGEST#sha256:}  $RUNNER_TEMP/latest.json" | sha256sum -c -
+          docker buildx imagetools create -t "$IMAGE:$VERSION" "$IMAGE@$DIGEST"
+          docker buildx imagetools inspect "$IMAGE:$VERSION" --raw > "$RUNNER_TEMP/version.json"
+          cmp "$RUNNER_TEMP/latest.json" "$RUNNER_TEMP/version.json"
+      - name: 发布 HA 应用商店配置与版本说明
+        env:
+          INSTALLATION_TOKEN: ${{ secrets.INSTALLATION_TOKEN }}
+        run: python3 scripts/publish-installation.py

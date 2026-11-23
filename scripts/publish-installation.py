@@ -45,7 +45,7 @@ def snapshot(root=ROOT):
             raise ValueError("Source/public configuration mismatch: " + key)
     if "image: ghcr.io/zgfdada/" + IMAGE_NAME not in config:
         raise ValueError("Public image endpoint changed")
-    compose_tag = version if "-beta." in version else "latest"
+    compose_tag = "latest"
     if ("image: ghcr.io/zgfdada/" + IMAGE_NAME + ":" + compose_tag) not in result["docker-compose.release.yml"].decode():
         raise ValueError("Public Compose image does not match the release channel")
     for name in ["README.md", "RELEASE_NOTES.md",
@@ -130,13 +130,10 @@ def publish(client, files, version, docs_only=False):
     metadata = client.request(repo)
     if metadata["private"] or metadata["owner"]["login"] != "zgfdada":
         raise ValueError("Installation destination must be the public zgfdada repository")
-    beta = "-beta." in version
-    branch = "beta" if beta else "main"
-    branch_ref = client.request(repo + "/git/ref/heads/" + branch, missing=beta)
-    if not branch_ref:
-        stable = client.request(repo + "/git/ref/heads/main")
-        client.request(repo + "/git/refs", "POST", {"ref": "refs/heads/beta", "sha": stable["object"]["sha"]})
-        branch_ref = stable
+    notes = files["RELEASE_NOTES.md"].decode()
+    beta = bool(re.search(r"^## " + re.escape(version) + r"[^\n]*预发布", notes, re.M))
+    branch = "main"
+    branch_ref = client.request(repo + "/git/ref/heads/main")
     head = branch_ref["object"]["sha"]
     tree = client.request(repo + "/git/trees/" + head + "?recursive=1")
     if tree.get("truncated"):
@@ -182,7 +179,7 @@ def publish(client, files, version, docs_only=False):
     body = match.group(1).strip() + f"\n\n### 容器镜像\n\n```shell\ndocker pull {IMAGE}:{version}\n```\n\n支持平台：`linux/amd64`、`linux/arm64`\n\n[查看容器软件包](https://github.com/users/zgfdada/packages/container/package/{IMAGE_NAME})\n"
     payload = {"tag_name": tag, "name": "JMGLink HA 3D Home Custom " + tag, "body": body, "draft": False, "prerelease": beta}
     if beta:
-        payload.update(name=payload["name"] + " · 测试版", make_latest="false")
+        payload.update(name=payload["name"] + " · Beta 测试版", make_latest="false")
     release = client.request(repo + "/releases/tags/" + tag, missing=True)
     client.request(repo + ("/releases/" + str(release["id"]) if release else "/releases"), "PATCH" if release else "POST", payload)
     print(f"Published and verified {len(files)} installation files, versioned docs/wiki, {tag}")
