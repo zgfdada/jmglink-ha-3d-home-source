@@ -1,3 +1,4 @@
+import ModelPreview from '../device-development-center/model-preview.jsx';
 import PortablePreview from './portable-preview.jsx';
 import WidgetLibraryHeader from '../sidebar-development/widget-library-header.jsx';
 import ResourceClassificationFilters, {useResourceClassification} from '../device-development-center/resource-classification-filters.jsx';
@@ -11,6 +12,7 @@ function entryQuery(item) {
 let controlCache={owner:null, entries:new Map()};
 export default function ResourceDiscovery({resourceType,searchQuery='',sort='recent',destination,onChanged,onAccount,onLocal,onCreate}){
  const [state,setState]=React.useState(null),[items,setItems]=React.useState([]),[query,setQuery]=React.useState(''),[next,setNext]=React.useState(null),[selected,setSelected]=React.useState(null),[busy,setBusy]=React.useState(false),[loading,setLoading]=React.useState(true),[notice,setNotice]=React.useState(''),[error,setError]=React.useState('');
+ const [previewItem,setPreviewItem]=React.useState(null);
  const generation=React.useRef(0),locked=React.useRef(false),alive=React.useRef(true);
  const inflight=React.useRef(null);
  const [visibleLimit,setVisibleLimit]=React.useState(50);
@@ -91,7 +93,8 @@ export default function ResourceDiscovery({resourceType,searchQuery='',sort='rec
  {state&&!state.configured?<div className="ddc-next-empty"><b>尚未配置资源中心</b><span>安装到本地，即可继续编辑和使用。</span><button onClick={onAccount}>查看配置</button></div>:<>
  {state?.configured&&!loading&&!error&&!pagedByServer&&<ResourceClassificationFilters catalog={catalog}/>}
  {!!unavailableControls&&<p className="rd-notice" role="status">{unavailableControls} 个控件暂时无法读取属性。 <button type="button" onClick={()=>load()}>重试</button></p>}
- {resourceType==='model'?<div className="ddc-model-grid">{ordered.map(item=><article className="ddc-model-card" key={item.manifestSha256}><div className="ddc-model-card-visual rd-model-image">{picture(item)}<span className="ddc-model-origin">在线模型</span></div><div className="ddc-model-card-body"><h3>{item.manifest.name}</h3><p>{item.manifest.resource.split('/')[0]} · v{item.manifest.version.split('+')[0]}</p><div className="ddc-model-tags"><span>3D 模型</span>{installed(item)&&<span>已安装</span>}</div>{mProduct(item.manifest)}<p className="rd-description">{item.manifest.description||'暂无介绍'}</p><div className="ddc-model-card-actions">{installButton(item)}</div></div></article>)}</div>:null}
+ {resourceType==='model' && previewItem && <OnlineModelPreview item={previewItem} onClose={()=>setPreviewItem(null)}/>}
+ {resourceType==='model'?<div className="ddc-model-grid">{ordered.map(item=><article className="ddc-model-card" key={item.manifestSha256}><div className="ddc-model-card-visual rd-model-image">{picture(item)}<span className="ddc-model-origin">在线模型</span></div><div className="ddc-model-card-body"><h3>{item.manifest.name}</h3><p>{item.manifest.resource.split('/')[0]} · v{item.manifest.version.split('+')[0]}</p><div className="ddc-model-tags"><span>3D 模型</span>{installed(item)&&<span>已安装</span>}</div>{mProduct(item.manifest)}<p className="rd-description">{item.manifest.description||'暂无介绍'}</p><div className="ddc-model-card-actions"><button type="button" onClick={()=>setPreviewItem(item)}>预览</button>{installButton(item)}</div></div></article>)}</div>:null}
  {!ordered.length&&!error&&<div className="ddc-next-empty"><b>{loading?'正在读取在线目录…':'暂无匹配的在线'+label}</b>{!loading&&<span>可以调整搜索条件，或稍后再来看看。</span>}</div>}
  {!!ordered.length&&['device-control','motion','device-project'].includes(resourceType)&&<PortableCatalog items={ordered} installButton={installButton} picture={picture} details={details}/> }
  {pagedByServer&&next!==null&&<button className="rd-more" disabled={loading} onClick={()=>load(true)}>加载更多</button>}
@@ -106,4 +109,29 @@ function PortableCatalog({items,installButton,picture,details}){
  React.useEffect(()=>{let active=true;setEntry(current?.entry||null);setError('');if(current&&!current.entry&&current.manifest.type!=='motion')api('package-preview?'+query).then(d=>{if(active)setEntry(d.entry);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[query,current?.entry]);
  const model=entry?.model?{...entry.model.model,...entry.project.appearance,...(entry.model.asset?{source:{...entry.model.model.source,url:'api/resource-center/package-model?'+query}}:{})}:null;
  return <div className="rd-portable-workspace"><aside>{items.map(item=><button key={item.manifestSha256} className={item===current?'active':''} onClick={()=>setSelected(item.manifestSha256)}>{picture(item)}<strong>{item.manifest.name}</strong><small>v{item.manifest.version.split('+')[0]}</small></button>)}</aside>{current&&<article><div className="rd-portable-preview">{current.manifest.type==='motion'?picture(current):error?<p role="alert">{error}</p>:entry?<PortablePreview key={query} entry={entry} model={model}/>:<p>正在加载预览…</p>}</div>{details(current)}</article>}</div>;
+}
+
+function OnlineModelPreview({item,onClose}) {
+  const dialog = React.useRef(null);
+  const [model,setModel] = React.useState(null);
+  const [error,setError] = React.useState('');
+  const query = entryQuery(item);
+  React.useEffect(() => {
+    const element = dialog.current;
+    element.showModal();
+    const controller = new AbortController();
+    api('package-preview?'+query, undefined, controller.signal).then(({entry}) => {
+      if (!controller.signal.aborted) setModel(entry.asset
+        ? {...entry.model, source:{...entry.model.source, url:'api/resource-center/package-model?'+query}}
+        : entry.model);
+    }).catch(err => {if (!controller.signal.aborted) setError(err.message);});
+    return () => {controller.abort(); element.close();};
+  }, [query]);
+  return <dialog className="ddc-model-modal rd-model-dialog" ref={dialog} aria-label="在线模型预览"
+    onCancel={onClose} onClick={event=>{if(event.target===dialog.current)onClose();}}>
+    <div><header><div><h2>{item.manifest.name}</h2><p>在线模型</p></div>
+      <button type="button" aria-label="关闭模型预览" onClick={onClose}>×</button></header>
+      {error ? <p role="alert">{error}</p> : model ? <ModelPreview model={model}/> : <p role="status">正在加载模型…</p>}
+    </div>
+  </dialog>;
 }

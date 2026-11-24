@@ -33,7 +33,39 @@ export function hydrateModelPacket(packet){
         }
       }
     });
-    for(const item of packet.bitmaps||[])if(!sources.has(item.uuid))item.bitmap.close();
+    for(const item of packet.bitmaps||[])if(!sources.has(item.uuid))item.bitmap.close?.();
     return {scene,scenes:[scene]};
-  }catch(error){for(const item of packet.bitmaps||[])item.bitmap.close();throw error;}
+  }catch(error){for(const item of packet.bitmaps||[])item.bitmap.close?.();throw error;}
+}
+
+export async function restoreModelTextures(packet, {signal,textureEdge} = {}) {
+  try {
+    for (const {uuid,blob} of packet.encodedImages || []) {
+      signal?.throwIfAborted();
+      const url = URL.createObjectURL(blob);
+      try {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        signal?.throwIfAborted();
+        let bitmap = image;
+        const scale = textureEdge / Math.max(image.naturalWidth,image.naturalHeight);
+        if (scale < 1) {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1,Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1,Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext('2d');
+          if (context) {
+            context.drawImage(image,0,0,canvas.width,canvas.height);
+            bitmap = canvas;
+          }
+        }
+        packet.bitmaps.push({uuid,bitmap});
+      } finally { URL.revokeObjectURL(url); }
+    }
+  } catch (error) {
+    for (const {bitmap} of packet.bitmaps) bitmap.close?.();
+    throw error;
+  }
+  return hydrateModelPacket(packet);
 }

@@ -1,5 +1,5 @@
 import {MODEL_BUDGET,inspectModelBudget} from "./model-budget.js";
-import {runModelWorker,hydrateModelPacket} from "./model-worker-client.js";
+import {runModelWorker,restoreModelTextures} from "./model-worker-client.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { disposePreviewObject } from "./webgl-recovery.js";
@@ -184,7 +184,7 @@ export function loadModelAsset(
         else if(typeof window!=="undefined"){
           if(typeof Worker==='undefined')throw new Error('当前浏览器不支持隔离模型解码，请使用支持 Worker 的浏览器');
           const packet=await runModelWorker(data,{signal:activeSignal,textureEdge});
-          gltf=hydrateModelPacket(packet);
+          gltf=await restoreModelTextures(packet,{signal:activeSignal,textureEdge});
         }else{
           inspectModelBudget(data);
           gltf=await new GLTFLoader().parseAsync(data, resourcePath);

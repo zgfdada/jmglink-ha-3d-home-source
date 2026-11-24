@@ -599,7 +599,7 @@ export async function registerResourceCenterRoutes(app,store){
   app.get('/api/resource-center/local-preview',async req=>store.localPortablePreview(req.query));
   app.post('/api/resource-center/sync-portable',async req=>store.enqueuePortable(req.body||{}));
   app.get('/api/resource-center/package-preview',async req=>store.previewPackage(req.query));
-  app.get('/api/resource-center/package-model',async(req,reply)=>{const preview=await store.previewPackage(req.query);const model=preview.entry.model;if(!model?.asset)fail('此资源没有模型文件',404);const file=preview.manifest.files.find(f=>f.path===model.asset);const release=await store.request('/v1/resources/'+req.query.resource+'/'+req.query.version);return reply.type(file.mediaType).send((await store.getBlob(file,release.downloads)).bytes);});
+  app.get('/api/resource-center/package-model',async(req,reply)=>{const preview=await store.previewPackage(req.query);const model=preview.manifest.type==='model'?preview.entry:preview.entry.model;if(!model?.asset)fail('此资源没有模型文件',404);const file=preview.manifest.files.find(f=>f.path===model.asset);const release=await store.request('/v1/resources/'+req.query.resource+'/'+req.query.version);return reply.type(file.mediaType).send((await store.getBlob(file,release.downloads)).bytes);});
   app.post('/api/resource-center/sync',async req=>store.enqueue(req.body||{}));
   app.post('/api/resource-center/sync-model-library',{bodyLimit:22*1024*1024},async req=>store.syncModelLibrary(req.body||{}));
   app.post('/api/resource-center/sync-sidebar-library',{bodyLimit:22*1024*1024},async req=>store.syncSidebarLibrary(req.body||{}));

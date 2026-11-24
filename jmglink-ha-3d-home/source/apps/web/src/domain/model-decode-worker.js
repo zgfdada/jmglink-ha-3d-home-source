@@ -1,3 +1,4 @@
+import {Texture} from 'three';
 import {serializeModelScene} from './model-worker-packet.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {inspectModelBudget,MODEL_BUDGET} from './model-budget.js';
@@ -6,7 +7,33 @@ self.onmessage=async event=>{
   try{
     const { data, textureEdge } = event.data?.textureEdge ? event.data : { data: event.data };
     inspectModelBudget(data);
-    const gltf = await new GLTFLoader().parseAsync(data, '');
+    const encodedImages = [];
+    const failures = [];
+    const loader = new GLTFLoader();
+    loader.register(parser => {
+      const native = parser.textureLoader;
+      // A worker has no HTMLImageElement. Preserve the encoded image when the
+      // native bitmap decoder is unavailable or rejects an otherwise valid image.
+      parser.textureLoader = {load(url, onLoad, progress, onError) {
+        async function deferImage() {
+          try {
+            const response = await fetch(url);
+            if (!response.ok) throw Error('无法读取模型贴图');
+            const blob = await response.blob();
+            const texture = new Texture({data:new Uint8Array(4),width:1,height:1});
+            encodedImages.push({uuid:texture.source.uuid,blob});
+            onLoad(texture);
+          } catch (error) { failures.push(error); onError(error); }
+        }
+        if (native.isImageBitmapLoader) {
+          try { native.load(url, bitmap => onLoad(new Texture(bitmap)), progress, deferImage); }
+          catch { deferImage(); }
+        } else { deferImage(); }
+      }};
+      return {name:'HA3D_worker_textures'};
+    });
+    const gltf = await loader.parseAsync(data, '');
+    if (failures.length) throw failures[0];
     if (textureEdge && typeof ImageBitmap !== 'undefined') {
       const sources = new Set();
       gltf.scene.traverse(part => {
@@ -34,6 +61,6 @@ self.onmessage=async event=>{
       for (const image of resized.keys()) image.close();
     }
     const {scene,bitmaps}=serializeModelScene(gltf.scene);
-    self.postMessage({scene,bitmaps},[...new Set(bitmaps.map(item=>item.bitmap))]);
+    self.postMessage({scene,bitmaps,encodedImages},[...new Set(bitmaps.map(item=>item.bitmap))]);
   }catch(error){self.postMessage({error:String(error.message||error).slice(0,500)});}
 };

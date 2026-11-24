@@ -130,8 +130,6 @@ def publish(client, files, version, docs_only=False):
     metadata = client.request(repo)
     if metadata["private"] or metadata["owner"]["login"] != "zgfdada":
         raise ValueError("Installation destination must be the public zgfdada repository")
-    notes = files["RELEASE_NOTES.md"].decode()
-    beta = bool(re.search(r"^## " + re.escape(version) + r"[^\n]*预发布", notes, re.M))
     branch = "main"
     branch_ref = client.request(repo + "/git/ref/heads/main")
     head = branch_ref["object"]["sha"]
@@ -177,9 +175,11 @@ def publish(client, files, version, docs_only=False):
     if not match:
         raise ValueError("Missing user release notes")
     body = match.group(1).strip() + f"\n\n### 容器镜像\n\n```shell\ndocker pull {IMAGE}:{version}\n```\n\n支持平台：`linux/amd64`、`linux/arm64`\n\n[查看容器软件包](https://github.com/users/zgfdada/packages/container/package/{IMAGE_NAME})\n"
+    beta = "预发布" in match[0].splitlines()[0]
     payload = {"tag_name": tag, "name": "JMGLink HA 3D Home Custom " + tag, "body": body, "draft": False, "prerelease": beta}
     if beta:
-        payload.update(name=payload["name"] + " · Beta 测试版", make_latest="false")
+        label = re.search(r"\bBeta \d+\b", match[0].splitlines()[0], re.I)
+        payload.update(name=payload["name"] + " · " + (label[0] if label else "Beta") + " 测试版", make_latest="false")
     release = client.request(repo + "/releases/tags/" + tag, missing=True)
     client.request(repo + ("/releases/" + str(release["id"]) if release else "/releases"), "PATCH" if release else "POST", payload)
     print(f"Published and verified {len(files)} installation files, versioned docs/wiki, {tag}")
